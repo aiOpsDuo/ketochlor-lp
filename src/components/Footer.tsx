@@ -6,7 +6,7 @@ export default function Footer() {
     <footer className="relative bg-navy pt-16 pb-8 overflow-hidden">
       <MoleculeTexture opacity={0.08} className="absolute inset-0 w-full h-full" />
       <div className="relative mx-auto max-w-content px-6 md:px-24">
-        <img src="/assets/logo-ketochlor-transp.png" alt="Ketochlor®" className="h-8 mb-10" />
+        <img src="/assets/logo-ketochlor-transp.png" alt="Ketochlor®" className="h-12 md:h-14 w-auto mb-10" />
 
         <div className="grid md:grid-cols-2 gap-10 mb-10">
           <div>

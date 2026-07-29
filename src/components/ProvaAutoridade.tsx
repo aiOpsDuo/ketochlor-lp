@@ -26,14 +26,14 @@ export default function ProvaAutoridade() {
           {PROVA_AUTORIDADE.heading}
         </h2>
 
-        <div className="grid md:grid-cols-3 gap-6 md:gap-10 mb-10">
+        <div className="grid md:grid-cols-3 gap-6 md:gap-10 mb-10 items-stretch">
           {PROVA_AUTORIDADE.stats.map((stat) => (
-            <div key={stat.label}>
+            <div key={stat.label} className="flex flex-col">
               <p className="font-heading text-gold font-bold text-4xl md:text-5xl mb-3">
                 {stat.value}
               </p>
-              <p className="text-[#D2D5E4] text-sm leading-relaxed mb-4">{stat.label}</p>
-              <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+              <p className="text-[#D2D5E4] text-sm leading-relaxed flex-1 mb-4">{stat.label}</p>
+              <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden mt-auto">
                 <div
                   className="h-full bg-gold rounded-full"
                   style={{ width: `${stat.pct}%` }}

@@ -54,7 +54,7 @@ export default function Header() {
           <img
             src="/assets/logo-ketochlor-transp.png"
             alt="Ketochlor®"
-            className="h-8 md:h-10 w-auto"
+            className="h-10 md:h-14 w-auto"
           />
         </button>
 
@@ -101,7 +101,7 @@ export default function Header() {
       {menuOpen && (
         <div className="lg:hidden fixed inset-0 z-50 bg-white">
           <div className="flex items-center justify-between px-5 h-[64px] border-b border-cardborder">
-            <img src="/assets/logo-ketochlor-transp.png" alt="Ketochlor®" className="h-6 w-auto" />
+            <img src="/assets/logo-ketochlor-transp.png" alt="Ketochlor®" className="h-8 w-auto" />
             <button aria-label="Fechar menu" onClick={() => setMenuOpen(false)} className="w-6 h-6 relative">
               <span className="absolute inset-0 rotate-45 top-1/2 h-[2px] bg-navy" />
               <span className="absolute inset-0 -rotate-45 top-1/2 h-[2px] bg-navy" />
