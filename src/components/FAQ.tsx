@@ -7,12 +7,15 @@ export default function FAQ() {
   return (
     <section id="faq" className="bg-white py-16 md:py-24" style={{ scrollMarginTop: 76 }}>
       <div className="mx-auto max-w-content px-6 md:px-24">
-        <p className="text-blue-institutional text-[13px] font-bold tracking-wide mb-4">
-          FAQ TÉCNICO
-        </p>
-        <h2 className="font-heading text-navy font-bold text-2xl md:text-[30px] mb-10">
-          Perguntas frequentes
-        </h2>
+        {/* Cabeçalho centralizado padronizado */}
+        <div className="text-center max-w-3xl mx-auto mb-10 md:mb-12">
+          <p className="text-blue-institutional text-[13px] font-bold tracking-wide mb-4">
+            FAQ TÉCNICO
+          </p>
+          <h2 className="font-heading text-navy font-bold text-2xl md:text-[30px]">
+            Perguntas frequentes
+          </h2>
+        </div>
 
         <div className="space-y-4">
           {FAQS.map((faq, i) => {
