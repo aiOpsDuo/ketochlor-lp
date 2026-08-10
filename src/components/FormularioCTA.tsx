@@ -1,34 +1,36 @@
-import { useState } from 'react'
-import type { FormEvent } from 'react'
-import { MATERIAL_TECNICO } from '../data/content'
-import type { LeadFormData } from '../types'
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { MATERIAL_TECNICO } from "../data/content";
+import type { LeadFormData } from "../types";
 
 const INITIAL_STATE: LeadFormData = {
-  nome: '',
-  email: '',
-  telefone: '',
-  crmv: '',
-  estadoCidade: '',
-  especialidade: '',
+  nome: "",
+  email: "",
+  telefone: "",
+  crmv: "",
+  estadoCidade: "",
+  especialidade: "",
   jaClienteVirbac: false,
   desejaContatoComercial: false,
   aceitaLGPD: false,
-}
+};
 
 export default function FormularioCTA() {
-  const [form, setForm] = useState<LeadFormData>(INITIAL_STATE)
-  const [submitted, setSubmitted] = useState(false)
+  const [form, setForm] = useState<LeadFormData>(INITIAL_STATE);
+  const [submitted, setSubmitted] = useState(false);
 
-  const update = <K extends keyof LeadFormData>(key: K, value: LeadFormData[K]) =>
-    setForm((prev) => ({ ...prev, [key]: value }))
+  const update = <K extends keyof LeadFormData>(
+    key: K,
+    value: LeadFormData[K],
+  ) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    if (!form.aceitaLGPD) return
+    e.preventDefault();
+    if (!form.aceitaLGPD) return;
     // TODO: integração com Salesforce Marketing Cloud — fluxo de transferência de leads
     // ainda não definido (risco operacional já registrado). Por ora, apenas confirma o envio.
-    setSubmitted(true)
-  }
+    setSubmitted(true);
+  };
 
   return (
     <section
@@ -48,7 +50,7 @@ export default function FormularioCTA() {
             {MATERIAL_TECNICO.subheading}
           </p>
           <img
-            src="/assets/material-tecnico-cover.png"
+            src="/assets/ketochlor-img-campanha.png"
             alt="Capa do Guia Técnico de Prescrição Ketochlor®"
             className="w-full max-w-[280px] rounded shadow-2xl"
           />
@@ -71,7 +73,7 @@ export default function FormularioCTA() {
                   required
                   placeholder="Nome"
                   value={form.nome}
-                  onChange={(e) => update('nome', e.target.value)}
+                  onChange={(e) => update("nome", e.target.value)}
                   className="border border-[#CDD1D8] rounded-sm px-4 py-3 text-sm placeholder:text-[#96999E] focus:outline-none focus:border-blue-institutional"
                 />
                 <input
@@ -79,32 +81,32 @@ export default function FormularioCTA() {
                   type="email"
                   placeholder="E-mail profissional"
                   value={form.email}
-                  onChange={(e) => update('email', e.target.value)}
+                  onChange={(e) => update("email", e.target.value)}
                   className="border border-[#CDD1D8] rounded-sm px-4 py-3 text-sm placeholder:text-[#96999E] focus:outline-none focus:border-blue-institutional"
                 />
                 <input
                   placeholder="Telefone / WhatsApp"
                   value={form.telefone}
-                  onChange={(e) => update('telefone', e.target.value)}
+                  onChange={(e) => update("telefone", e.target.value)}
                   className="border border-[#CDD1D8] rounded-sm px-4 py-3 text-sm placeholder:text-[#96999E] focus:outline-none focus:border-blue-institutional"
                 />
                 <input
                   required
                   placeholder="CRMV"
                   value={form.crmv}
-                  onChange={(e) => update('crmv', e.target.value)}
+                  onChange={(e) => update("crmv", e.target.value)}
                   className="border border-[#CDD1D8] rounded-sm px-4 py-3 text-sm placeholder:text-[#96999E] focus:outline-none focus:border-blue-institutional"
                 />
                 <input
                   placeholder="Estado / cidade"
                   value={form.estadoCidade}
-                  onChange={(e) => update('estadoCidade', e.target.value)}
+                  onChange={(e) => update("estadoCidade", e.target.value)}
                   className="border border-[#CDD1D8] rounded-sm px-4 py-3 text-sm placeholder:text-[#96999E] focus:outline-none focus:border-blue-institutional"
                 />
                 <input
                   placeholder="Especialidade"
                   value={form.especialidade}
-                  onChange={(e) => update('especialidade', e.target.value)}
+                  onChange={(e) => update("especialidade", e.target.value)}
                   className="border border-[#CDD1D8] rounded-sm px-4 py-3 text-sm placeholder:text-[#96999E] focus:outline-none focus:border-blue-institutional"
                 />
               </div>
@@ -113,7 +115,7 @@ export default function FormularioCTA() {
                 <input
                   type="checkbox"
                   checked={form.jaClienteVirbac}
-                  onChange={(e) => update('jaClienteVirbac', e.target.checked)}
+                  onChange={(e) => update("jaClienteVirbac", e.target.checked)}
                   className="mt-1"
                 />
                 Já é cliente Virbac?
@@ -122,7 +124,9 @@ export default function FormularioCTA() {
                 <input
                   type="checkbox"
                   checked={form.desejaContatoComercial}
-                  onChange={(e) => update('desejaContatoComercial', e.target.checked)}
+                  onChange={(e) =>
+                    update("desejaContatoComercial", e.target.checked)
+                  }
                   className="mt-1"
                 />
                 Deseja receber contato ou visita da equipe comercial?
@@ -132,7 +136,7 @@ export default function FormularioCTA() {
                   required
                   type="checkbox"
                   checked={form.aceitaLGPD}
-                  onChange={(e) => update('aceitaLGPD', e.target.checked)}
+                  onChange={(e) => update("aceitaLGPD", e.target.checked)}
                   className="mt-1"
                 />
                 Li e aceito a política de privacidade (LGPD)
@@ -144,11 +148,13 @@ export default function FormularioCTA() {
               >
                 {MATERIAL_TECNICO.ctaLabel}
               </button>
-              <p className="text-[#A0A5AF] text-xs leading-relaxed">{MATERIAL_TECNICO.legal}</p>
+              <p className="text-[#A0A5AF] text-xs leading-relaxed">
+                {MATERIAL_TECNICO.legal}
+              </p>
             </form>
           )}
         </div>
       </div>
     </section>
-  )
+  );
 }
