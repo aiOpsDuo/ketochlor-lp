@@ -36,6 +36,25 @@ export default function Hero() {
 
       <div className="relative mx-auto max-w-content px-6 md:px-24 grid lg:grid-cols-2 gap-10 lg:gap-16 py-10 lg:py-20">
         <div className="relative z-10 flex flex-col justify-center">
+          {/* Tag Lançamento */}
+          <div className="self-start mb-2">
+            <div
+              className="
+      relative inline-flex items-center
+      bg-navy
+      pl-4 pr-7 py-2
+      border-l-[3px] border-gold
+    "
+              style={{
+                clipPath: "polygon(0 0, 88% 0, 100% 50%, 88% 100%, 0 100%)",
+              }}
+            >
+              <span className="text-white text-[10px] font-semibold uppercase tracking-[0.24em]">
+                Lançamento
+              </span>
+            </div>
+          </div>
+
           <img
             src="/assets/logo-ketochlor-transp.png"
             alt="Ketochlor®"
@@ -65,15 +84,15 @@ export default function Hero() {
               aria-hidden
             />
             <img
-              src="/assets/produtos.png"
+              src="/assets/ketochlor-img-campanha.png"
               alt="Linha Ketochlor® — shampoos terapêuticos Virbac"
               className="relative w-full max-w-sm lg:max-w-md rounded-lg shadow-2xl"
             />
-            <img
+            {/* <img
               src="/assets/padrao-ouro.png"
               alt="Selo Padrão Ouro Virbac"
               className="absolute -top-6 -right-4 w-24 md:w-28 drop-shadow-lg"
-            />
+            /> */}
           </div>
         </div>
       </div>
