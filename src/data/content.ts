@@ -146,7 +146,7 @@ export const DIFERENCIAIS = {
     {
       titulo: "Estabilidade incomparável",
       corpo:
-        "Único com de validade em uso  tratamento completo, sem desperdício",
+        "Único com 12 meses de validade em uso  tratamento completo, sem desperdício",
     },
   ],
 };
