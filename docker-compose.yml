@@ -1,0 +1,37 @@
+# Empacotamento de produção do ponto único de entrada (SDD § "Camadas e
+# padrão arquitetural" → "Ponto único de entrada"; ver docs/DOCKER.md).
+# Nenhuma variável de ambiente é exigida aqui: a fase `dados` do PLAN.md
+# ainda não configurou o Supabase, então a API roda hoje sem nenhuma
+# credencial — isso muda quando `dados/supabase-cli-init` e
+# `api/infra-supabase-adapters` chegarem.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: api
+    # Sem `ports`: a API só é alcançada pela rede interna do compose (pelo
+    # serviço `proxy`, via nome de serviço `api`), nunca diretamente do host.
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3000/api/health',(r)=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: web
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy

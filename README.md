@@ -34,3 +34,4 @@ Variáveis de ambiente (credenciais do Supabase, etc.): pendente — será docum
 - Arquitetura, decisões técnicas e diagramas: [agent_context/SDD.md](agent_context/SDD.md)
 - Requisitos de produto: [agent_context/PRD.md](agent_context/PRD.md)
 - Plano de implementação e status das tarefas: [agent_context/PLAN.md](agent_context/PLAN.md)
+- Empacotamento e execução via Docker Compose: [docs/DOCKER.md](docs/DOCKER.md)
