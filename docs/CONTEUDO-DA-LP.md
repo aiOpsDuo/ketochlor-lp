@@ -1,0 +1,52 @@
+# Conteúdo da LP e esquemas de seção
+
+O conteúdo das 11 seções da LP (ver [`agent_context/SDD.md` § "Linguagem ubíqua"](../agent_context/SDD.md) para a lista fechada e a definição de "Seção") tem uma fonte única de esquema e tipos: o pacote [`@ketochlor/content-schema`](../packages/content-schema). É esse pacote que a API valida contra (`PUT /api/admin/sections/:key`), o painel usa para gerar o formulário de edição, e a LP usa para tipar o conteúdo que renderiza — a mesma mudança de campo se propaga aos três sem duplicação.
+
+## Onde vivem os esquemas
+
+```
+packages/content-schema/src/
+├── shared.ts              # ImageField — { url, alt }, comum a toda seção com imagem
+├── sections/
+│   ├── hero.ts             # schema Zod + tipo + conteúdo inicial da seção `hero`
+│   ├── problema.ts
+│   ├── fenotipos.ts
+│   ├── mecanismo.ts
+│   ├── tecnologia_sis.ts
+│   ├── prova_autoridade.ts
+│   ├── protocolo.ts
+│   ├── diferenciais.ts
+│   ├── material_tecnico.ts
+│   ├── cta_secundario.ts
+│   └── faq.ts
+└── index.ts                # CONTENT_SECTIONS — registro das 11 seções: { schema, initialContent }
+```
+
+Cada arquivo de `sections/` segue o mesmo padrão: um schema [Zod](https://zod.dev/) (`z.object({...})`), o tipo TypeScript inferido dele (`z.infer<typeof algumaCoisaSchema>`) e o conteúdo inicial daquela seção, migrado literalmente de `apps/lp/src/data/content.ts` (mesmo texto, mesmas referências bibliográficas, mesma tabela de dosagem — nenhuma copy foi reescrita nessa migração).
+
+## Como adicionar um campo novo a uma seção existente
+
+1. Abra `packages/content-schema/src/sections/<secao>.ts`.
+2. Adicione o campo ao `z.object({...})` daquela seção (ex.: `novoCampo: z.string().min(1)`).
+3. Preencha o mesmo campo no objeto `<secao>InitialContent`, logo abaixo — o TypeScript recusa o build se o conteúdo inicial não satisfizer o schema que você acabou de mudar.
+4. Rode `npm run test --prefix packages/content-schema` — o teste de "o conteúdo inicial migrado satisfaz o próprio schema" (`src/index.test.ts`) falha imediatamente se o passo 3 for esquecido.
+5. Rode `npm run build --prefix packages/content-schema` para confirmar que o pacote builda e gera os tipos atualizados em `dist/`.
+
+Nenhuma mudança em `apps/api` ou `apps/admin` é necessária só para o campo existir no esquema — a validação da API e o formulário do painel leem `CONTENT_SECTIONS` deste pacote (tarefas `api/dominio-esquemas-e-regras` e `painel/formulario-edicao-secao` do `agent_context/PLAN.md`); cada um consome o campo novo quando for atualizado para lê-lo.
+
+## Listas e subestruturas fixas
+
+- **Item de lista** (cardinalidade variável — pode ser adicionado/removido/reordenado pelo painel): as estatísticas de `prova_autoridade`, as linhas de dosagem de `protocolo`, os itens de `diferenciais`, as perguntas de `faq`. Modelados como `z.array(algumSchema).min(1)`.
+- **Subestrutura fixa** (cardinalidade fechada — editável, mas sem opção de adicionar/remover no painel): os dois fenótipos de `fenotipos` (`agudo`/`cronico`) e as duas colunas de ativo de `mecanismo` (`cetoconazol`/`clorexidina`). Modeladas como campos nomeados fixos no `z.object`, nunca como array — é essa diferença de forma que impede o painel de oferecer um botão de "adicionar" onde o PRD não permite.
+
+## Campos de imagem
+
+Toda seção com imagem usa o mesmo formato, `imageFieldSchema` (`packages/content-schema/src/shared.ts`): `{ url: string, alt: string }`, com `alt` sempre obrigatório (nunca é possível salvar uma imagem sem texto alternativo). Nesta fase do projeto `url` é só uma string (caminho relativo aos assets estáticos hoje, URL do Storage quando o upload existir) — não há ainda um campo `mediaId` apontando para `media_assets.id`, porque essa tabela e o fluxo de upload (`api/modulo-media`) ainda não existem; adicionar o campo antes disso seria uma referência que nada preenche. Quando `api/modulo-media` for implementada, este arquivo e o schema serão atualizados juntos.
+
+## Seção `hero` — nota sobre a imagem `selo`
+
+`hero` tem três imagens no esquema (`logo`, `imagemCampanha`, `selo`), conforme a forma normativa do SDD. Hoje `apps/lp/src/components/Hero.tsx` renderiza apenas `logo` e `imagemCampanha`; o bloco de `selo` existe no componente como um `<img>` comentado (mesmo arquivo de imagem já usado pela seção `prova_autoridade`). O conteúdo inicial de `selo` foi migrado com o valor literal já presente nesse comentário — a tarefa `lp/migrar-secoes-para-cms` decide se o `Hero.tsx` volta a renderizá-la.
+
+## Seção `faq` — nota sobre `eyebrow`/`heading`
+
+`FAQS` em `content.ts` é só a lista de perguntas; o texto "FAQ TÉCNICO" / "Perguntas frequentes" hoje está fixo dentro do JSX de `apps/lp/src/components/FAQ.tsx`, não em `content.ts`. Para fechar a seção com a mesma forma das outras 10 (eyebrow + heading), esses dois textos foram migrados literalmente do componente para o conteúdo inicial de `faq`. A tarefa `lp/migrar-secoes-para-cms` troca o texto hardcoded do componente pela leitura desses campos.

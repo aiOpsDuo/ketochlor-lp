@@ -36,3 +36,4 @@ Variáveis de ambiente (credenciais do Supabase, etc.): pendente — será docum
 - Plano de implementação e status das tarefas: [agent_context/PLAN.md](agent_context/PLAN.md)
 - Empacotamento e execução via Docker Compose: [docs/DOCKER.md](docs/DOCKER.md)
 - Banco de dados, Storage e Auth locais (Supabase): [docs/BANCO-DE-DADOS.md](docs/BANCO-DE-DADOS.md)
+- Conteúdo da LP, esquemas de seção e como adicionar um campo novo: [docs/CONTEUDO-DA-LP.md](docs/CONTEUDO-DA-LP.md)
