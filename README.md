@@ -27,7 +27,7 @@ npm run build      # build de produção de todos os workspaces
 
 Com `npm run dev`, um único endereço serve tudo: `/` (LP), `/admin` (painel) e `/api/*` (API) — ver `agent_context/SDD.md` § "Ponto único de entrada".
 
-Variáveis de ambiente (credenciais do Supabase, etc.): pendente — será documentado em `.env.example` junto das tarefas `dados/supabase-cli-init` e `api/infra-supabase-adapters` do [PLAN.md](agent_context/PLAN.md).
+Variáveis de ambiente da API (credenciais do Supabase, JWKS/JWT secret): ver [`apps/api/.env.example`](apps/api/.env.example) e [docs/API.md § Configuração](docs/API.md).
 
 ## Saiba mais
 
@@ -37,3 +37,4 @@ Variáveis de ambiente (credenciais do Supabase, etc.): pendente — será docum
 - Empacotamento e execução via Docker Compose: [docs/DOCKER.md](docs/DOCKER.md)
 - Banco de dados, Storage e Auth locais (Supabase): [docs/BANCO-DE-DADOS.md](docs/BANCO-DE-DADOS.md)
 - Conteúdo da LP, esquemas de seção e como adicionar um campo novo: [docs/CONTEUDO-DA-LP.md](docs/CONTEUDO-DA-LP.md)
+- API: configuração, variáveis de ambiente e testes de integração: [docs/API.md](docs/API.md)

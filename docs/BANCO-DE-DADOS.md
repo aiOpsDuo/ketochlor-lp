@@ -13,6 +13,8 @@ npx supabase --version
 
 Todo comando da CLI abaixo roda via `npx` (ou `npm exec`), nunca como binário `supabase` solto no PATH.
 
+Variáveis de ambiente que a API (`apps/api`) usa para se conectar a esta instância (URL, chave `service_role`, JWKS/JWT secret): ver [`docs/API.md` § Configuração](./API.md).
+
 ## Como rodar
 
 Pré-requisito: Docker (Desktop ou daemon equivalente) disponível e em execução — a CLI sobe Postgres, Storage, Auth e demais serviços como containers.
@@ -45,7 +47,7 @@ Quatro tabelas, todas em `public`. Detalhe completo de cada coluna em [`agent_co
 
 | Tabela | Propósito |
 |---|---|
-| `content_sections` | Uma linha por seção da LP (as 11 seções fechadas do PRD), com o conteúdo em `data jsonb` e uma flag `is_published` de visibilidade. |
+| `content_sections` | Uma linha por seção da LP (as 11 seções fechadas do PRD), com o conteúdo em `data jsonb`, a visibilidade de item de lista em `item_visibility jsonb` (ver nota abaixo) e uma flag `is_published` de visibilidade da seção inteira. |
 | `site_metadata` | Registro único (singleton) com título, descrição e imagem de Open Graph do site. |
 | `media_assets` | Um registro por imagem enviada ao Storage, referenciada pelos documentos de `content_sections`/`site_metadata`. |
 | `leads` | Um registro por envio do formulário de Material Técnico da LP pública. |
@@ -53,6 +55,10 @@ Quatro tabelas, todas em `public`. Detalhe completo de cada coluna em [`agent_co
 ### Row Level Security
 
 RLS está **habilitado nas quatro tabelas, sem nenhuma policy** para os papéis `anon`/`authenticated` — nenhuma linha é visível ou editável por essas roles, em nenhuma tabela. Todo acesso ao banco passa pela API (`apps/api`), que usa a chave secreta do lado do servidor (`service_role`, que ignora RLS); nenhum cliente (LP, painel) alcança o Postgres diretamente. Ver [`agent_context/SDD.md` § "Modelo de dados" → "Row Level Security"](../agent_context/SDD.md).
+
+### `content_sections.item_visibility`
+
+Coluna adicionada pela migration `20260908210000_add_item_visibility_to_content_sections.sql` (tarefa `api/infra-supabase-adapters`), separada de `data` de propósito: guarda o `ItemVisibilityMap` do Domínio (`apps/api/src/domain/visibilidade/filtrar-conteudo-publicado.ts`), um mapa `{ campoDaLista: boolean[] }` alinhado por índice às listas dentro de `data`. Não fica dentro do próprio `data` porque os esquemas Zod de `@ketochlor/content-schema` usam modo "strip" — um campo de visibilidade ali seria descartado silenciosamente pela validação. O repositório de Infraestrutura sempre escreve `data` e `item_visibility` na mesma instrução `UPDATE`, nunca em duas queries separadas, para as duas nunca ficarem dessincronizadas (ver `agent_context/PLAN.md`, nota de design após `api/dominio-esquemas-e-regras`).
 
 ### Bucket de Storage
 
