@@ -1,6 +1,6 @@
 # API (`apps/api`)
 
-NestJS 11, camadas Apresentação → Aplicação → Domínio → Infraestrutura (ver [`agent_context/SDD.md` § "Camadas e padrão arquitetural"](../agent_context/SDD.md)). Este documento cobre a configuração necessária para rodar a API, seus testes, e a autenticação — as rotas de cada módulo de produto são documentadas aqui conforme `api/modulo-content`, `api/modulo-metadata` etc. do [`agent_context/PLAN.md`](../agent_context/PLAN.md) forem concluídas.
+NestJS 11, camadas Apresentação → Aplicação → Domínio → Infraestrutura (ver [`agent_context/SDD.md` § "Camadas e padrão arquitetural"](../agent_context/SDD.md)). Este documento cobre a configuração necessária para rodar a API, seus testes, a autenticação e as rotas de cada módulo de produto, conforme `api/modulo-content`, `api/modulo-metadata` etc. do [`agent_context/PLAN.md`](../agent_context/PLAN.md) forem concluídas.
 
 ## Configuração
 
@@ -40,16 +40,42 @@ Rotas fora de `/api/admin/*` (ex. `GET /api/health`) nunca passam pelo guard —
 
 **Decisão de design:** o guard é registrado GLOBALMENTE (`APP_GUARD`, em `apps/api/src/presentation/auth/auth.module.ts`) e decide sozinho, a partir do caminho da requisição, se exige token — em vez de exigir `@UseGuards(AuthGuard)` explícito em cada controller novo. O NestJS não oferece uma forma nativa de vincular um `CanActivate` a um prefixo de rota (só a controller/handler ou globalmente); vincular por controller seria esquecível — qualquer módulo de admin novo (`api/modulo-content`, `api/modulo-metadata`, `api/modulo-media`, `api/modulo-leads`) que esqueça a anotação ficaria desprotegido por padrão. Com o guard global, toda rota registrada sob `/api/admin/*`, em qualquer controller/módulo futuro, fica protegida automaticamente — "seguro por padrão".
 
-`GET /api/admin/ping` é um controller de EXEMPLO (`apps/api/src/presentation/admin/admin-ping.controller.ts`), criado só para provar o guard de ponta a ponta nesta tarefa — não é um endpoint de produto e será removido quando o primeiro módulo real de admin (`api/modulo-content`) existir.
+O controller de exemplo `GET /api/admin/ping`, criado só para provar o guard de ponta a ponta na tarefa `api/modulo-auth`, foi removido assim que o primeiro módulo real de admin (`api/modulo-content`, abaixo) passou a existir — o e2e do guard (`presentation/auth/auth.e2e.test.ts`) hoje exercita `GET /api/admin/sections` em seu lugar.
+
+**Formato de erro uniforme** (SDD § Contratos de dados/API/interfaces): toda resposta de erro de qualquer rota da API tem, no mínimo, `{ "message": string, "statusCode": number }` — o padrão de exceções HTTP do NestJS. Algumas rotas estendem esse formato com campos adicionais quando fazem sentido (ex.: `erros` na validação de `PUT /api/admin/sections/:key`, abaixo) — a extensão nunca remove `message`/`statusCode`.
+
+## Conteúdo (`api/modulo-content`)
+
+Primeiro módulo real de produto da API (`apps/api/src/presentation/content/`, `apps/api/src/application/content/`). Cinco rotas:
+
+| Rota | Autenticação | Descrição |
+|---|---|---|
+| `GET /api/content` | pública | Conteúdo publicado das 11 seções, para a LP e para o Injetor de SEO. |
+| `GET /api/admin/sections` | `Bearer <jwt>` | Lista resumida das 11 seções (`key`, `isPublished`, `updatedAt`), na ordem declarada em `@ketochlor/content-schema` — tela de listagem do painel. |
+| `GET /api/admin/sections/:key` | `Bearer <jwt>` | Documento completo de uma seção (`data`, `itemVisibility`, `isPublished`, `updatedAt`, `updatedBy`), incluindo itens não publicados — tela de edição. |
+| `PUT /api/admin/sections/:key` | `Bearer <jwt>` | Substitui `data` (e, opcionalmente, `itemVisibility`) da seção. |
+| `PATCH /api/admin/sections/:key/visibility` | `Bearer <jwt>` | Alterna `isPublished` da seção inteira. |
+
+**`GET /api/content`** devolve `{ "sections": { "<key>": <SectionData> | null, ... } }`. Decisão de formato: as 11 chaves de `SectionKey` estão **sempre presentes** no objeto — uma seção com `is_published = false` aparece com valor `null`, nunca é omitida da resposta. Isso permite a qualquer consumidor (`PublishedContentProvider` da LP, o Injetor de SEO) sempre indexar `sections[key]` diretamente, sem checar presença de chave antes. Cada seção retornada já passou por `filtrarConteudoPublicado` (Domínio): os itens de lista marcados como não visíveis em `item_visibility` são removidos antes de sair da API — nunca vazam para fora, mesmo que a seção esteja publicada.
+
+**`GET /api/admin/sections/:key`** e as duas rotas de escrita devolvem `404` (`{ message, statusCode: 404 }`) se `:key` não for uma das 11 seções fechadas do CMS.
+
+**`PUT /api/admin/sections/:key`** — corpo `{ "data": <objeto>, "itemVisibility"?: { "<campoDaLista>": boolean[] } }`. `data` é validado contra o esquema Zod da seção (`validarConteudoSecao`, Domínio) antes de qualquer gravação:
+- Inválido → `422 Unprocessable Entity`, corpo `{ "message": string, "statusCode": 422, "erros": [{ "campo": string, "mensagem": string }, ...] }` — extensão do formato uniforme com a lista de campos inválidos; nenhuma gravação parcial acontece.
+- `itemVisibility` omitido preserva o mapa já persistido (não reseta a visibilidade de itens ocultados por um salvamento anterior).
+- Sucesso → `200`, devolve o documento completo atualizado; `updatedBy` é preenchido a partir de `request.usuario.sub` (claim `sub` do JWT verificado pelo `AuthGuard`, ver seção "Autenticação" acima) — nunca aceito no corpo da requisição.
+
+**`PATCH /api/admin/sections/:key/visibility`** não tem corpo; inverte `is_published` e devolve o documento atualizado (`200`). `updatedBy` preenchido da mesma forma que `PUT`.
 
 ## Testes de integração e e2e
 
-Os testes de `apps/api/src/infrastructure` (`npm run test --prefix apps/api -- infra`) e o teste e2e do `AuthGuard` (`apps/api/src/presentation/auth/auth.e2e.test.ts`, `npm run test --prefix apps/api -- auth`) rodam contra o Supabase LOCAL de verdade, não mocks do SDK — o e2e sobe a aplicação Nest completa (`AppModule`) via `@nestjs/testing` + `supertest` e exercita `GET /api/health` e `GET /api/admin/ping` com um usuário/login reais:
+Os testes de `apps/api/src/infrastructure` (`npm run test --prefix apps/api -- infra`), o e2e do `AuthGuard` (`presentation/auth/auth.e2e.test.ts`, `npm run test --prefix apps/api -- auth`) e o e2e do módulo de conteúdo (`presentation/content/content.e2e.test.ts`, `npm run test --prefix apps/api -- content`) rodam contra o Supabase LOCAL de verdade, não mocks do SDK — os e2e sobem a aplicação Nest completa (`AppModule`) via `@nestjs/testing` + `supertest`, com um usuário/login reais:
 
 ```bash
 npx supabase start   # sobe Postgres/Auth/Storage locais
-npm run test --prefix apps/api -- infra   # repositórios + verificador de token
-npm run test --prefix apps/api -- auth    # AuthGuard e2e (inclui o teste acima do verificador)
+npm run test --prefix apps/api -- infra     # repositórios + verificador de token
+npm run test --prefix apps/api -- auth      # AuthGuard e2e (inclui o teste acima do verificador)
+npm run test --prefix apps/api -- content   # módulo de conteúdo e2e (GET /api/content + CRUD de seções)
 npx supabase stop    # não deixe os containers rodando ao final
 ```
 
