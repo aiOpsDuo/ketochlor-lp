@@ -1,0 +1,24 @@
+-- Adiciona a coluna item_visibility a content_sections para persistir o
+-- ItemVisibilityMap (ver apps/api/src/domain/visibilidade/filtrar-conteudo-publicado.ts),
+-- separado do `data` da seção.
+--
+-- Por que uma coluna própria, e não uma chave dentro do mesmo `data`: os
+-- esquemas Zod de `@ketochlor/content-schema` usam `z.object({...})` no modo
+-- padrão ("strip") — qualquer campo de visibilidade gravado dentro do mesmo
+-- objeto validado por `validarConteudoSecao`/`schema.parse()` seria descartado
+-- silenciosamente antes de chegar ao banco. Essa é exatamente a decisão já
+-- registrada no comentário de topo de `filtrar-conteudo-publicado.ts`
+-- ("guardado à parte do `data` da seção... não dentro dele") — esta migration
+-- só dá a ela um lugar físico no schema.
+--
+-- Ref.: agent_context/PLAN.md, nota de design após a tarefa
+-- api/dominio-esquemas-e-regras; agent_context/SDD.md § Modelo de dados >
+-- content_sections.
+--
+-- Restrição obrigatória para quem grava esta coluna (repositório de
+-- infraestrutura, tarefa api/infra-supabase-adapters): `data` e
+-- `item_visibility` são sempre escritos juntos, na MESMA instrução UPDATE —
+-- nunca como duas queries independentes que possam ficar dessincronizadas por
+-- reordenar/remover um item de lista entre uma escrita e outra.
+alter table content_sections
+  add column item_visibility jsonb not null default '{}'::jsonb;
