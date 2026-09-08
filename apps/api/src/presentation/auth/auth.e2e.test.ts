@@ -86,6 +86,19 @@ describe('AuthGuard (e2e) — /api/admin/*', () => {
     expect(resposta.status).toBe(401);
   });
 
+  it('rejeita GET /API/Admin/ping (variação de maiúsculas/minúsculas) sem header Authorization', async () => {
+    // Regressão: o Express (base de `@nestjs/platform-express`) tem
+    // `case sensitive routing` desabilitado por padrão — esta requisição é
+    // roteada ao mesmo `AdminPingController` de `/api/admin/ping`, só que com
+    // `request.path` preservando a capitalização original do cliente. O
+    // guard precisa reconhecer isso como rota administrativa mesmo assim
+    // (ver `AuthGuard.ehRotaAdministrativa`); antes da correção, essa
+    // variação de capitalização driblava o guard e a rota respondia sem
+    // token.
+    const resposta = await request(app.getHttpServer()).get('/API/Admin/ping');
+    expect(resposta.status).toBe(401);
+  });
+
   it('aceita GET /api/admin/ping com um JWT válido, emitido pelo Supabase Auth local via login real, e anexa as claims na resposta', async () => {
     const resposta = await request(app.getHttpServer())
       .get('/api/admin/ping')

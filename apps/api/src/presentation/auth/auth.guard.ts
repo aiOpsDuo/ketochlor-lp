@@ -44,7 +44,7 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
 
-    if (!request.path.startsWith(ADMIN_ROUTE_PREFIX)) {
+    if (!this.ehRotaAdministrativa(request.path)) {
       return true;
     }
 
@@ -64,6 +64,27 @@ export class AuthGuard implements CanActivate {
     // nas escritas de `api/modulo-content`, `api/modulo-metadata` etc.).
     request.usuario = resultado.claims;
     return true;
+  }
+
+  /**
+   * Compara o caminho da requisição com `ADMIN_ROUTE_PREFIX` sem diferenciar
+   * maiúsculas de minúsculas.
+   *
+   * Correção de falha de segurança (revisão pós-implementação da tarefa
+   * `api/modulo-auth`): o Express — base do `@nestjs/platform-express` usado
+   * por toda a API — tem `case sensitive routing` DESABILITADO por padrão, ou
+   * seja, uma requisição para `/API/Admin/ping` é roteada normalmente ao
+   * mesmo controller de `/api/admin/ping`, mas `request.path` chega ao guard
+   * exatamente como o cliente escreveu (com a capitalização original). A
+   * comparação anterior (`startsWith` sensível a caixa) divergia desse
+   * roteamento real: reconhecia `/api/admin/...` como administrativo mas não
+   * suas variações de capitalização, liberando (`return true`) uma rota
+   * administrativa de verdade sem exigir token. A decisão do guard nunca pode
+   * divergir de como o Express de fato roteia — por isso ambos os lados da
+   * comparação são normalizados para minúsculas aqui.
+   */
+  private ehRotaAdministrativa(caminho: string): boolean {
+    return caminho.toLowerCase().startsWith(ADMIN_ROUTE_PREFIX.toLowerCase());
   }
 
   private extrairTokenDoHeader(request: Request): string | null {
