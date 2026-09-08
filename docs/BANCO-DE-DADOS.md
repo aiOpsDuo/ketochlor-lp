@@ -36,9 +36,24 @@ Serviços expostos localmente (portas padrão, configuráveis em `supabase/confi
 ## Estrutura
 
 - `supabase/config.toml` — configuração do projeto local (versão do Postgres, portas, schemas expostos, etc.). Versionado.
-- `supabase/migrations/` — migrations SQL do schema, aplicadas em ordem por `supabase db reset`/`supabase db push`. Ainda **não existe**: as tabelas do CMS (`content_sections`, `site_metadata`, `media_assets`, `leads`) chegam nas próximas tarefas da fase `dados` do [`PLAN.md`](../agent_context/PLAN.md), uma por vez.
+- `supabase/migrations/` — migrations SQL do schema, aplicadas em ordem por `supabase db reset`/`supabase db push`.
 - `supabase/.gitignore` — gerado pela própria CLI, ignora `.branches` e `.temp` (estado local efêmero da CLI); não duplicado no `.gitignore` da raiz.
 
-## Próximos passos (fase `dados` do plano)
+## Modelo de dados
 
-Row Level Security, o bucket de Storage para imagens e o modelo de dados completo (quatro tabelas) estão descritos em [`agent_context/SDD.md` § "Modelo de dados"](../agent_context/SDD.md) e serão implementados pelas tarefas seguintes desta fase (`migration-content-sections`, `migration-site-metadata`, `migration-media-assets`, `migration-leads`, `rls-e-storage`) — este documento será completado então, sem antecipar aqui uma tabela que ainda não existe.
+Quatro tabelas, todas em `public`. Detalhe completo de cada coluna em [`agent_context/SDD.md` § "Modelo de dados"](../agent_context/SDD.md) — aqui só o propósito de uma linha cada:
+
+| Tabela | Propósito |
+|---|---|
+| `content_sections` | Uma linha por seção da LP (as 11 seções fechadas do PRD), com o conteúdo em `data jsonb` e uma flag `is_published` de visibilidade. |
+| `site_metadata` | Registro único (singleton) com título, descrição e imagem de Open Graph do site. |
+| `media_assets` | Um registro por imagem enviada ao Storage, referenciada pelos documentos de `content_sections`/`site_metadata`. |
+| `leads` | Um registro por envio do formulário de Material Técnico da LP pública. |
+
+### Row Level Security
+
+RLS está **habilitado nas quatro tabelas, sem nenhuma policy** para os papéis `anon`/`authenticated` — nenhuma linha é visível ou editável por essas roles, em nenhuma tabela. Todo acesso ao banco passa pela API (`apps/api`), que usa a chave secreta do lado do servidor (`service_role`, que ignora RLS); nenhum cliente (LP, painel) alcança o Postgres diretamente. Ver [`agent_context/SDD.md` § "Modelo de dados" → "Row Level Security"](../agent_context/SDD.md).
+
+### Bucket de Storage
+
+Bucket `images`, público apenas para **leitura** (`storage.buckets.public = true` + policy de `select` para todos os papéis) — a landing page lê imagens já publicadas sem autenticação. Escrita (`insert`/`update`/`delete`) não tem policy para `anon`/`authenticated`: só `service_role` grava direto; o upload feito pelo navegador do painel usa uma credencial temporária emitida pela API (SDD § Decisões técnicas e trade-offs), nunca uma policy permanente aberta.
