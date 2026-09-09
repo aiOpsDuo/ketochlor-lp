@@ -248,7 +248,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: painel/tela-login, api/modulo-content
 - Execução: sequencial
 - Toca documentação: sim — `docs/PAINEL.md`
-- Status: pendente
+- Status: concluída — PR #29 (squash-merge em `main`, `bc66b8f`). Criou também `AdminLayout` (nav compartilhada com links já prontos para `/metadata` e `/leads`) para permitir que `painel/tela-metadados` e `painel/tela-leads` rodem em paralelo com diff mínimo em `App.tsx` — decisão registrada a pedido do usuário (ver nota abaixo sobre execução paralela).
 
 #### formulario-edicao-secao — Formulário de edição por seção
 - Origem: planejada
@@ -276,7 +276,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Rastreável a: SDD § Critérios de aceitação por capacidade (metadados de busca e compartilhamento)
 - Critério de "pronto": em navegador, salvar reflete em `GET /api/admin/metadata` (verificação completa do reflexo no HTML fica em `seo/injetor-metadados`).
 - Dependências: painel/tela-login, api/modulo-metadata
-- Execução: sequencial
+- Execução: **paralela** com `painel/tela-leads`, em worktree isolado — decisão explícita do usuário (2026-09-09), aceitando resolver um eventual conflito de merge trivial em `App.tsx` (uma linha de `<Route>` cada); `AdminLayout` (PR #29) já tem o link de nav pronto, então nenhuma das duas precisa tocá-lo
 - Toca documentação: sim — `docs/PAINEL.md`
 - Status: pendente
 
@@ -286,7 +286,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Rastreável a: SDD § Critérios de aceitação por capacidade (consulta e exportação de leads)
 - Critério de "pronto": com leads de teste no banco local, a tela lista na ordem correta, o filtro de período reduz a listagem e a exportação ao intervalo escolhido, e excluir um lead o remove permanentemente (verificação em navegador).
 - Dependências: painel/tela-login, api/modulo-leads
-- Execução: sequencial
+- Execução: **paralela** com `painel/tela-metadados`, em worktree isolado — mesma decisão registrada acima
 - Toca documentação: sim — `docs/PAINEL.md`
 - Status: pendente
 
