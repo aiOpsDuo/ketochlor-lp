@@ -1,20 +1,209 @@
 {
   "sections": {
-    "hero": null,
-    "problema": null,
-    "fenotipos": null,
-    "mecanismo": null,
-    "tecnologia_sis": null,
-    "prova_autoridade": null,
-    "protocolo": null,
-    "diferenciais": null,
-    "material_tecnico": null,
-    "cta_secundario": null,
-    "faq": null
+    "hero": {
+      "logo": {
+        "alt": "Ketochlor®",
+        "url": "/assets/logo-ketochlor-transp.png"
+      },
+      "selo": {
+        "alt": "Selo Padrão Ouro Virbac",
+        "url": "/assets/padrao-ouro.png"
+      },
+      "eyebrow": "CIÊNCIA QUE ACOLHE, CUIDADO QUE RESOLVE",
+      "heading": "Prepare-se para a evolução da terapia tópica.",
+      "ctaLabel": "QUERO ACESSAR O MATERIAL TÉCNICO COMPLETO",
+      "subheading": "A concentração ideal de clorexidina recomendada pela diretriz ICAID (2025), associada ao Cetoconazol e tecnologia exclusiva de suporte ao microbioma cutâneo.",
+      "imagemCampanha": {
+        "alt": "Linha Ketochlor® — shampoos terapêuticos Virbac",
+        "url": "/assets/ketochlor-img-campanha.png"
+      }
+    },
+    "problema": {
+      "imagem": {
+        "alt": "Cão apresentando prurido, sinal clínico de infecção secundária associada à DAC",
+        "url": "/assets/cachorro-cocando2.jpg"
+      },
+      "eyebrow": "O PROBLEMA",
+      "heading": "O ciclo que se repete",
+      "paragraphs": [
+        "A Dermatite Atópica Canina (DAC) raramente aparece sozinha. A ruptura da barreira cutânea e outras alterações fisiológicas, levam à disbiose abrindo espaço para infecções. ",
+        "O resultado, na prática clínica, é um ciclo recorrente: o tutor trata a crise, os sinais melhoram, e semanas depois o quadro retorna, muitas vezes mais intenso.",
+        "Romper esse ciclo exige controlar as duas frentes de infecção secundária ao mesmo tempo, e não apenas uma delas."
+      ]
+    },
+    "fenotipos": {
+      "agudo": {
+        "body": "Pele eritematosa, prurido intenso, maior ocorrência de foliculite bacteriana superficial.",
+        "badge": "HEXADENE INDICADO",
+        "title": "Paciente agudo",
+        "subtitle": "Resposta Th2"
+      },
+      "intro": "Pacientes atópicos não são todos iguais — e a literatura confirma o que a clínica já mostra. Segundo Ferreira et al. (2023)⁶, os fenótipos da DAC variam conforme as interleucinas produzidas e a fase da doença:",
+      "closing": "Ketochlor® foi indicado para o paciente crônico, com infecção recorrente por BOG e MOG⁶ — o caso em que a resposta precisa ser dupla, e não apenas antisséptica ou apenas antifúngica.",
+      "cronico": {
+        "body": "Hiperqueratose, hiperpigmentação, infecções recorrentes com supercrescimento bacteriano (BOG) e de Malassezia spp. (MOG) — a Malasseziose.",
+        "badge": "KETOCHLOR® INDICADO",
+        "title": "Paciente crônico",
+        "subtitle": "Resposta Th1 + Th2"
+      },
+      "eyebrow": "FENÓTIPOS DA DAC",
+      "heading": "Nem todo caso de DAC pede a mesma resposta"
+    },
+    "mecanismo": {
+      "intro": "Ketochlor® é indicado para o tratamento dos sinais clínicos relacionados às infecções secundárias associadas à DAC, promovendo a redução do prurido e da gravidade das lesões — principalmente nos casos agravados pela hiperproliferação de fungos e bactérias sensíveis à Clorexidina e ao Cetoconazol.",
+      "closing": "Dois ativos. Uma diretriz internacional como validador.",
+      "eyebrow": "MECANISMO DE AÇÃO",
+      "heading": "A dupla ação, na concentração que a ciência recomenda",
+      "cetoconazol": {
+        "corpo": "Penetração 7 a 14 vezes superior à do miconazol no estrato córneo². Alta afinidade pela queratina garante efeito residual prolongado e previne a recolonização². Maior espectro de ação antifúngica in vitro³.",
+        "titulo": "Cetoconazol 1%",
+        "subtitulo": "Ação antifúngica superior"
+      },
+      "clorexidina": {
+        "corpo": "De acordo com o ISCAID (2025), a clorexidina em concentrações de 2% a 4% deve ser a principal escolha terapêutica tópica para cães¹. Ketochlor® foi formulado com a concentração ideal¹ em associação com antifúngico.",
+        "titulo": "Clorexidina 2,3%",
+        "subtitulo": "Controle bacteriano decisivo"
+      }
+    },
+    "tecnologia_sis": {
+      "body": "Ketochlor® é o único do mercado com a tecnologia exclusiva SIS — Skin Innovative Science™, a junção de duas tecnologias proprietárias Virbac: Glyco® e Defensin®⁴. Combinadas, elas auxiliam o equilíbrio do microbioma cutâneo e apoiam a manutenção de uma pele saudável — reforço que vai além do controle antifúngico e bacteriano, relevante especialmente para o paciente atópico, cuja barreira cutânea já está comprometida.",
+      "imagem": {
+        "alt": "Ilustração técnica das camadas da pele e folículo piloso",
+        "url": "/assets/anatomia-da-pele.png"
+      },
+      "eyebrow": "TECNOLOGIA EXCLUSIVA VIRBAC",
+      "heading": "Tecnologia exclusiva SIS: além da ação antimicrobiana"
+    },
+    "prova_autoridade": {
+      "note": "Dados internos Virbac (\"data on file\")⁵, estudo com 41 cães. Racional científico apoiado em literatura publicada e revisada — ISCAID (2025)¹, Pershing et al. (1994)², Gupta et al. (2025)³.",
+      "selo": {
+        "alt": "Selo Padrão Ouro Virbac",
+        "url": "/assets/padrao-ouro.png"
+      },
+      "stats": [
+        {
+          "pct": 70,
+          "label": "dos cães com melhora clínica significativa dos sinais avaliados",
+          "value": "70%"
+        },
+        {
+          "pct": 63,
+          "label": "redução média do prurido relatado pelos tutores",
+          "value": "63%"
+        },
+        {
+          "pct": 100,
+          "label": "de satisfação dos tutores que testaram o produto",
+          "value": "100%"
+        }
+      ],
+      "eyebrow": "PROVA DE AUTORIDADE",
+      "heading": "Resultados observados em estudo clínico Virbac",
+      "ctaLabel": "QUERO ACESSAR O ESTUDO COMPLETO"
+    },
+    "protocolo": {
+      "closing": {
+        "text": "Garantia de estabilidade por 12 meses após aberto, permitindo o tratamento completo, sem interrupção por perda de eficácia e sem desperdício para o tutor.",
+        "product": "Ketochlor®",
+        "highlight": "é o único do mercado"
+      },
+      "dosagem": [
+        {
+          "peso": "< 4,99",
+          "volumeMl": "10"
+        },
+        {
+          "peso": "5 – 10,99",
+          "volumeMl": "15"
+        },
+        {
+          "peso": "11 – 15,99",
+          "volumeMl": "20"
+        },
+        {
+          "peso": "16 – 20,99",
+          "volumeMl": "25"
+        },
+        {
+          "peso": "21 – 30,99",
+          "volumeMl": "30"
+        },
+        {
+          "peso": "31 – 45,99",
+          "volumeMl": "40"
+        },
+        {
+          "peso": "> 46",
+          "volumeMl": "50"
+        }
+      ],
+      "eyebrow": "PROTOCOLO DE USO",
+      "heading": "Protocolo simples de prescrever",
+      "modoUso": "Aplicar duas vezes por semana. Massagear e deixar o produto agir na pelagem por 10 minutos antes de enxaguar. Duração do tratamento: 5 semanas, ou a critério do médico-veterinário.",
+      "estabilidadeBadge": "12 MESES DE ESTABILIDADE"
+    },
+    "diferenciais": {
+      "items": [
+        {
+          "corpo": "Cetoconazol com 7-14x mais penetração no estrato córneo e efeito residual prolongado²",
+          "titulo": "Eficácia antifúngica superior"
+        },
+        {
+          "corpo": "2,3% de Clorexidina, dentro da concentração recomendada pelo ISCAID¹",
+          "titulo": "Potência antisséptica otimizada"
+        },
+        {
+          "corpo": "Estimula as defesas naturais da pele  essencial para o paciente atópico⁴",
+          "titulo": "Tecnologia exclusiva SIS"
+        },
+        {
+          "corpo": "Único com 12 meses de validade em uso  tratamento completo, sem desperdício",
+          "titulo": "Estabilidade incomparável"
+        }
+      ],
+      "eyebrow": "SÍNTESE COMPARATIVA",
+      "heading": "Por que Ketochlor®, em síntese"
+    },
+    "material_tecnico": {
+      "legal": "Cadastro rápido. Acesso imediato. Dados protegidos conforme LGPD.",
+      "eyebrow": "ACESSO AO MATERIAL TÉCNICO",
+      "heading": "O material técnico completo sobre Ketochlor® está a um cadastro de distância.",
+      "ctaLabel": "QUERO ACESSAR O MATERIAL TÉCNICO COMPLETO",
+      "imagemCapa": {
+        "alt": "Capa do Guia Técnico de Prescrição Ketochlor®",
+        "url": "/assets/ketochlor-img-campanha.png"
+      },
+      "subheading": "Indicação, mecanismo de ação e protocolo de prescrição, com acesso imediato após o cadastro."
+    },
+    "cta_secundario": {
+      "body": "Deseja receber contato ou visita da equipe comercial? Marque essa opção no formulário acima.",
+      "heading": "Prefere conversar diretamente com a equipe Virbac?",
+      "ctaLabel": "SOLICITAR CONTATO"
+    },
+    "faq": {
+      "eyebrow": "FAQ TÉCNICO",
+      "heading": "Perguntas frequentes",
+      "perguntas": [
+        {
+          "answer": "Não. A recomendação da literatura é que, após o tratamento das infecções secundárias por 4 a 5 semanas, o paciente passe a usar um shampoo hidratante de forma contínua (como Allermyl(r)), retornando ao uso do Ketochlor somente se houver recidiva do processo infeccioso.",
+          "question": "Ketochlor deve ser usado de forma contínua em cães com DAC?"
+        },
+        {
+          "answer": "Enquanto Ketochlor possui uma combinação de 2 ingredientes (Clorexidina e Cetoconazol), sendo indicado em casos mais crônicos, em geral relacionados à Dermatite Atópica, o Hexadene é uma solução única (Clorexidina 3%), mais indicado em casos primários, mais simples ou casos agudos de piodermite.",
+          "question": "Qual a diferença entre usar Ketochlor® e o Hexadene Spherulites®?"
+        },
+        {
+          "answer": "Garante que o produto mantenha eficácia ao longo do tratamento e retratamentos, sem perda por degradação — reduzindo desperdício.",
+          "question": "Por que a estabilidade de 12 meses após aberto importa clinicamente?"
+        }
+      ]
+    }
   },
   "metadata": {
     "title": "",
     "description": "",
-    "ogImageMediaId": null
+    "ogImageMediaId": null,
+    "updatedAt": "2026-09-09T15:03:46.69355+00:00",
+    "updatedBy": null
   }
 }
