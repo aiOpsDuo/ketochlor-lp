@@ -33,14 +33,17 @@ O painel usa **React Router** (`react-router-dom`, modo declarativo — `Browser
 
 `apps/admin/src/App.tsx` monta `<BrowserRouter basename="/admin">`, então a rota `/login` do React Router já resolve para a URL real `/admin/login`, sem duplicar o prefixo — nenhuma rota do código referencia `/admin` explicitamente.
 
-Duas rotas hoje:
+Rotas hoje:
 
 | Rota (React Router) | URL real | Componente | Acesso |
 |---|---|---|---|
-| `/login` | `/admin/login` | `LoginPage` | Só sem sessão — com sessão válida, redireciona ao dashboard (`PublicOnlyRoute`) |
-| `/` | `/admin` | `DashboardPage` | Só com sessão — sem sessão válida, redireciona ao login (`ProtectedRoute`) |
+| `/login` | `/admin/login` | `LoginPage` | Só sem sessão — com sessão válida, redireciona à listagem de seções (`PublicOnlyRoute`) |
+| `/` (índice) | `/admin` | `SectionListPage`, dentro de `AdminLayout` | Só com sessão — sem sessão válida, redireciona ao login (`ProtectedRoute`) |
+| `/sections/:key` | `/admin/sections/:key` | `SectionDetailPage` (placeholder), dentro de `AdminLayout` | Idem |
 
-`ProtectedRoute` e `PublicOnlyRoute` (`apps/admin/src/auth/`) são as duas guardas: ambas leem `useAuth()` e usam `<Navigate replace>` para redirecionar antes de renderizar a rota real, cobrindo a exigência do PRD de que "nenhuma tela sob `/admin` é alcançável sem sessão válida" — a próxima tarefa do painel (`painel/listagem-secoes`) que precisar de uma rota nova autenticada adiciona um `<Route>` dentro do mesmo `<Route element={<ProtectedRoute />}>`, sem duplicar a checagem de sessão.
+`ProtectedRoute` e `PublicOnlyRoute` (`apps/admin/src/auth/`) são as duas guardas: ambas leem `useAuth()` e usam `<Navigate replace>` para redirecionar antes de renderizar a rota real, cobrindo a exigência do PRD de que "nenhuma tela sob `/admin` é alcançável sem sessão válida".
+
+Dentro de `<Route element={<ProtectedRoute />}>`, `App.tsx` aninha um segundo nível — `<Route element={<AdminLayout />}>` — que envolve toda rota autenticada com o cabeçalho de navegação (ver "Layout e navegação" abaixo). Uma rota autenticada nova (`painel/tela-metadados` → `/metadata`, `painel/tela-leads` → `/leads`) só precisa de um `<Route path="..." element={...} />` a mais dentro desse mesmo `<Route element={<AdminLayout />}>` — o link de navegação para as duas já existe em `AdminLayout` desde esta tarefa (`painel/listagem-secoes`), apontando para rotas que só passam a existir quando essas tarefas forem implementadas.
 
 **Nota de segurança:** estas guardas são só uma conveniência de UX no cliente — a barreira real de autorização é o `AuthGuard` da API (`apps/api`, ver `docs/API.md`), que rejeita qualquer chamada a `/api/admin/*` sem um token válido. Mesmo que alguém burle a UI do painel, nenhum dado administrativo sai do servidor sem o token correto.
 
@@ -48,13 +51,26 @@ Duas rotas hoje:
 
 `apps/admin/src/pages/login-page.tsx`: formulário de e-mail/senha, chama `supabase.auth.signInWithPassword`. Uma credencial inválida (e-mail ou senha errados) mostra "E-mail ou senha inválidos." em um elemento `role="alert"`, sem navegar — a mesma mensagem genérica para os dois casos, para não revelar se um e-mail existe ou não na base.
 
-### Dashboard (placeholder)
+## Layout e navegação (`painel/listagem-secoes`)
 
-`apps/admin/src/pages/dashboard-page.tsx` é hoje um placeholder vazio, só para provar o redirecionamento (sem sessão → login; logado, acessar `/admin/login` → dashboard) e hospedar o botão de logout. A listagem real das 11 seções chega na tarefa `painel/listagem-secoes`.
+`apps/admin/src/layout/admin-layout.tsx` é o elemento pai de toda rota sob `<ProtectedRoute />` (registrado em `App.tsx`, `<Route element={<AdminLayout />}>`, com `<Outlet />` renderizando a página de cada rota filha). Um único cabeçalho, presente em toda tela autenticada:
 
-### Logout
+- Nome do painel ("Painel Ketochlor").
+- Navegação (`NavLink`) para as três áreas: "Seções" (`/`), "Metadados" (`/metadata`) e "Leads" (`/leads`). Os dois últimos links já existem antes de as páginas correspondentes existirem (`painel/tela-metadados`, `painel/tela-leads`, ambas dependentes só desta tarefa) — clicar neles hoje é um 404 esperado, até essas tarefas registrarem a rota em `App.tsx`.
+- Botão "Sair", que chama `supabase.auth.signOut()`. O próprio `onAuthStateChange` do `AuthProvider` limpa a sessão em memória e `ProtectedRoute` redireciona ao login — nenhuma navegação manual é feita pelo botão (mesmo comportamento de antes, só que agora centralizado no layout em vez de duplicado em cada página).
 
-Botão "Sair" no dashboard chama `supabase.auth.signOut()`. O próprio `onAuthStateChange` do `AuthProvider` limpa a sessão em memória e `ProtectedRoute` redireciona ao login — nenhuma navegação manual é feita pelo botão.
+## Listagem de seções (`painel/listagem-secoes`)
+
+`apps/admin/src/pages/sections/section-list-page.tsx` é a rota índice (`/`, URL real `/admin`): busca `GET /api/admin/sections` (`docs/API.md`) com `fetch` autenticado (`apps/admin/src/lib/api-client.ts`, função `apiFetch` — cabeçalho `Authorization: Bearer <session.access_token>`, do `AuthContext`) e renderiza as 11 seções **na ordem em que a API já as devolve** — a própria API garante essa ordem a partir de `CONTENT_SECTIONS` (`@ketochlor/content-schema`, ver comentário de decisão em `ListarSecoesUseCase`), então o painel não precisa conhecer nem repetir essa ordem.
+
+Cada linha mostra:
+- Um rótulo em português amigável (`apps/admin/src/pages/sections/section-labels.ts`, `SECTION_LABELS: Record<SectionKey, string>` — ex. `tecnologia_sis` → "Tecnologia SIS"), nunca o identificador técnico cru.
+- Se a seção está publicada ou não (`isPublished`).
+- A data da última atualização (`updatedAt`), formatada com `Intl.DateTimeFormat('pt-BR')`.
+
+Clicar em uma linha navega para `/sections/:key` (URL real `/admin/sections/:key`), hoje servida por `apps/admin/src/pages/sections/section-detail-page.tsx` — um placeholder ("Edição da seção {key} — em construção") que só prova que a navegação funciona. O formulário real de edição (campos de texto, listas, upload de imagem) chega na tarefa `painel/formulario-edicao-secao`.
+
+`apps/admin/src/lib/api-client.ts` (`apiFetch`, `ApiError`) é genérico o bastante para as próximas telas autenticadas (`painel/tela-metadados`, `painel/tela-leads`) reaproveitarem sem reimplementar o cabeçalho `Authorization` ou o tratamento de erro — nenhuma URL absoluta de API é montada em lugar nenhum do painel: tanto o dev server (proxy de `apps/lp/vite.config.ts`) quanto o nginx de produção (`docker/nginx.conf`) servem painel e API sob o mesmo domínio, então um caminho relativo (`/api/admin/sections`) já resolve certo nos dois ambientes.
 
 ## Como testar localmente com um usuário de operador
 
