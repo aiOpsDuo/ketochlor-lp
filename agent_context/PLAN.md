@@ -343,7 +343,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: api/modulo-metadata, fundacao/docker-single-entry
 - Execução: sequencial
 - Toca documentação: sim — `docs/API.md` ou README, conforme onde a função de borda for descrita
-- Status: pendente
+- Status: concluída — PR #46 (squash-merge em `main`, `a8997f9`). Decisão de T2 refinada de "função de borda a escolher" para "injeção em tempo de build" (`agent_context/CHANGELOG.md`, 2026-09-09) — nginx puro não suporta montar a tag a partir de chamada de rede por requisição sem `njs`. Reverificado pelo orquestrador: com metadata preenchido, `dist/index.html` reescrito corretamente (título/description/og:image reais, sem JS); com metadata vazio, HTML preservado. **Gap descoberto (não corrigido aqui, registrado em `ajustes/docker-compose-env-api`)**: `docker-compose.yml` não passa nenhuma variável de ambiente do Supabase ao serviço `api`, que hoje exige essas variáveis para subir — herdado do comentário de `fundacao/docker-single-entry`, nunca atualizado quando `dados`/`api` passaram a exigi-las. **Fase `seo` concluída** (única tarefa).
 
 ### Fase: integracao
 
@@ -381,7 +381,17 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 
 ### Fase: ajustes
 
-Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos na Fase 4 entram aqui. Vazia no início do plano.
+Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos na Fase 4 entram aqui.
+
+#### docker-compose-env-api — Repassa variáveis do Supabase ao serviço `api` do compose
+- Origem: correção
+- Descrição: `docker-compose.yml` não define nenhuma variável de ambiente (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`/`SUPABASE_JWKS_URL`) para o serviço `api` — `supabase-env.ts` (tarefa `api/infra-supabase-adapters`) exige essas variáveis e lança erro na inicialização sem elas, então `docker compose up --build` sobe o serviço `api` em crash-loop hoje. O comentário de topo do arquivo (herdado de `fundacao/docker-single-entry`, quando `dados`/`api` ainda não existiam) ficou desatualizado. Corrigir repassando as variáveis do `.env` da raiz (mesmo padrão de `apps/api/.env.example`) ao serviço `api` no `docker-compose.yml`, com valor obrigatório (`${VAR:?defina VAR no .env}`) igual ao já usado para as variáveis de build do `proxy`.
+- Rastreável a: agent_context/CHANGELOG.md, entrada de 2026-09-09 (descoberta durante `seo/injetor-metadados`)
+- Critério de "pronto": `docker compose up --build` sobe `api` sem crash-loop, `healthcheck` fica `healthy`; `curl http://localhost:8080/api/health` retorna `200`.
+- Dependências: fundacao/docker-single-entry, api/infra-supabase-adapters
+- Execução: sequencial
+- Toca documentação: sim — `docs/DOCKER.md` (variáveis exigidas pelo `docker-compose.yml`), `.env.example` da raiz se ainda não existir um cobrindo essas variáveis para o compose
+- Status: pendente
 
 ## Ordem de execução
 
