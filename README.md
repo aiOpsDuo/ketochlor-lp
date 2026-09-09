@@ -27,7 +27,7 @@ npm run build      # build de produção de todos os workspaces
 
 Com `npm run dev`, um único endereço serve tudo: `/` (LP), `/admin` (painel) e `/api/*` (API) — ver `agent_context/SDD.md` § "Ponto único de entrada".
 
-Variáveis de ambiente da API (credenciais do Supabase, JWKS/JWT secret): ver [`apps/api/.env.example`](apps/api/.env.example) e [docs/API.md § Configuração](docs/API.md).
+Variáveis de ambiente da API (credenciais do Supabase, JWKS/JWT secret): ver [`apps/api/.env.example`](apps/api/.env.example) e [docs/API.md § Configuração](docs/API.md). Variáveis de ambiente do painel (URL e chave publicável do Supabase, para login/sessão): ver [`apps/admin/.env.example`](apps/admin/.env.example) e [docs/PAINEL.md § Configuração](docs/PAINEL.md).
 
 ## Saiba mais
 
@@ -38,3 +38,4 @@ Variáveis de ambiente da API (credenciais do Supabase, JWKS/JWT secret): ver [`
 - Banco de dados, Storage e Auth locais (Supabase): [docs/BANCO-DE-DADOS.md](docs/BANCO-DE-DADOS.md)
 - Conteúdo da LP, esquemas de seção e como adicionar um campo novo: [docs/CONTEUDO-DA-LP.md](docs/CONTEUDO-DA-LP.md)
 - API: configuração, variáveis de ambiente e testes de integração: [docs/API.md](docs/API.md)
+- Painel: configuração, autenticação e fluxo de login: [docs/PAINEL.md](docs/PAINEL.md)
