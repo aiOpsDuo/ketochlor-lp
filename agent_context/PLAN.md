@@ -401,7 +401,7 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Dependências: documentacao/readme-e-docs-finais
 - Execução: sequencial
 - Toca documentação: sim (é a própria tarefa)
-- Status: pendente
+- Status: concluída — PR #58 (squash-merge em `main`, `cb4f628`). **Bug real adicional encontrado e corrigido no mesmo PR**: `apps/api/package.json` tinha `"start": "node dist/main.js"`, quebrado desde que o layout de output do `nest build` mudou (mesma causa-raiz já corrigida no `docker/Dockerfile` em `ajustes/docker-compose-env-api`, mas nunca propagada a este script) — corrigido para `dist/src/main.js`. Reverificado pelo orquestrador: `npm run start --prefix apps/api` real → 200; `docker compose up --build` completo com varredura de segredo no bundle do proxy (0 ocorrências de `SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_JWT_SECRET`, controle positivo confirmado); nenhuma menção ao projeto irmão em `README.md`/`docs/`; 84/84 (api) e 63/63 (lp) testes.
 
 #### docker-compose-env-api — Repassa variáveis do Supabase ao serviço `api` do compose
 - Origem: correção
