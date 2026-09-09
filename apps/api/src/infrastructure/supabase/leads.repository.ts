@@ -79,10 +79,16 @@ export class SupabaseLeadsRepository implements LeadsRepository {
     return (data ?? []).map((row) => paraLeadPersistido(row as LeadRow));
   }
 
-  async excluir(id: string): Promise<void> {
-    const { error } = await this.client.from(TABELA).delete().eq('id', id);
+  async excluir(id: string): Promise<boolean> {
+    // `.select('id')` após o `delete` faz o Postgres devolver as linhas de
+    // fato removidas — sem ele, `data` viria `null` mesmo quando um registro
+    // é apagado, e não haveria como distinguir "excluiu" de "não existia"
+    // sem uma consulta extra de leitura antes (decisão da tarefa
+    // `api/modulo-leads`, que precisa desse sinal para responder `404`).
+    const { data, error } = await this.client.from(TABELA).delete().eq('id', id).select('id');
     if (error) {
       throw new Error(`Falha ao excluir o lead "${id}": ${error.message}`);
     }
+    return (data ?? []).length > 0;
   }
 }

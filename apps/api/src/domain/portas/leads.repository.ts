@@ -38,6 +38,15 @@ export interface LeadsRepository {
    */
   listarPorPeriodo(filtro?: FiltroPeriodoLeads): Promise<LeadPersistido[]>;
 
-  /** Exclui um lead permanentemente (SDD — exclusão a pedido do titular). */
-  excluir(id: string): Promise<void>;
+  /**
+   * Exclui um lead permanentemente (SDD — exclusão a pedido do titular).
+   *
+   * @returns `true` se um registro existia para `id` e foi removido; `false`
+   * se `id` não corresponde a nenhum lead — usado pela Apresentação
+   * (`api/modulo-leads`, `DELETE /api/admin/leads/:id`) para decidir entre
+   * sucesso e `404`, sem precisar de uma consulta extra de "buscar antes de
+   * excluir" (o próprio `delete` do Postgres já informa quantas linhas
+   * afetou).
+   */
+  excluir(id: string): Promise<boolean>;
 }

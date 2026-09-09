@@ -107,9 +107,30 @@ Primeiro módulo real de produto da API (`apps/api/src/presentation/content/`, `
 
 **Decisão de validação:** mesmo padrão de `validarSiteMetadata`/`validarLead` — sem `class-validator`/DTO decorado, a regra vive no Domínio (`validarSolicitacaoUpload`, `apps/api/src/domain/media/validar-solicitacao-upload.ts`). "Só imagem, sem vídeo" é tratado como regra de negócio do que o CMS aceita como mídia (não uma checagem de forma de payload), por isso vive no Domínio e não num DTO da Apresentação.
 
+## Leads (`api/modulo-leads`)
+
+`apps/api/src/presentation/leads/`, `apps/api/src/application/leads/`. Última tarefa da fase `api`. Quatro rotas:
+
+| Rota | Autenticação | Descrição |
+|---|---|---|
+| `POST /api/leads` | pública | Recebe o envio do formulário de Material Técnico da LP e cria um registro em `leads`. |
+| `GET /api/admin/leads?from=&to=` | `Bearer <jwt>` | Lista todos os leads, mais recente primeiro, com filtro de período opcional. |
+| `GET /api/admin/leads/export.csv?from=&to=` | `Bearer <jwt>` | Mesma listagem/filtro acima, formatada como CSV. |
+| `DELETE /api/admin/leads/:id` | `Bearer <jwt>` | Exclui um lead permanentemente. |
+
+**`POST /api/leads`** — corpo `{ "nome": string, "email": string, "telefone"?: string, "crmv"?: string, "estadoCidade"?: string, "especialidade"?: string, "jaClienteVirbac"?: boolean, "desejaContatoComercial"?: boolean, "origem"?: string, "consentimentoAceito": boolean }`. Fica fora de `/api/admin/*` de propósito (mesmo raciocínio de `GET /api/content`): o `AuthGuard` global só exige token para caminhos sob `/api/admin`, então esta rota nunca pede `Authorization` — confirmado por teste e2e (`leads.e2e.test.ts`), não presumido.
+- `nome`/`email` vazios, `email` com formato inválido, ou `consentimentoAceito` diferente de `true` → `422 Unprocessable Entity`, corpo `{ "message": string, "statusCode": 422, "erros": [...] }` — mesmo formato de erro das outras rotas; nenhum registro é criado (`validarLead`, Domínio, é a única porta de entrada para a tabela `leads`).
+- Sucesso → `201`, devolve o lead criado. **`consentimentoAceito` nunca aparece na resposta nem é persistido** — é condição de envio, não um dado do lead (PRD § Compliance/LGPD: "a prova de consentimento é a própria existência do registro somado a `created_at`", SDD § Modelo de dados). `validarLead` remove o campo do payload antes de qualquer gravação.
+
+**`GET /api/admin/leads`** devolve a listagem **completa** (não paginada) filtrada por período, mais recente primeiro. Decisão de escopo: o SDD descreve "lista paginada", mas a porta `LeadsRepository.listarPorPeriodo` (Domínio/Infraestrutura, `api/infra-supabase-adapters`) não aceita parâmetros de paginação — só o filtro de período — e o volume de leads declarado no PRD (dezenas de edições/poucos usuários) não justifica introduzir paginação numa porta que não a tem só para esta rota; se o volume real de leads crescer a ponto de a listagem completa pesar, paginação é uma extensão futura da porta, não algo a antecipar aqui (proporcionalidade, `references/padroes-codigo.md`). `from`/`to` são datas ISO 8601 (`Date.parse` válido); um valor presente e inválido é recusado com `400 Bad Request` antes de alcançar o banco.
+
+**`GET /api/admin/leads/export.csv`** aplica o mesmo filtro/listagem do endpoint acima e devolve `Content-Type: text/csv; charset=utf-8`: uma linha de cabeçalho (`id,nome,email,telefone,crmv,estadoCidade,especialidade,jaClienteVirbac,desejaContatoComercial,origem,createdAt`) seguida de uma linha por lead, campos separados por vírgula e escapados conforme RFC 4180 (aspas duplas ao redor de qualquer valor com vírgula/aspas/quebra de linha). **Decisão de implementação:** formatação própria (`formatarLeadsParaCsv`, `apps/api/src/application/leads/formatar-leads-csv.ts`), sem biblioteca externa — o formato de saída é fixo e conhecido (as colunas de `LeadPersistido`, sem aninhamento, sem necessidade de parsing de volta), então uma função pura de poucas linhas cobre RFC 4180 por completo sem adicionar uma dependência nova a `apps/api` só para "escrever vírgula/aspas com segurança".
+
+**`DELETE /api/admin/leads/:id`** exclui o registro e devolve `204 No Content`; `404 Not Found` se `id` não corresponde a nenhum lead. Decisão de implementação: `LeadsRepository.excluir` (existente desde `api/infra-supabase-adapters`) foi estendida para devolver `boolean` (havia registro e foi removido, ou não) em vez de `void` — o `delete` do Postgres, com `.select('id')` encadeado, já informa quantas linhas afetou, sem exigir uma consulta de leitura extra antes de excluir.
+
 ## Testes de integração e e2e
 
-Os testes de `apps/api/src/infrastructure` (`npm run test --prefix apps/api -- infra`), o e2e do `AuthGuard` (`presentation/auth/auth.e2e.test.ts`, `npm run test --prefix apps/api -- auth`), o e2e do módulo de conteúdo (`presentation/content/content.e2e.test.ts`, `npm run test --prefix apps/api -- content`), o e2e do módulo de metadados (`presentation/metadata/metadata.e2e.test.ts`, `npm run test --prefix apps/api -- metadata`) e o e2e do módulo de mídia (`presentation/media/media.e2e.test.ts`, `npm run test --prefix apps/api -- media`) rodam contra o Supabase LOCAL de verdade, não mocks do SDK — os e2e sobem a aplicação Nest completa (`AppModule`) via `@nestjs/testing` + `supertest`, com um usuário/login reais (o de mídia inclusive faz um upload real contra o Storage local, com a credencial que a rota devolve):
+Os testes de `apps/api/src/infrastructure` (`npm run test --prefix apps/api -- infra`), o e2e do `AuthGuard` (`presentation/auth/auth.e2e.test.ts`, `npm run test --prefix apps/api -- auth`), o e2e do módulo de conteúdo (`presentation/content/content.e2e.test.ts`, `npm run test --prefix apps/api -- content`), o e2e do módulo de metadados (`presentation/metadata/metadata.e2e.test.ts`, `npm run test --prefix apps/api -- metadata`), o e2e do módulo de mídia (`presentation/media/media.e2e.test.ts`, `npm run test --prefix apps/api -- media`) e o e2e do módulo de leads (`presentation/leads/leads.e2e.test.ts`, `npm run test --prefix apps/api -- leads`) rodam contra o Supabase LOCAL de verdade, não mocks do SDK — os e2e sobem a aplicação Nest completa (`AppModule`) via `@nestjs/testing` + `supertest`, com um usuário/login reais (o de mídia inclusive faz um upload real contra o Storage local, com a credencial que a rota devolve):
 
 ```bash
 npx supabase start   # sobe Postgres/Auth/Storage locais
@@ -118,6 +139,7 @@ npm run test --prefix apps/api -- auth      # AuthGuard e2e (inclui o teste acim
 npm run test --prefix apps/api -- content   # módulo de conteúdo e2e (GET /api/content + CRUD de seções)
 npm run test --prefix apps/api -- metadata  # módulo de metadados e2e (GET/PUT /api/admin/metadata + reflexo em GET /api/content)
 npm run test --prefix apps/api -- media     # módulo de mídia e2e (POST /api/admin/media/upload-url + upload real ao Storage)
+npm run test --prefix apps/api -- leads     # módulo de leads e2e (POST /api/leads público + GET/DELETE /api/admin/leads*)
 npx supabase stop    # não deixe os containers rodando ao final
 ```
 
