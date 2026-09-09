@@ -331,7 +331,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: lp/provider-conteudo-publicado
 - Execução: sequencial
 - Toca documentação: sim — README § Como rodar localmente (novo passo de build)
-- Status: pendente
+- Status: concluída — PR #44 (squash-merge em `main`, `443e552`). **Bug real encontrado e corrigido pelo próprio subagente**: a validação inicial só checava `sections`/`metadata` serem objetos — não bastava para rejeitar a resposta de um serviço diferente escutando por acaso na mesma porta default (aconteceu de verdade neste ambiente, com outro projeto na porta 3000). Corrigido checando as 11 chaves fechadas de `@ketochlor/content-schema`. Reproduzido e confirmado pelo orquestrador: com a porta 3000 ocupada por outro processo, o build rejeitou o conteúdo estranho e preservou o snapshot bom, sem falhar. **Fase `lp` concluída por completo** (4 tarefas, 4 PRs).
 
 ### Fase: seo
 
