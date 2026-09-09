@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { PROVA_AUTORIDADE } from '../data/content'
+import { usePublishedContent } from '../content/PublishedContentProvider'
 import MoleculeTexture from './MoleculeTexture'
 
 const HEADER_OFFSET = 76
@@ -139,11 +139,17 @@ function StatCard({ value, label, pct, animate, reduced }: StatCardProps) {
 
 export default function ProvaAutoridade() {
   const { ref, visible } = useInView(0.3)
+  const { sections } = usePublishedContent()
+  const provaAutoridade = sections.prova_autoridade
 
   // Lê prefers-reduced-motion uma vez (não muda durante a sessão)
   const reduced =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  if (!provaAutoridade) {
+    return null
+  }
 
   return (
     <section
@@ -154,10 +160,10 @@ export default function ProvaAutoridade() {
       <MoleculeTexture opacity={0.1} className="absolute inset-0 w-full h-full" />
       <div className="relative mx-auto max-w-content px-6 md:px-24">
         <p className="text-gold text-[13px] font-bold tracking-wide mb-4">
-          {PROVA_AUTORIDADE.eyebrow}
+          {provaAutoridade.eyebrow}
         </p>
         <h2 className="font-heading text-white font-bold text-2xl md:text-[30px] mb-10 max-w-2xl">
-          {PROVA_AUTORIDADE.heading}
+          {provaAutoridade.heading}
         </h2>
 
         {/* Container observado pelo IntersectionObserver */}
@@ -165,9 +171,9 @@ export default function ProvaAutoridade() {
           ref={ref}
           className="grid md:grid-cols-3 gap-6 md:gap-10 mb-10 items-stretch"
         >
-          {PROVA_AUTORIDADE.stats.map((stat) => (
+          {provaAutoridade.stats.map((stat, i) => (
             <StatCard
-              key={stat.label}
+              key={i}
               value={stat.value}
               label={stat.label}
               pct={stat.pct}
@@ -178,16 +184,16 @@ export default function ProvaAutoridade() {
         </div>
 
         <p className="text-[#AEB4C6] text-xs leading-relaxed max-w-2xl mb-8">
-          {PROVA_AUTORIDADE.note}
+          {provaAutoridade.note}
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4 mt-10">
-          <img src="/assets/padrao-ouro.png" alt="Selo Padrão Ouro Virbac" className="w-14" />
+          <img src={provaAutoridade.selo.url} alt={provaAutoridade.selo.alt} className="w-14" />
           <button
             onClick={scrollToMaterial}
             className="bg-gold text-navy font-bold text-sm px-7 py-4 rounded-sm hover:brightness-95 active:scale-[0.98] transition shadow-md text-center"
           >
-            {PROVA_AUTORIDADE.ctaLabel}
+            {provaAutoridade.ctaLabel}
           </button>
         </div>
       </div>

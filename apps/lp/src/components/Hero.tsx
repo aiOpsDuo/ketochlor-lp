@@ -1,4 +1,4 @@
-import { HERO } from "../data/content";
+import { usePublishedContent } from "../content/PublishedContentProvider";
 import MoleculeTexture from "./MoleculeTexture";
 
 const HEADER_OFFSET = 76;
@@ -11,6 +11,13 @@ function scrollToMaterial() {
 }
 
 export default function Hero() {
+  const { sections } = usePublishedContent();
+  const hero = sections.hero;
+
+  if (!hero) {
+    return null;
+  }
+
   return (
     <section
       id="inicio"
@@ -56,24 +63,24 @@ export default function Hero() {
           </div>
 
           <img
-            src="/assets/logo-ketochlor-transp.png"
-            alt="Ketochlor®"
+            src={hero.logo.url}
+            alt={hero.logo.alt}
             className="h-16 w-auto self-start mb-10"
           />
           <p className="text-blue-institutional text-[13px] font-bold tracking-wide mb-4">
-            {HERO.eyebrow}
+            {hero.eyebrow}
           </p>
           <h1 className="font-heading text-navy font-bold text-[30px] leading-tight md:text-[46px] mb-5 max-w-xl">
-            {HERO.heading}
+            {hero.heading}
           </h1>
           <p className="text-graytxt text-[15px] md:text-base leading-relaxed max-w-md mb-8">
-            {HERO.subheading}
+            {hero.subheading}
           </p>
           <button
             onClick={scrollToMaterial}
             className="self-start bg-gold text-navy font-bold text-sm px-7 py-4 rounded-sm hover:brightness-95 transition"
           >
-            {HERO.ctaLabel}
+            {hero.ctaLabel}
           </button>
         </div>
 
@@ -84,13 +91,18 @@ export default function Hero() {
               aria-hidden
             />
             <img
-              src="/assets/ketochlor-img-campanha.png"
-              alt="Linha Ketochlor® — shampoos terapêuticos Virbac"
+              src={hero.imagemCampanha.url}
+              alt={hero.imagemCampanha.alt}
               className="relative w-full max-w-sm lg:max-w-md rounded-lg shadow-2xl"
             />
-            {/* <img
-              src="/assets/padrao-ouro.png"
-              alt="Selo Padrão Ouro Virbac"
+            {/* Seção `hero` também tem uma terceira imagem (`selo`) no esquema
+                (mesmo arquivo hoje usado por `prova_autoridade`), mas o visual
+                atual da LP não a exibe aqui — mantido comentado para preservar
+                a renderização visual existente (ver docs/CONTEUDO-DA-LP.md
+                § "Seção hero — nota sobre a imagem selo").
+            <img
+              src={hero.selo.url}
+              alt={hero.selo.alt}
               className="absolute -top-6 -right-4 w-24 md:w-28 drop-shadow-lg"
             /> */}
           </div>

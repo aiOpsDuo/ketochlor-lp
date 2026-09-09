@@ -1,6 +1,13 @@
-import { CTA_SECUNDARIO } from '../data/content'
+import { usePublishedContent } from '../content/PublishedContentProvider'
 
 export default function CTASecundario() {
+  const { sections } = usePublishedContent()
+  const ctaSecundario = sections.cta_secundario
+
+  if (!ctaSecundario) {
+    return null
+  }
+
   return (
     <section
       id="contato-comercial"
@@ -11,15 +18,15 @@ export default function CTASecundario() {
         <div className="bg-white rounded-lg border border-cardborder p-6 md:p-7 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
           <div>
             <p className="font-heading font-bold text-navy text-base mb-1">
-              {CTA_SECUNDARIO.heading}
+              {ctaSecundario.heading}
             </p>
-            <p className="text-graytxt text-sm">{CTA_SECUNDARIO.body}</p>
+            <p className="text-graytxt text-sm">{ctaSecundario.body}</p>
           </div>
           <a
             href="#material-tecnico"
             className="shrink-0 inline-flex justify-center border-2 border-blue-institutional text-blue-institutional font-bold text-sm px-6 py-3 rounded-sm hover:bg-blue-institutional hover:text-white transition"
           >
-            {CTA_SECUNDARIO.ctaLabel}
+            {ctaSecundario.ctaLabel}
           </a>
         </div>
       </div>

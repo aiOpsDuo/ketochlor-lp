@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { MATERIAL_TECNICO } from "../data/content";
+import { usePublishedContent } from "../content/PublishedContentProvider";
 import type { LeadFormData } from "../types";
 
 const INITIAL_STATE: LeadFormData = {
@@ -16,6 +16,8 @@ const INITIAL_STATE: LeadFormData = {
 };
 
 export default function FormularioCTA() {
+  const { sections } = usePublishedContent();
+  const materialTecnico = sections.material_tecnico;
   const [form, setForm] = useState<LeadFormData>(INITIAL_STATE);
   const [submitted, setSubmitted] = useState(false);
 
@@ -32,6 +34,10 @@ export default function FormularioCTA() {
     setSubmitted(true);
   };
 
+  if (!materialTecnico) {
+    return null;
+  }
+
   return (
     <section
       id="material-tecnico"
@@ -41,17 +47,17 @@ export default function FormularioCTA() {
       <div className="mx-auto max-w-content px-6 md:px-24 grid lg:grid-cols-[1fr_1.1fr] gap-12 items-center">
         <div>
           <p className="text-blue-institutional text-[13px] font-bold tracking-wide mb-4">
-            {MATERIAL_TECNICO.eyebrow}
+            {materialTecnico.eyebrow}
           </p>
           <h2 className="font-heading text-navy font-bold text-2xl md:text-[28px] mb-4 max-w-md">
-            {MATERIAL_TECNICO.heading}
+            {materialTecnico.heading}
           </h2>
           <p className="text-graytxt text-[15px] leading-relaxed max-w-md mb-8">
-            {MATERIAL_TECNICO.subheading}
+            {materialTecnico.subheading}
           </p>
           <img
-            src="/assets/ketochlor-img-campanha.png"
-            alt="Capa do Guia Técnico de Prescrição Ketochlor®"
+            src={materialTecnico.imagemCapa.url}
+            alt={materialTecnico.imagemCapa.alt}
             className="w-full max-w-[280px] rounded shadow-2xl"
           />
         </div>
@@ -146,10 +152,10 @@ export default function FormularioCTA() {
                 type="submit"
                 className="w-full sm:w-auto bg-gold text-navy font-bold text-sm px-7 py-4 rounded-sm hover:brightness-95 transition"
               >
-                {MATERIAL_TECNICO.ctaLabel}
+                {materialTecnico.ctaLabel}
               </button>
               <p className="text-[#A0A5AF] text-xs leading-relaxed">
-                {MATERIAL_TECNICO.legal}
+                {materialTecnico.legal}
               </p>
             </form>
           )}

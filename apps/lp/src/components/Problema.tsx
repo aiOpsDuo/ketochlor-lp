@@ -1,4 +1,4 @@
-import { PROBLEMA } from "../data/content";
+import { usePublishedContent } from "../content/PublishedContentProvider";
 import MoleculeTexture from "./MoleculeTexture";
 
 const HEADER_OFFSET = 76;
@@ -11,6 +11,13 @@ function scrollToMaterial() {
 }
 
 export default function Problema() {
+  const { sections } = usePublishedContent();
+  const problema = sections.problema;
+
+  if (!problema) {
+    return null;
+  }
+
   return (
     <section
       id="problema"
@@ -25,17 +32,17 @@ export default function Problema() {
         {/* Cabeçalho centralizado padronizado */}
         <div className="text-center max-w-3xl mx-auto mb-10 md:mb-12">
           <p className="text-gold text-[13px] font-bold tracking-wide mb-4">
-            {PROBLEMA.eyebrow}
+            {problema.eyebrow}
           </p>
           <h2 className="font-heading text-white font-bold text-2xl md:text-[30px]">
-            {PROBLEMA.heading}
+            {problema.heading}
           </h2>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <div className="space-y-4 mb-8">
-              {PROBLEMA.paragraphs.map((p, i) => (
+              {problema.paragraphs.map((p, i) => (
                 <p
                   key={i}
                   className="text-[#D2D5E4] text-[15px] leading-relaxed"
@@ -57,8 +64,8 @@ export default function Problema() {
               aria-hidden
             />
             <img
-              src="/assets/cachorro-cocando2.jpg"
-              alt="Cão apresentando prurido, sinal clínico de infecção secundária associada à DAC"
+              src={problema.imagem.url}
+              alt={problema.imagem.alt}
               className="relative w-full max-w-md aspect-square object-cover rounded-full shadow-xl"
             />
           </div>

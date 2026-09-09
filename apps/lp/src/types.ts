@@ -27,13 +27,3 @@ export interface LeadFormData {
   desejaContatoComercial: boolean
   aceitaLGPD: boolean
 }
-
-export interface FaqItem {
-  question: string
-  answer: string
-}
-
-export interface DosageRow {
-  peso: string
-  volumeMl: string
-}

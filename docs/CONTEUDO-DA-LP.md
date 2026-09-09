@@ -45,8 +45,8 @@ Toda seção com imagem usa o mesmo formato, `imageFieldSchema` (`packages/conte
 
 ## Seção `hero` — nota sobre a imagem `selo`
 
-`hero` tem três imagens no esquema (`logo`, `imagemCampanha`, `selo`), conforme a forma normativa do SDD. Hoje `apps/lp/src/components/Hero.tsx` renderiza apenas `logo` e `imagemCampanha`; o bloco de `selo` existe no componente como um `<img>` comentado (mesmo arquivo de imagem já usado pela seção `prova_autoridade`). O conteúdo inicial de `selo` foi migrado com o valor literal já presente nesse comentário — a tarefa `lp/migrar-secoes-para-cms` decide se o `Hero.tsx` volta a renderizá-la.
+`hero` tem três imagens no esquema (`logo`, `imagemCampanha`, `selo`), conforme a forma normativa do SDD. `apps/lp/src/components/Hero.tsx` lê as três de `usePublishedContent()`, mas renderiza apenas `logo` e `imagemCampanha`; o bloco de `selo` permanece como um `<img>` comentado (mesmo arquivo de imagem já usado pela seção `prova_autoridade`), preservando a renderização visual que a LP já tinha antes da migração (`lp/migrar-secoes-para-cms`) — o campo existe no esquema e é editável no painel, mas hoje não aparece na LP.
 
 ## Seção `faq` — nota sobre `eyebrow`/`heading`
 
-`FAQS` em `content.ts` é só a lista de perguntas; o texto "FAQ TÉCNICO" / "Perguntas frequentes" hoje está fixo dentro do JSX de `apps/lp/src/components/FAQ.tsx`, não em `content.ts`. Para fechar a seção com a mesma forma das outras 10 (eyebrow + heading), esses dois textos foram migrados literalmente do componente para o conteúdo inicial de `faq`. A tarefa `lp/migrar-secoes-para-cms` troca o texto hardcoded do componente pela leitura desses campos.
+O antigo `FAQS` de `apps/lp/src/data/content.ts` era só a lista de perguntas; o texto "FAQ TÉCNICO" / "Perguntas frequentes" estava fixo dentro do JSX de `apps/lp/src/components/FAQ.tsx`. Para fechar a seção com a mesma forma das outras 10 (eyebrow + heading), esses dois textos foram migrados literalmente do componente para o conteúdo inicial de `faq`, e a tarefa `lp/migrar-secoes-para-cms` trocou o texto hardcoded do componente pela leitura de `usePublishedContent().sections.faq`.

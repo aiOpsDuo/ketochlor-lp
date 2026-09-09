@@ -1,4 +1,4 @@
-import { DIFERENCIAIS } from '../data/content'
+import { usePublishedContent } from '../content/PublishedContentProvider'
 
 const HEADER_OFFSET = 76
 
@@ -10,23 +10,30 @@ function scrollToMaterial() {
 }
 
 export default function Diferenciais() {
+  const { sections } = usePublishedContent()
+  const diferenciais = sections.diferenciais
+
+  if (!diferenciais) {
+    return null
+  }
+
   return (
     <section id="diferenciais" className="bg-lighttint py-16 md:py-24" style={{ scrollMarginTop: 76 }}>
       <div className="mx-auto max-w-content px-6 md:px-24">
         {/* Cabeçalho centralizado padronizado */}
         <div className="text-center max-w-3xl mx-auto mb-10 md:mb-12">
           <p className="text-blue-institutional text-[13px] font-bold tracking-wide mb-4">
-            {DIFERENCIAIS.eyebrow}
+            {diferenciais.eyebrow}
           </p>
           <h2 className="font-heading text-navy font-bold text-2xl md:text-[30px]">
-            {DIFERENCIAIS.heading}
+            {diferenciais.heading}
           </h2>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 items-stretch mb-10">
-          {DIFERENCIAIS.items.map((item) => (
+          {diferenciais.items.map((item, i) => (
             <div
-              key={item.titulo}
+              key={i}
               className={[
                 'group bg-white rounded-lg border border-cardborder p-6',
                 'flex flex-col',
