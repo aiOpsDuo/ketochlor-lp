@@ -27,7 +27,7 @@ npm run build      # build de produção de todos os workspaces
 
 Com `npm run dev`, um único endereço serve tudo: `/` (LP), `/admin` (painel) e `/api/*` (API) — ver `agent_context/SDD.md` § "Ponto único de entrada".
 
-`npm run build --prefix apps/lp` roda automaticamente, antes do build da LP (hook `prebuild`), o script que gera o Instantâneo de conteúdo (`apps/lp/src/content/content-snapshot.json`) a partir de uma chamada real a `GET /api/content` — ver [docs/CONTEUDO-DA-LP.md § Instantâneo de conteúdo](docs/CONTEUDO-DA-LP.md).
+`npm run build --prefix apps/lp` roda automaticamente, antes do build da LP (hook `prebuild`), o script que gera o Instantâneo de conteúdo (`apps/lp/src/content/content-snapshot.json`) a partir de uma chamada real a `GET /api/content` — ver [docs/CONTEUDO-DA-LP.md § Instantâneo de conteúdo](docs/CONTEUDO-DA-LP.md) — e, depois do build (hook `postbuild`), o Injetor de SEO embute `title`/`description`/`og:image` reais no `dist/index.html` a partir desse mesmo instantâneo — ver [docs/API.md § Injetor de SEO](docs/API.md).
 
 Variáveis de ambiente da API (credenciais do Supabase, JWKS/JWT secret): ver [`apps/api/.env.example`](apps/api/.env.example) e [docs/API.md § Configuração](docs/API.md). Variáveis de ambiente do painel (URL e chave publicável do Supabase, para login/sessão): ver [`apps/admin/.env.example`](apps/admin/.env.example) e [docs/PAINEL.md § Configuração](docs/PAINEL.md).
 
