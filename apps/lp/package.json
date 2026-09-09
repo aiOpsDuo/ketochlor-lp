@@ -7,6 +7,7 @@
     "dev": "vite",
     "prebuild": "node scripts/gerar-instantaneo-de-conteudo.mjs",
     "build": "tsc -b && vite build",
+    "postbuild": "node scripts/injetar-metadados.mjs",
     "instantaneo": "node scripts/gerar-instantaneo-de-conteudo.mjs",
     "preview": "vite preview",
     "test": "vitest run"

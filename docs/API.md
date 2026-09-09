@@ -128,6 +128,30 @@ Primeiro módulo real de produto da API (`apps/api/src/presentation/content/`, `
 
 **`DELETE /api/admin/leads/:id`** exclui o registro e devolve `204 No Content`; `404 Not Found` se `id` não corresponde a nenhum lead. Decisão de implementação: `LeadsRepository.excluir` (existente desde `api/infra-supabase-adapters`) foi estendida para devolver `boolean` (havia registro e foi removido, ou não) em vez de `void` — o `delete` do Postgres, com `.select('id')` encadeado, já informa quantas linhas afetou, sem exigir uma consulta de leitura extra antes de excluir.
 
+## Injetor de SEO (`seo/injetor-metadados`)
+
+`GET /api/content` (acima) é a fonte de `metadata` tanto para a LP em runtime quanto para o Injetor de SEO — mas o Injetor **não chama essa rota diretamente em produção**. Ele roda como script de build da LP (`apps/lp/scripts/injetar-metadados.mjs`, hook `postbuild` de `apps/lp/package.json`, depois de `vite build`): reaproveita o mesmo `apps/lp/src/content/content-snapshot.json` que o `prebuild` (Instantâneo de conteúdo) já gerou a partir de uma chamada real a `GET /api/content`, e reescreve `apps/lp/dist/index.html`, substituindo (ou inserindo, se ausente) `<title>`, `<meta name="description">` e `<meta property="og:image">` com `metadata.title`/`metadata.description`/`metadata.ogImageMediaId`.
+
+**Por que build-time, não uma função de borda por requisição:** o `agent_context/SDD.md` original descrevia essa peça (T2) como "função de borda da plataforma de hospedagem escolhida na implantação" — decisão adiada, sem plataforma escolhida. Confirmado via documentação oficial do nginx que `sub_filter` (`ngx_http_sub_module`, único proxy que o projeto de fato usa hoje — `docker/nginx.conf`) não suporta buscar um valor de uma chamada de rede feita durante o processamento da resposta (só substitui por strings/variáveis do próprio nginx); isso exigiria `njs`/`ngx_http_js_module` (subrequest assíncrona dentro de um handler JS) ou uma função de borda real de alguma plataforma de hospedagem — nenhuma das duas presente neste projeto. A injeção em tempo de build cumpre o critério de aceitação literal (HTML da primeira resposta, sem JavaScript, verificável com `curl`) sem essa dependência nova; o trade-off é que o HTML só reflete uma mudança de metadados depois de um novo `npm run build --prefix apps/lp` + deploy, não imediatamente após salvar no painel. Decisão completa e alternativas descartadas em `agent_context/SDD.md` § "Decisões técnicas e trade-offs"; risco registrado em § "Riscos técnicos e mitigação".
+
+**Limitação conhecida — `og:image`:** `metadata.ogImageMediaId` é um `uuid` que referencia `media_assets.id` (Modelo de dados), não uma URL pronta, e nenhuma rota pública hoje resolve esse id para `media_assets.public_url` (`GET /api/content` devolve o id cru; o painel também não tem seletor de mídia real ainda). Por isso o script só usa `ogImageMediaId` como valor de `og:image` quando ele já é uma URL absoluta `http(s)://` — um `uuid` "cru" é ignorado (mantém o default do `index.html`) em vez de gravar um id inútil na tag. `title`/`description` não têm essa limitação: já chegam como texto pronto para uso.
+
+**Comportamento defensivo:** o script nunca falha o build — instantâneo ausente/ilegível, ou `metadata` com campos vazios/ausentes, apenas preservam o `index.html` como o `vite build` o gerou (mesmo padrão de resiliência do `prebuild`/Instantâneo de conteúdo). Testes: `npm run test --prefix apps/lp -- injetar-metadados`.
+
+**Como verificar manualmente** (sem depender de uma plataforma de borda):
+```bash
+npm run build --prefix apps/lp   # prebuild (instantâneo) → vite build → postbuild (injetor)
+grep -E "<title>|meta name=\"description\"|og:image" apps/lp/dist/index.html
+```
+Ou servindo o `dist/` gerado atrás do mesmo `docker/nginx.conf` usado em produção (LP pública, sem precisar do serviço `api` de pé):
+```bash
+docker run --rm -d -p 8092:80 \
+  -v "$(pwd)/apps/lp/dist:/usr/share/nginx/html:ro" \
+  -v "$(pwd)/docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+  nginx:1.27-alpine
+curl -s http://localhost:8092/   # título/descrição/og:image reais, sem executar JavaScript
+```
+
 ## Testes de integração e e2e
 
 Os testes de `apps/api/src/infrastructure` (`npm run test --prefix apps/api -- infra`), o e2e do `AuthGuard` (`presentation/auth/auth.e2e.test.ts`, `npm run test --prefix apps/api -- auth`), o e2e do módulo de conteúdo (`presentation/content/content.e2e.test.ts`, `npm run test --prefix apps/api -- content`), o e2e do módulo de metadados (`presentation/metadata/metadata.e2e.test.ts`, `npm run test --prefix apps/api -- metadata`), o e2e do módulo de mídia (`presentation/media/media.e2e.test.ts`, `npm run test --prefix apps/api -- media`) e o e2e do módulo de leads (`presentation/leads/leads.e2e.test.ts`, `npm run test --prefix apps/api -- leads`) rodam contra o Supabase LOCAL de verdade, não mocks do SDK — os e2e sobem a aplicação Nest completa (`AppModule`) via `@nestjs/testing` + `supertest`, com um usuário/login reais (o de mídia inclusive faz um upload real contra o Storage local, com a credencial que a rota devolve):
