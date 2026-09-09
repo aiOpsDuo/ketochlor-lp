@@ -2,9 +2,9 @@
 
 ## Objetivo do projeto
 
-Landing page B2B de captação de leads (médicos-veterinários) para o Ketochlor® (Virbac), evoluindo para um monorepo com CMS próprio: um painel em `/admin` permite à equipe editar todo o conteúdo da página e consultar/exportar os leads captados, sem depender de um desenvolvedor a cada ajuste. Ver [agent_context/PRD.md](agent_context/PRD.md) para o detalhamento completo de objetivo e escopo.
+Landing page B2B de captação de leads (médicos-veterinários) para o Ketochlor® (Virbac), com CMS próprio: um painel em `/admin` permite à equipe editar todo o conteúdo da página e consultar/exportar os leads captados, sem depender de um desenvolvedor a cada ajuste. Ver [agent_context/PRD.md](agent_context/PRD.md) para o detalhamento completo de objetivo e escopo.
 
-> **Status:** o CMS está em implementação, seguindo [agent_context/PLAN.md](agent_context/PLAN.md). O repositório já é um monorepo (`apps/lp`, `apps/admin`, `apps/api`, `packages/content-schema`) com ponto único de entrada em desenvolvimento; os módulos de negócio da API, o painel e o consumo do CMS pela LP ainda estão pendentes das próximas fases do plano.
+> **Status:** o CMS está completo — todas as tarefas de [agent_context/PLAN.md](agent_context/PLAN.md) foram concluídas e verificadas de ponta a ponta (`integracao/verificacao-ponta-a-ponta`). O monorepo (`apps/lp`, `apps/admin`, `apps/api`, `packages/content-schema`) roda atrás de um ponto único de entrada tanto em desenvolvimento quanto empacotado via Docker: a API expõe todos os módulos de negócio (conteúdo, metadados, mídia, leads), o painel cobre login, edição de seção, controle de visibilidade, metadados e consulta/exportação de leads, e a LP consome esse conteúdo publicado em runtime, com fallback a um instantâneo local.
 
 ## Stack
 

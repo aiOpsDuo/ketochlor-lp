@@ -16,7 +16,9 @@ Variáveis de ambiente lidas de `process.env` (`apps/api/src/infrastructure/conf
 
 O verificador de token (`apps/api/src/infrastructure/auth/jwks-token-verificador.ts`) é híbrido: lê o algoritmo (`alg`) de cada JWT recebido e escolhe a estratégia certa — `SUPABASE_JWT_SECRET` para tokens `HS*`, `SUPABASE_JWKS_URL` para qualquer outro algoritmo. Configurar as duas variáveis ao mesmo tempo é seguro e é o que os testes de integração fazem.
 
-Os valores em `apps/api/.env.example` já vêm preenchidos com os defaults **públicos e conhecidos** de qualquer instância local do Supabase CLI (mesmos documentados em [`docs/BANCO-DE-DADOS.md`](./BANCO-DE-DADOS.md)) — não são segredo real, servem só para desenvolvimento e para os testes de integração rodarem contra `npx supabase start` local. Um ambiente de produção real usa um projeto Supabase próprio, com sua própria `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_JWKS_URL` — carregar essas variáveis em produção (Docker/compose) é responsabilidade de uma tarefa futura do plano, não desta configuração de desenvolvimento.
+`apps/api/src/main.ts` carrega `apps/api/.env` sozinho (`import 'dotenv/config'`, primeira linha do arquivo) — basta o arquivo existir para `npm run dev --prefix apps/api` (ou `npm run dev` na raiz) já enxergar as variáveis, sem precisar exportá-las manualmente no shell. Em produção (Docker/Compose) não há `apps/api/.env` na imagem — `docker-compose.yml` injeta as mesmas variáveis diretamente via `environment:` (ver [`docs/DOCKER.md`](./DOCKER.md)), e `dotenv` não sobrescreve uma variável já definida em `process.env` nem lança erro quando o arquivo não existe.
+
+Os valores em `apps/api/.env.example` já vêm preenchidos com os defaults **públicos e conhecidos** de qualquer instância local do Supabase CLI (mesmos documentados em [`docs/BANCO-DE-DADOS.md`](./BANCO-DE-DADOS.md)) — não são segredo real, servem só para desenvolvimento e para os testes de integração rodarem contra `npx supabase start` local. Um ambiente de produção real usa um projeto Supabase próprio, com sua própria `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_JWKS_URL`.
 
 ## Autenticação (`api/modulo-auth`)
 
@@ -98,7 +100,7 @@ Primeiro módulo real de produto da API (`apps/api/src/presentation/content/`, `
 
 1. `POST /api/admin/media/upload-url` com `{ originalFilename, mimeType }` → recebe `{ mediaAssetId, storagePath, signedUrl, token }`.
 2. O painel usa `signedUrl`/`token` com o SDK do Supabase Storage (`client.storage.from(bucket).uploadToSignedUrl(storagePath, token, arquivo)`) para enviar os bytes diretamente ao bucket — sem passar pela API.
-3. Só depois que o Storage confirma o upload é que o documento de seção deve referenciar `mediaAssetId` num campo de imagem, e o registro em `media_assets` propriamente dito é criado (`MediaAssetsRepository.criar`, Infraestrutura — método já existente desde `api/infra-supabase-adapters`, mas sem rota HTTP própria nesta tarefa: nenhum contrato do SDD pede um segundo endpoint, e o `PUT` de seção que vai efetivamente consumir esse `mediaAssetId` ainda não existe no painel).
+3. `MediaAssetsRepository.criar` (Infraestrutura, existente desde `api/infra-supabase-adapters`) é o método que confirmaria o registro em `media_assets` após o upload, mas não tem rota HTTP própria — nenhum contrato do SDD pede um segundo endpoint para isso. Na prática, o painel (`painel/formulario-edicao-secao`, ver [`docs/PAINEL.md` § "Upload de imagem"](./PAINEL.md)) nunca chama esse método: ele resolve a URL pública do Storage (`getPublicUrl`) logo após o upload e grava-a direto no campo `{ url, alt }` da seção (`imageFieldSchema`, `@ketochlor/content-schema`), sem referenciar `mediaAssetId` em lugar nenhum do `PUT /api/admin/sections/:key`. Consequência: a imagem funciona normalmente na LP, mas nenhuma linha nasce em `media_assets` para os uploads feitos pelo painel — falta só a contabilidade/auditoria, não a funcionalidade (lacuna conhecida, documentada em `docs/PAINEL.md`).
 
 **Corpo de `POST /api/admin/media/upload-url`:** `{ "originalFilename": string, "mimeType": string }`.
 - `originalFilename` vazio (ou só espaços em branco) → `422 Unprocessable Entity`, corpo `{ "message": string, "statusCode": 422, "erros": [{ "campo": string, "mensagem": string }, ...] }` — mesmo formato de erro das outras rotas administrativas.
@@ -167,4 +169,4 @@ npm run test --prefix apps/api -- leads     # módulo de leads e2e (POST /api/le
 npx supabase stop    # não deixe os containers rodando ao final
 ```
 
-`apps/api/vitest.setup.ts` carrega `apps/api/.env` (via `dotenv`) antes da suíte — só para desenvolvimento/teste local, nunca usado pelo `apps/api/src/main.ts` em produção.
+`apps/api/vitest.setup.ts` carrega `apps/api/.env` (via `dotenv`) antes da suíte, mesmo mecanismo já usado por `apps/api/src/main.ts` (ver "Configuração" acima) — só para desenvolvimento/teste local; em produção não existe `apps/api/.env`, as variáveis chegam via `docker-compose.yml`.

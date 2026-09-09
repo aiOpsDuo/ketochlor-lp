@@ -41,7 +41,7 @@ Nenhuma mudança em `apps/api` ou `apps/admin` é necessária só para o campo e
 
 ## Campos de imagem
 
-Toda seção com imagem usa o mesmo formato, `imageFieldSchema` (`packages/content-schema/src/shared.ts`): `{ url: string, alt: string }`, com `alt` sempre obrigatório (nunca é possível salvar uma imagem sem texto alternativo). Nesta fase do projeto `url` é só uma string (caminho relativo aos assets estáticos hoje, URL do Storage quando o upload existir) — não há ainda um campo `mediaId` apontando para `media_assets.id`, porque essa tabela e o fluxo de upload (`api/modulo-media`) ainda não existem; adicionar o campo antes disso seria uma referência que nada preenche. Quando `api/modulo-media` for implementada, este arquivo e o schema serão atualizados juntos.
+Toda seção com imagem usa o mesmo formato, `imageFieldSchema` (`packages/content-schema/src/shared.ts`): `{ url: string, alt: string }`, com `alt` sempre obrigatório (nunca é possível salvar uma imagem sem texto alternativo). `url` é uma string simples — caminho relativo a um asset estático da LP (conteúdo migrado, nunca enviado pelo painel) ou URL pública do Storage (upload feito pelo painel, ver [`docs/PAINEL.md` § "Upload de imagem"](./PAINEL.md)) — nunca um `mediaId` apontando para `media_assets.id`: mesmo com `api/modulo-media` e o upload real do painel já implementados, a decisão de manter o esquema como `{ url, alt }` foi mantida (o painel resolve a URL pública no momento do upload e grava-a direto no campo), então nenhuma seção referencia `media_assets` pelo conteúdo — só o registro de auditoria em `media_assets` fica pendente para os uploads feitos pelo painel (lacuna conhecida, documentada em `docs/PAINEL.md` § "Upload de imagem").
 
 ## Seção `hero` — nota sobre a imagem `selo`
 
