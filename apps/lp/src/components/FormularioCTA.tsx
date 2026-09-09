@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { usePublishedContent } from "../content/PublishedContentProvider";
+import { enviarLead, paraLeadPayload } from "../leads/enviar-lead";
 import type { LeadFormData } from "../types";
 
 const INITIAL_STATE: LeadFormData = {
@@ -20,18 +21,31 @@ export default function FormularioCTA() {
   const materialTecnico = sections.material_tecnico;
   const [form, setForm] = useState<LeadFormData>(INITIAL_STATE);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   const update = <K extends keyof LeadFormData>(
     key: K,
     value: LeadFormData[K],
   ) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.aceitaLGPD) return;
-    // TODO: integração com Salesforce Marketing Cloud — fluxo de transferência de leads
-    // ainda não definido (risco operacional já registrado). Por ora, apenas confirma o envio.
-    setSubmitted(true);
+    if (!form.aceitaLGPD || isSubmitting) return;
+
+    setErro(null);
+    setIsSubmitting(true);
+    try {
+      await enviarLead(paraLeadPayload(form));
+      setSubmitted(true);
+    } catch (falhaDeEnvio) {
+      setErro(
+        'Não foi possível enviar seu cadastro agora. Verifique os dados e tente novamente em instantes.',
+      );
+      console.error('Falha ao enviar POST /api/leads.', falhaDeEnvio);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!materialTecnico) {
@@ -148,11 +162,18 @@ export default function FormularioCTA() {
                 Li e aceito a política de privacidade (LGPD)
               </label>
 
+              {erro && (
+                <p role="alert" className="text-red-600 text-sm">
+                  {erro}
+                </p>
+              )}
+
               <button
                 type="submit"
-                className="w-full sm:w-auto bg-gold text-navy font-bold text-sm px-7 py-4 rounded-sm hover:brightness-95 transition"
+                disabled={isSubmitting}
+                className="w-full sm:w-auto bg-gold text-navy font-bold text-sm px-7 py-4 rounded-sm hover:brightness-95 transition disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {materialTecnico.ctaLabel}
+                {isSubmitting ? "Enviando..." : materialTecnico.ctaLabel}
               </button>
               <p className="text-[#A0A5AF] text-xs leading-relaxed">
                 {materialTecnico.legal}
