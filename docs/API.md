@@ -56,7 +56,7 @@ Primeiro módulo real de produto da API (`apps/api/src/presentation/content/`, `
 | `PUT /api/admin/sections/:key` | `Bearer <jwt>` | Substitui `data` (e, opcionalmente, `itemVisibility`) da seção. |
 | `PATCH /api/admin/sections/:key/visibility` | `Bearer <jwt>` | Alterna `isPublished` da seção inteira. |
 
-**`GET /api/content`** devolve `{ "sections": { "<key>": <SectionData> | null, ... } }`. Decisão de formato: as 11 chaves de `SectionKey` estão **sempre presentes** no objeto — uma seção com `is_published = false` aparece com valor `null`, nunca é omitida da resposta. Isso permite a qualquer consumidor (`PublishedContentProvider` da LP, o Injetor de SEO) sempre indexar `sections[key]` diretamente, sem checar presença de chave antes. Cada seção retornada já passou por `filtrarConteudoPublicado` (Domínio): os itens de lista marcados como não visíveis em `item_visibility` são removidos antes de sair da API — nunca vazam para fora, mesmo que a seção esteja publicada.
+**`GET /api/content`** devolve `{ "sections": { "<key>": <SectionData> | null, ... }, "metadata": <SiteMetadata> }`. Decisão de formato: as 11 chaves de `SectionKey` estão **sempre presentes** no objeto — uma seção com `is_published = false` aparece com valor `null`, nunca é omitida da resposta. Isso permite a qualquer consumidor (`PublishedContentProvider` da LP, o Injetor de SEO) sempre indexar `sections[key]` diretamente, sem checar presença de chave antes. Cada seção retornada já passou por `filtrarConteudoPublicado` (Domínio): os itens de lista marcados como não visíveis em `item_visibility` são removidos antes de sair da API — nunca vazam para fora, mesmo que a seção esteja publicada. `metadata` (desde a tarefa `api/modulo-metadata`) é sempre o registro único de `site_metadata` tal como persistido — não existe conceito de "metadados não publicados", então, diferente de `sections`, não passa por nenhum filtro de visibilidade.
 
 **`GET /api/admin/sections/:key`** e as duas rotas de escrita devolvem `404` (`{ message, statusCode: 404 }`) se `:key` não for uma das 11 seções fechadas do CMS.
 
@@ -67,15 +67,35 @@ Primeiro módulo real de produto da API (`apps/api/src/presentation/content/`, `
 
 **`PATCH /api/admin/sections/:key/visibility`** não tem corpo; inverte `is_published` e devolve o documento atualizado (`200`). `updatedBy` preenchido da mesma forma que `PUT`.
 
+## Metadados (`api/modulo-metadata`)
+
+`apps/api/src/presentation/metadata/`, `apps/api/src/application/metadata/`. Duas rotas, ambas sobre o registro único de `site_metadata`:
+
+| Rota | Autenticação | Descrição |
+|---|---|---|
+| `GET /api/admin/metadata` | `Bearer <jwt>` | Devolve o registro único (`title`, `description`, `ogImageMediaId`, `updatedAt`, `updatedBy`) tal como persistido. |
+| `PUT /api/admin/metadata` | `Bearer <jwt>` | Substitui `title`, `description` e `ogImageMediaId` do registro único. |
+
+**`PUT /api/admin/metadata`** — corpo `{ "title": string, "description": string, "ogImageMediaId": string | null }`. Substituição integral (mesma semântica de "substitui" de `PUT /api/admin/sections/:key` — não há atualização parcial): `title` e `description` são sempre exigidos, nunca opcionais.
+
+**Decisão de validação:** sem esquema Zod compartilhado (`@ketochlor/content-schema` cobre só as 11 seções, não `site_metadata`) e sem `class-validator`/DTO decorado — a validação vive no Domínio (`validarSiteMetadata`, `apps/api/src/domain/metadata/validar-site-metadata.ts`), no mesmo padrão já usado por `validarLead` para o formulário de leads (outro payload sem esquema compartilhado). Motivo: `class-validator` não é dependência de `apps/api` (ver DTOs de conteúdo) e a Apresentação não deve conter regra de negócio (SDD § Camadas e padrão arquitetural) — uma função de validação simples no Domínio resolve sem introduzir biblioteca nova.
+
+- `title`/`description` vazios (ou só espaços em branco) → `422 Unprocessable Entity`, corpo `{ "message": string, "statusCode": 422, "erros": [{ "campo": string, "mensagem": string }, ...] }` — mesmo formato de erro de `PUT /api/admin/sections/:key`.
+- `ogImageMediaId` aceita `null` (remove a imagem de compartilhamento) ou uma string (id de `media_assets`); qualquer outro tipo é rejeitado com `422`.
+- Sucesso → `200`, devolve o registro atualizado; `updatedBy` preenchido a partir de `request.usuario.sub`, nunca aceito no corpo.
+
+**Reflexo em `GET /api/content`:** `ConsultarConteudoPublicadoUseCase` (módulo `content`) foi estendido para também buscar `site_metadata` via `SiteMetadataRepository` e compor `metadata` na resposta pública — em vez de um caso de uso novo que só compõe outros dois, já que `GET /api/content` já seguia o padrão "1 rota = 1 caso de uso" usado no resto da API (ver comentário de decisão no próprio arquivo). Um `PUT /api/admin/metadata` bem-sucedido reflete imediatamente em `GET /api/content`, sem exigir novo build/deploy — mesma garantia já dada à edição de seções.
+
 ## Testes de integração e e2e
 
-Os testes de `apps/api/src/infrastructure` (`npm run test --prefix apps/api -- infra`), o e2e do `AuthGuard` (`presentation/auth/auth.e2e.test.ts`, `npm run test --prefix apps/api -- auth`) e o e2e do módulo de conteúdo (`presentation/content/content.e2e.test.ts`, `npm run test --prefix apps/api -- content`) rodam contra o Supabase LOCAL de verdade, não mocks do SDK — os e2e sobem a aplicação Nest completa (`AppModule`) via `@nestjs/testing` + `supertest`, com um usuário/login reais:
+Os testes de `apps/api/src/infrastructure` (`npm run test --prefix apps/api -- infra`), o e2e do `AuthGuard` (`presentation/auth/auth.e2e.test.ts`, `npm run test --prefix apps/api -- auth`), o e2e do módulo de conteúdo (`presentation/content/content.e2e.test.ts`, `npm run test --prefix apps/api -- content`) e o e2e do módulo de metadados (`presentation/metadata/metadata.e2e.test.ts`, `npm run test --prefix apps/api -- metadata`) rodam contra o Supabase LOCAL de verdade, não mocks do SDK — os e2e sobem a aplicação Nest completa (`AppModule`) via `@nestjs/testing` + `supertest`, com um usuário/login reais:
 
 ```bash
 npx supabase start   # sobe Postgres/Auth/Storage locais
 npm run test --prefix apps/api -- infra     # repositórios + verificador de token
 npm run test --prefix apps/api -- auth      # AuthGuard e2e (inclui o teste acima do verificador)
 npm run test --prefix apps/api -- content   # módulo de conteúdo e2e (GET /api/content + CRUD de seções)
+npm run test --prefix apps/api -- metadata  # módulo de metadados e2e (GET/PUT /api/admin/metadata + reflexo em GET /api/content)
 npx supabase stop    # não deixe os containers rodando ao final
 ```
 
