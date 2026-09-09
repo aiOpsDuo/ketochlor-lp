@@ -301,7 +301,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: api/modulo-content, content-schema/definir-schemas-secoes, fundacao/ponto-unico-entrada-dev
 - Execução: sequencial
 - Toca documentação: não
-- Status: pendente
+- Status: concluída — PR #38 (squash-merge em `main`, `24ca1ed`). `apps/lp` não tinha vitest/@testing-library/react configurados (presunção errada minha no briefing) — adicionados nesta tarefa, alinhados à versão já usada no resto do monorepo. Provider ainda não montado em `App.tsx` (isso é `lp/migrar-secoes-para-cms`). 9/9 testes.
 
 #### migrar-secoes-para-cms — Seções da LP consomem o CMS
 - Origem: planejada
