@@ -393,6 +393,16 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 
 Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos na Fase 4 entram aqui.
 
+#### readme-docker-primeiro — README com Docker como caminho principal + guia de rodar sem Docker
+- Origem: pedido do usuário
+- Descrição: o usuário pediu para seguir o mesmo padrão de documentação já usado no projeto irmão (Veggiedent, outra LP do mesmo cliente): README com Docker Compose como caminho PRINCIPAL de rodar o projeto (não `npm run dev`), e um documento separado (`docs/RODAR-SEM-DOCKER.md`) para quem precisa de recarga automática ou depurar um processo isolado. Adaptar a ESTRUTURA/prática (não copiar nenhum detalhe interno do outro projeto — são repositórios independentes, sem vínculo de dependência) à realidade real do Ketochlor: scripts, portas, variáveis e nomes de container reais deste projeto.
+- Rastreável a: pedido direto do usuário em 2026-09-09 (fora do PRD/SDD original)
+- Critério de "pronto": `README.md` § "Como rodar localmente" tem Docker Compose como único caminho apresentado ali; `docs/RODAR-SEM-DOCKER.md` (novo) documenta `npm run dev` e comandos relacionados, com todos os comandos executados de verdade nesta tarefa; `docs/DOCKER.md` revisado com o mesmo nível de detalhe operacional (quando reconstruir, o que quem publica precisa saber, verificação de que nenhum segredo vaza para o bundle do navegador, como derrubar).
+- Dependências: documentacao/readme-e-docs-finais
+- Execução: sequencial
+- Toca documentação: sim (é a própria tarefa)
+- Status: pendente
+
 #### docker-compose-env-api — Repassa variáveis do Supabase ao serviço `api` do compose
 - Origem: correção
 - Descrição: `docker-compose.yml` não define nenhuma variável de ambiente (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`/`SUPABASE_JWKS_URL`) para o serviço `api` — `supabase-env.ts` (tarefa `api/infra-supabase-adapters`) exige essas variáveis e lança erro na inicialização sem elas, então `docker compose up --build` sobe o serviço `api` em crash-loop hoje. O comentário de topo do arquivo (herdado de `fundacao/docker-single-entry`, quando `dados`/`api` ainda não existiam) ficou desatualizado. Corrigir repassando as variáveis do `.env` da raiz (mesmo padrão de `apps/api/.env.example`) ao serviço `api` no `docker-compose.yml`, com valor obrigatório (`${VAR:?defina VAR no .env}`) igual ao já usado para as variáveis de build do `proxy`.
