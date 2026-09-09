@@ -238,7 +238,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: fundacao/scaffold-apps-admin, api/modulo-auth
 - Execução: sequencial
 - Toca documentação: sim — `docs/PAINEL.md` (novo), fluxo de login
-- Status: pendente
+- Status: concluída — PR #27 (squash-merge em `main`, `ec71d74`). Verificado em Chromium real (Playwright) pelo subagente e revalidado pelo orquestrador via chamada direta ao GoTrue local (login válido funciona, inválido retorna 400). `App.tsx` hoje é uma lista simples de rotas, sem layout/nav compartilhado ainda — `listagem-secoes`, `tela-metadados` e `tela-leads` (as três só dependem desta tarefa) vão todas precisar editar esse mesmo arquivo para registrar rota.
 
 #### listagem-secoes — Lista de seções do painel
 - Origem: planejada
