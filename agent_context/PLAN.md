@@ -269,7 +269,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: painel/formulario-edicao-secao
 - Execução: sequencial
 - Toca documentação: sim — `docs/PAINEL.md`
-- Status: pendente
+- Status: concluída — PR #36 (squash-merge em `main`, `0eb605a`). Toggle de seção nunca inverte estado otimisticamente (sempre confia na resposta da API); toggle de item só move a posição do array de visibilidade, nunca remove o item. **Fase `painel` concluída por completo** (6 tarefas, 8 PRs contando as 2 de rebase/paralelismo).
 
 #### tela-metadados — Edição de metadados da página
 - Origem: planejada
