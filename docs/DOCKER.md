@@ -33,7 +33,21 @@ curl -s  http://localhost:8080/api/health  # {"status":"ok"}
 
 ## Variáveis de ambiente
 
-Nenhuma é exigida hoje: a fase `dados` do [`agent_context/PLAN.md`](../agent_context/PLAN.md) ainda não configurou o Supabase, então a API roda sem nenhuma credencial. Isso muda quando `dados/supabase-cli-init` e `api/infra-supabase-adapters` chegarem — este documento será atualizado com a lista de variáveis e o `.env.example` correspondente naquele momento.
+O serviço `api` exige as variáveis do Supabase abaixo — sem elas, `docker compose up --build` falha de imediato com uma mensagem clara do Compose (`defina <VAR> no .env`), em vez de subir a `api` em crash-loop. Copie [`.env.example`](../.env.example) (raiz do repositório) para `.env` antes de subir:
+
+| Variável | Obrigatória | Descrição |
+|---|---|---|
+| `SUPABASE_URL` | sim | URL da API do projeto Supabase (local: `http://127.0.0.1:54321`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | sim | Chave `service_role` — ignora Row Level Security |
+| `SUPABASE_JWT_SECRET` | sim | Segredo HS256 legado (`GOTRUE_JWT_SECRET`), usado pelo verificador de token |
+| `SUPABASE_JWKS_URL` | sim | URL do JWKS do projeto, usada para tokens assinados com chave assimétrica |
+| `SUPABASE_STORAGE_BUCKET` | não (default `images`) | Bucket de Storage das imagens do CMS |
+
+`SUPABASE_JWT_SECRET`/`SUPABASE_JWKS_URL`: o verificador de token da API (`apps/api/src/infrastructure/config/supabase-env.ts`) só exige pelo menos um dos dois; esta raiz exige ambos porque o Compose não expressa "um ou outro" nativamente, e a CLI local do Supabase já emite os dois por padrão.
+
+Para rodar contra uma instância local do Supabase CLI (`npx supabase start`), os valores públicos e conhecidos de qualquer instância local estão documentados em [`docs/BANCO-DE-DADOS.md`](BANCO-DE-DADOS.md) e já preenchidos como default em `.env.example`. **Nunca** use esses valores contra um projeto Supabase real.
+
+O painel (`apps/admin`, servido por `proxy` em `/admin`) lê suas próprias variáveis `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` de `apps/admin/.env` em tempo de build do Vite (não do `.env` da raiz nem de build args do Compose) — ver `apps/admin/.env.example`. Sem esse arquivo o painel builda normalmente, mas falha ao carregar no navegador; isso não afeta a LP (`/`) nem o healthcheck da `api`.
 
 ## Detalhes de implementação
 
