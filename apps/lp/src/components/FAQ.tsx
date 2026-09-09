@@ -1,8 +1,14 @@
 import { useState } from 'react'
-import { FAQS } from '../data/content'
+import { usePublishedContent } from '../content/PublishedContentProvider'
 
 export default function FAQ() {
+  const { sections } = usePublishedContent()
+  const faq = sections.faq
   const [openIndex, setOpenIndex] = useState<number | null>(0)
+
+  if (!faq) {
+    return null
+  }
 
   return (
     <section id="faq" className="bg-white py-16 md:py-24" style={{ scrollMarginTop: 76 }}>
@@ -10,25 +16,25 @@ export default function FAQ() {
         {/* Cabeçalho centralizado padronizado */}
         <div className="text-center max-w-3xl mx-auto mb-10 md:mb-12">
           <p className="text-blue-institutional text-[13px] font-bold tracking-wide mb-4">
-            FAQ TÉCNICO
+            {faq.eyebrow}
           </p>
           <h2 className="font-heading text-navy font-bold text-2xl md:text-[30px]">
-            Perguntas frequentes
+            {faq.heading}
           </h2>
         </div>
 
         <div className="space-y-4">
-          {FAQS.map((faq, i) => {
+          {faq.perguntas.map((pergunta, i) => {
             const isOpen = openIndex === i
             return (
-              <div key={faq.question} className="rounded-lg border border-cardborder overflow-hidden">
+              <div key={i} className="rounded-lg border border-cardborder overflow-hidden">
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : i)}
                   aria-expanded={isOpen}
                   className="w-full flex items-center justify-between gap-4 text-left px-6 py-5"
                 >
                   <span className="font-heading font-bold text-navy text-[15px]">
-                    {faq.question}
+                    {pergunta.question}
                   </span>
                   <span
                     className={`shrink-0 w-6 h-6 rounded-full border border-graytxt flex items-center justify-center text-graytxt text-lg leading-none transition-transform duration-300 ease-in-out ${
@@ -52,7 +58,7 @@ export default function FAQ() {
                         isOpen ? 'opacity-100 delay-100' : 'opacity-0'
                       }`}
                     >
-                      {faq.answer}
+                      {pergunta.answer}
                     </p>
                   </div>
                 </div>

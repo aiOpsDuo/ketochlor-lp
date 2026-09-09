@@ -1,3 +1,4 @@
+import { PublishedContentProvider } from './content/PublishedContentProvider'
 import Header from './components/Header'
 import Hero from './components/Hero'
 import Problema from './components/Problema'
@@ -14,7 +15,7 @@ import Footer from './components/Footer'
 
 export default function App() {
   return (
-    <>
+    <PublishedContentProvider>
       <Header />
       <main>
         <Hero />
@@ -30,6 +31,6 @@ export default function App() {
         <FAQ />
       </main>
       <Footer />
-    </>
+    </PublishedContentProvider>
   )
 }

@@ -1,6 +1,13 @@
-import { PROTOCOLO, DOSAGEM } from "../data/content";
+import { usePublishedContent } from "../content/PublishedContentProvider";
 
 export default function Protocolo() {
+  const { sections } = usePublishedContent();
+  const protocolo = sections.protocolo;
+
+  if (!protocolo) {
+    return null;
+  }
+
   return (
     <section
       id="protocolo"
@@ -10,28 +17,28 @@ export default function Protocolo() {
       <div className="mx-auto max-w-content px-6 md:px-24 grid lg:grid-cols-2 gap-12">
         <div>
           <p className="text-blue-institutional text-[13px] font-bold tracking-wide mb-4">
-            {PROTOCOLO.eyebrow}
+            {protocolo.eyebrow}
           </p>
           <h2 className="font-heading text-navy font-bold text-2xl md:text-[30px] mb-5">
-            {PROTOCOLO.heading}
+            {protocolo.heading}
           </h2>
           <p className="text-graytxt text-[15px] leading-relaxed mb-6">
-            {PROTOCOLO.modoUso}
+            {protocolo.modoUso}
           </p>
           <span className="inline-block bg-blue-institutional text-white text-[11px] font-bold px-4 py-2 rounded-full mb-6">
-            {PROTOCOLO.estabilidadeBadge}
+            {protocolo.estabilidadeBadge}
           </span>
           <div className="mt-7 max-w-xl">
             <div className="mb-4">
               <p className="font-heading text-navy text-[14px] md:text-[15px] font-bold uppercase tracking-[0.12em]">
-                {PROTOCOLO.closing.product} {PROTOCOLO.closing.highlight}
+                {protocolo.closing.product} {protocolo.closing.highlight}
               </p>
 
               <div className="mt-2 h-[2px] w-10 bg-gold rounded-full" />
             </div>
 
             <p className="text-graytxt text-[15px] leading-[1.7]">
-              {PROTOCOLO.closing.text}
+              {protocolo.closing.text}
             </p>
           </div>
         </div>
@@ -42,9 +49,9 @@ export default function Protocolo() {
             <span>VOLUME (ML)</span>
           </div>
           <div className="divide-y divide-cardborder">
-            {DOSAGEM.map((row) => (
+            {protocolo.dosagem.map((row, i) => (
               <div
-                key={row.peso}
+                key={i}
                 className="flex justify-between py-3 text-sm text-navy"
               >
                 <span>{row.peso}</span>

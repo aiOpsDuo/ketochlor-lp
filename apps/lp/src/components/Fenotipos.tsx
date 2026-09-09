@@ -1,4 +1,4 @@
-import { FENOTIPOS } from "../data/content";
+import { usePublishedContent } from "../content/PublishedContentProvider";
 
 const HEADER_OFFSET = 76;
 
@@ -10,6 +10,13 @@ function scrollToMaterial() {
 }
 
 export default function Fenotipos() {
+  const { sections } = usePublishedContent();
+  const fenotipos = sections.fenotipos;
+
+  if (!fenotipos) {
+    return null;
+  }
+
   return (
     <section
       id="fenotipos"
@@ -18,13 +25,13 @@ export default function Fenotipos() {
     >
       <div className="mx-auto max-w-content px-6 md:px-24">
         <p className="text-blue-institutional text-[13px] font-bold tracking-wide mb-4">
-          {FENOTIPOS.eyebrow}
+          {fenotipos.eyebrow}
         </p>
         <h2 className="font-heading text-navy font-bold text-2xl md:text-[30px] mb-5 max-w-2xl">
-          {FENOTIPOS.heading}
+          {fenotipos.heading}
         </h2>
         <p className="text-graytxt text-[15px] leading-relaxed max-w-3xl mb-10">
-          {FENOTIPOS.intro}
+          {fenotipos.intro}
         </p>
 
         <div className="grid md:grid-cols-2 gap-6 md:gap-10 items-stretch">
@@ -50,7 +57,7 @@ export default function Fenotipos() {
                 "motion-reduce:transition-none motion-reduce:group-hover:scale-100",
               ].join(" ")}
             >
-              {FENOTIPOS.agudo.badge}
+              {fenotipos.agudo.badge}
             </span>
 
             <p className="text-graytxt text-xs font-bold tracking-wide mb-1 transition-colors duration-[250ms] group-hover:text-navy motion-reduce:transition-none">
@@ -58,11 +65,11 @@ export default function Fenotipos() {
             </p>
 
             <p className="font-heading font-bold text-navy text-base mb-4">
-              {FENOTIPOS.agudo.subtitle}
+              {fenotipos.agudo.subtitle}
             </p>
 
             <p className="text-graytxt text-sm leading-relaxed flex-1 transition-colors duration-[250ms] group-hover:text-navy motion-reduce:transition-none">
-              {FENOTIPOS.agudo.body}
+              {fenotipos.agudo.body}
             </p>
           </div>
 
@@ -88,23 +95,23 @@ export default function Fenotipos() {
                 "motion-reduce:transition-none motion-reduce:group-hover:scale-100",
               ].join(" ")}
             >
-              {FENOTIPOS.cronico.badge}
+              {fenotipos.cronico.badge}
             </span>
 
             <p className="text-blue-institutional text-xs font-bold tracking-wide mb-1 transition-colors duration-[250ms] group-hover:text-navy motion-reduce:transition-none">
               PACIENTE CRÔNICO
             </p>
             <p className="font-heading font-bold text-navy text-base mb-4">
-              {FENOTIPOS.cronico.subtitle}
+              {fenotipos.cronico.subtitle}
             </p>
             <p className="text-graytxt text-sm leading-relaxed flex-1 transition-colors duration-[250ms] group-hover:text-navy motion-reduce:transition-none">
-              {FENOTIPOS.cronico.body}
+              {fenotipos.cronico.body}
             </p>
           </div>
         </div>
 
         <p className="text-navy text-[15px] leading-relaxed mt-10 max-w-3xl mb-8">
-          {FENOTIPOS.closing}
+          {fenotipos.closing}
         </p>
 
         <div className="flex justify-center mt-10">
