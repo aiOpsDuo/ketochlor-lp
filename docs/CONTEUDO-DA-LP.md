@@ -47,6 +47,14 @@ Toda seção com imagem usa o mesmo formato, `imageFieldSchema` (`packages/conte
 
 `hero` tem três imagens no esquema (`logo`, `imagemCampanha`, `selo`), conforme a forma normativa do SDD. `apps/lp/src/components/Hero.tsx` lê as três de `usePublishedContent()`, mas renderiza apenas `logo` e `imagemCampanha`; o bloco de `selo` permanece como um `<img>` comentado (mesmo arquivo de imagem já usado pela seção `prova_autoridade`), preservando a renderização visual que a LP já tinha antes da migração (`lp/migrar-secoes-para-cms`) — o campo existe no esquema e é editável no painel, mas hoje não aparece na LP.
 
+## Instantâneo de conteúdo
+
+`apps/lp/src/content/content-snapshot.json` **não é editado à mão**. Ele é gerado por `apps/lp/scripts/gerar-instantaneo-de-conteudo.mjs`, rodado automaticamente como `prebuild` antes de `npm run build --prefix apps/lp` (também disponível como `npm run instantaneo --prefix apps/lp`, para gerar sob demanda sem rodar o build inteiro).
+
+O script faz uma chamada real a `GET /api/content` (URL configurável via `CONTENT_SNAPSHOT_API_URL`, default `http://localhost:3000/api/content` — o endereço direto de `apps/api` em desenvolvimento, mesma porta padrão de `apps/api/src/main.ts`) e grava a resposta, formatada com indentação, em `content-snapshot.json`. `PublishedContentProvider.tsx` (`lp/provider-conteudo-publicado`) importa esse arquivo estaticamente e o usa como conteúdo de reserva quando `GET /api/content` falha em runtime (SDD § Riscos técnicos — "API indisponível derrubando a LP").
+
+**Falha da API no momento do build nunca derruba o build nem trava**: se a chamada falhar (rede indisponível, timeout, status de erro, corpo que não é JSON, ou uma resposta que não tem a forma exata de `GET /api/content` — as 11 chaves de seção de `@ketochlor/content-schema` presentes em `sections`) o script avisa claramente no console (`AVISO: ...`) e mantém o `content-snapshot.json` já existente no repositório, sem sobrescrevê-lo com um arquivo vazio ou quebrado. A checagem das 11 chaves (não só "é um objeto com `sections`/`metadata`") existe especificamente para o caso de `CONTENT_SNAPSHOT_API_URL` apontar, por engano ou colisão de porta, para outro serviço qualquer que devolva algo com essa forma de topo mas conteúdo de outro produto — sem essa checagem, esse conteúdo estranho seria aceito e quebraria o build da LP (erro de tipo, silencioso até o `tsc -b` reclamar).
+
 ## Seção `faq` — nota sobre `eyebrow`/`heading`
 
 O antigo `FAQS` de `apps/lp/src/data/content.ts` era só a lista de perguntas; o texto "FAQ TÉCNICO" / "Perguntas frequentes" estava fixo dentro do JSX de `apps/lp/src/components/FAQ.tsx`. Para fechar a seção com a mesma forma das outras 10 (eyebrow + heading), esses dois textos foram migrados literalmente do componente para o conteúdo inicial de `faq`, e a tarefa `lp/migrar-secoes-para-cms` trocou o texto hardcoded do componente pela leitura de `usePublishedContent().sections.faq`.

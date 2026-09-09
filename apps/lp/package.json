@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/gerar-instantaneo-de-conteudo.mjs",
     "build": "tsc -b && vite build",
+    "instantaneo": "node scripts/gerar-instantaneo-de-conteudo.mjs",
     "preview": "vite preview",
     "test": "vitest run"
   },
