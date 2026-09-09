@@ -206,7 +206,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: api/modulo-content
 - Execução: sequencial (mesmo `app.module.ts`)
 - Toca documentação: sim — `docs/API.md`
-- Status: pendente
+- Status: concluída — PR #22 (squash-merge em `main`, `5b11a4c`). `GET /api/content` agora inclui `metadata`. 62/62 testes da suíte completa.
 
 #### modulo-media — Módulo de mídia
 - Origem: planejada
@@ -216,7 +216,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: api/modulo-metadata
 - Execução: sequencial (mesmo `app.module.ts`)
 - Toca documentação: sim — `docs/API.md`
-- Status: pendente
+- Status: concluída — PR #23 (squash-merge em `main`, `965bb1b`). Só o endpoint de emissão de credencial (único declarado no SDD); a confirmação pós-upload (`MediaAssetsRepository.criar`) já existia da tarefa de infra e permanece sem rota HTTP própria por não estar no contrato do SDD. 73/73 testes da suíte completa.
 
 #### modulo-leads — Módulo de leads
 - Origem: planejada
