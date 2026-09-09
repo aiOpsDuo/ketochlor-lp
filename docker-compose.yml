@@ -1,15 +1,24 @@
 # Empacotamento de produção do ponto único de entrada (SDD § "Camadas e
 # padrão arquitetural" → "Ponto único de entrada"; ver docs/DOCKER.md).
-# Nenhuma variável de ambiente é exigida aqui: a fase `dados` do PLAN.md
-# ainda não configurou o Supabase, então a API roda hoje sem nenhuma
-# credencial — isso muda quando `dados/supabase-cli-init` e
-# `api/infra-supabase-adapters` chegarem.
+# O serviço `api` exige as variáveis de ambiente do Supabase abaixo — ver
+# `.env.example` na raiz deste repositório (copie para `.env`, nunca
+# commitado, ver .gitignore) e `apps/api/src/infrastructure/config/
+# supabase-env.ts` para a validação exata. Compose lê o `.env` da raiz
+# automaticamente para resolver `${VAR:?...}`: sem ele, `docker compose up`
+# falha de imediato com uma mensagem clara, em vez de subir a `api` em
+# crash-loop.
 services:
   api:
     build:
       context: .
       dockerfile: docker/Dockerfile
       target: api
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:?defina SUPABASE_URL no .env}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?defina SUPABASE_SERVICE_ROLE_KEY no .env}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?defina SUPABASE_JWT_SECRET no .env}
+      SUPABASE_JWKS_URL: ${SUPABASE_JWKS_URL:?defina SUPABASE_JWKS_URL no .env}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-images}
     # Sem `ports`: a API só é alcançada pela rede interna do compose (pelo
     # serviço `proxy`, via nome de serviço `api`), nunca diretamente do host.
     healthcheck:
