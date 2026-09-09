@@ -3,6 +3,7 @@ import { AuthProvider } from './auth/auth-context'
 import { ProtectedRoute } from './auth/protected-route'
 import { PublicOnlyRoute } from './auth/public-only-route'
 import { AdminLayout } from './layout/admin-layout'
+import { LeadsPage } from './pages/leads/leads-page'
 import { LoginPage } from './pages/login-page'
 import { MetadataPage } from './pages/metadata/metadata-page'
 import { SectionDetailPage } from './pages/sections/section-detail-page'
@@ -29,6 +30,7 @@ export default function App() {
               <Route index element={<SectionListPage />} />
               <Route path="sections/:key" element={<SectionDetailPage />} />
               <Route path="metadata" element={<MetadataPage />} />
+              <Route path="leads" element={<LeadsPage />} />
             </Route>
           </Route>
         </Routes>
