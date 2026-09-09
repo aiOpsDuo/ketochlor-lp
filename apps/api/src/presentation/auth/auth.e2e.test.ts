@@ -21,6 +21,15 @@ import { API_GLOBAL_PREFIX } from './route-prefixes';
  * `infrastructure/auth/jwks-token-verificador.test.ts` (tarefa
  * `api/infra-supabase-adapters`): usuário e login reais via Admin API/Auth do
  * Supabase local, nunca um token fabricado à mão para o caminho feliz.
+ *
+ * Usa `GET /api/admin/sections` (tarefa `api/modulo-content`) como rota
+ * administrativa real de exercício do guard — o `AdminPingController` de
+ * exemplo desta tarefa foi removido assim que o primeiro módulo real de
+ * admin passou a existir (ver comentário de descartabilidade que ele
+ * carregava). A prova de que `request.usuario` chega preenchido às camadas
+ * de baixo fica no e2e do próprio módulo de conteúdo
+ * (`presentation/content/content.e2e.test.ts`, via `updatedBy` refletido em
+ * `PUT /api/admin/sections/:key`) — não é responsabilidade deste arquivo.
  */
 describe('AuthGuard (e2e) — /api/admin/*', () => {
   const email = `operador.e2e.${randomUUID()}@example.com`;
@@ -69,43 +78,42 @@ describe('AuthGuard (e2e) — /api/admin/*', () => {
     await request(app.getHttpServer()).get('/api/health').expect(200);
   });
 
-  it('rejeita GET /api/admin/ping sem header Authorization', async () => {
-    const resposta = await request(app.getHttpServer()).get('/api/admin/ping');
+  it('rejeita GET /api/admin/sections sem header Authorization', async () => {
+    const resposta = await request(app.getHttpServer()).get('/api/admin/sections');
     expect(resposta.status).toBe(401);
   });
 
-  it('rejeita GET /api/admin/ping com token de assinatura adulterada', async () => {
+  it('rejeita GET /api/admin/sections com token de assinatura adulterada', async () => {
     const partes = accessToken.split('.');
     const assinaturaAdulterada = partes[2].slice(0, -4) + 'AAAA';
     const tokenAdulterado = `${partes[0]}.${partes[1]}.${assinaturaAdulterada}`;
 
     const resposta = await request(app.getHttpServer())
-      .get('/api/admin/ping')
+      .get('/api/admin/sections')
       .set('Authorization', `Bearer ${tokenAdulterado}`);
 
     expect(resposta.status).toBe(401);
   });
 
-  it('rejeita GET /API/Admin/ping (variação de maiúsculas/minúsculas) sem header Authorization', async () => {
+  it('rejeita GET /API/Admin/sections (variação de maiúsculas/minúsculas) sem header Authorization', async () => {
     // Regressão: o Express (base de `@nestjs/platform-express`) tem
     // `case sensitive routing` desabilitado por padrão — esta requisição é
-    // roteada ao mesmo `AdminPingController` de `/api/admin/ping`, só que com
-    // `request.path` preservando a capitalização original do cliente. O
-    // guard precisa reconhecer isso como rota administrativa mesmo assim
-    // (ver `AuthGuard.ehRotaAdministrativa`); antes da correção, essa
-    // variação de capitalização driblava o guard e a rota respondia sem
+    // roteada ao mesmo `ContentAdminController` de `/api/admin/sections`, só
+    // que com `request.path` preservando a capitalização original do
+    // cliente. O guard precisa reconhecer isso como rota administrativa
+    // mesmo assim (ver `AuthGuard.ehRotaAdministrativa`); antes da correção,
+    // essa variação de capitalização driblava o guard e a rota respondia sem
     // token.
-    const resposta = await request(app.getHttpServer()).get('/API/Admin/ping');
+    const resposta = await request(app.getHttpServer()).get('/API/Admin/sections');
     expect(resposta.status).toBe(401);
   });
 
-  it('aceita GET /api/admin/ping com um JWT válido, emitido pelo Supabase Auth local via login real, e anexa as claims na resposta', async () => {
+  it('aceita GET /api/admin/sections com um JWT válido, emitido pelo Supabase Auth local via login real', async () => {
     const resposta = await request(app.getHttpServer())
-      .get('/api/admin/ping')
+      .get('/api/admin/sections')
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(resposta.status).toBe(200);
-    expect(resposta.body.usuario.sub).toBe(userId);
-    expect(resposta.body.usuario.email).toBe(email);
+    expect(Array.isArray(resposta.body)).toBe(true);
   });
 });
