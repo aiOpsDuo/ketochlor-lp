@@ -311,7 +311,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: lp/provider-conteudo-publicado
 - Execução: sequencial
 - Toca documentação: não
-- Status: pendente
+- Status: concluída — PR #40 (squash-merge em `main`, `1b84272`). Grep confirmado (só Header/Footer restam). Verificação visual em navegador real não foi possível no sandbox (sem display/root para libs do Chromium); substituída por teste de integração jsdom com fetch real contra API+Supabase local (não mockado) + revisão manual de fidelidade estrutural do orquestrador em 4 dos 11 componentes (mudança mecânica, sem alteração de markup). `content.ts` reduzido a `NAV_ITEMS`/`REFERENCIAS`/`FOOTER_LINKS` (únicos consumidores remanescentes: Header/Footer).
 
 #### formulario-envia-lead — Formulário conectado ao backend
 - Origem: planejada
