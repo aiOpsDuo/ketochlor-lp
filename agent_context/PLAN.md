@@ -391,7 +391,7 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Dependências: fundacao/docker-single-entry, api/infra-supabase-adapters
 - Execução: sequencial
 - Toca documentação: sim — `docs/DOCKER.md` (variáveis exigidas pelo `docker-compose.yml`), `.env.example` da raiz se ainda não existir um cobrindo essas variáveis para o compose
-- Status: pendente
+- Status: concluída — PR #48 (squash-merge em `main`, `bea4834`). Criado `.env.example` na raiz (não existia). **Três bugs adicionais e pré-existentes descobertos e corrigidos no mesmo PR** (documentados em `agent_context/CHANGELOG.md`): `packages/content-schema` nunca era buildado no Dockerfile antes de `lp`/`admin`/`api` (falha de build), `CMD` da imagem `api` apontava para `dist/main.js` em vez do real `dist/src/main.js` (o layout de output do `nest build` mudou desde `fundacao/docker-single-entry`), e a imagem `node:20-alpine` não tem `WebSocket` nativo exigido por `@supabase/realtime-js` em runtime (trocado para `node:22-alpine`). Reverificado pelo orquestrador: `docker compose up --build` completo, `api` healthy, `curl` em `/api/health`, `/` e `/admin` todos 200.
 
 ## Ordem de execução
 
