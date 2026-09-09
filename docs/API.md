@@ -86,9 +86,30 @@ Primeiro módulo real de produto da API (`apps/api/src/presentation/content/`, `
 
 **Reflexo em `GET /api/content`:** `ConsultarConteudoPublicadoUseCase` (módulo `content`) foi estendido para também buscar `site_metadata` via `SiteMetadataRepository` e compor `metadata` na resposta pública — em vez de um caso de uso novo que só compõe outros dois, já que `GET /api/content` já seguia o padrão "1 rota = 1 caso de uso" usado no resto da API (ver comentário de decisão no próprio arquivo). Um `PUT /api/admin/metadata` bem-sucedido reflete imediatamente em `GET /api/content`, sem exigir novo build/deploy — mesma garantia já dada à edição de seções.
 
+## Mídia (`api/modulo-media`)
+
+`apps/api/src/presentation/media/`, `apps/api/src/application/media/`. Uma única rota:
+
+| Rota | Autenticação | Descrição |
+|---|---|---|
+| `POST /api/admin/media/upload-url` | `Bearer <jwt>` | Emite uma credencial temporária de upload direto ao Supabase Storage e o `id` reservado em `media_assets` que o painel referenciará no documento de seção assim que o upload terminar. |
+
+**A API nunca recebe os bytes do arquivo.** O upload em si vai direto do navegador ao Storage, usando a credencial devolvida por esta rota (SDD § Decisões técnicas e trade-offs — "Upload direto do navegador para o Storage, com credencial temporária emitida pela API"). Fluxo esperado do cliente (painel):
+
+1. `POST /api/admin/media/upload-url` com `{ originalFilename, mimeType }` → recebe `{ mediaAssetId, storagePath, signedUrl, token }`.
+2. O painel usa `signedUrl`/`token` com o SDK do Supabase Storage (`client.storage.from(bucket).uploadToSignedUrl(storagePath, token, arquivo)`) para enviar os bytes diretamente ao bucket — sem passar pela API.
+3. Só depois que o Storage confirma o upload é que o documento de seção deve referenciar `mediaAssetId` num campo de imagem, e o registro em `media_assets` propriamente dito é criado (`MediaAssetsRepository.criar`, Infraestrutura — método já existente desde `api/infra-supabase-adapters`, mas sem rota HTTP própria nesta tarefa: nenhum contrato do SDD pede um segundo endpoint, e o `PUT` de seção que vai efetivamente consumir esse `mediaAssetId` ainda não existe no painel).
+
+**Corpo de `POST /api/admin/media/upload-url`:** `{ "originalFilename": string, "mimeType": string }`.
+- `originalFilename` vazio (ou só espaços em branco) → `422 Unprocessable Entity`, corpo `{ "message": string, "statusCode": 422, "erros": [{ "campo": string, "mensagem": string }, ...] }` — mesmo formato de erro das outras rotas administrativas.
+- `mimeType` vazio ou que não comece com `"image/"` (ex.: `video/mp4`) → `422`, mesmo formato — não há suporte a vídeo nesta versão do Ketochlor (PRD § Fora de escopo).
+- Sucesso → `201`, corpo `{ "mediaAssetId": string, "storagePath": string, "signedUrl": string, "token": string }`. Nenhuma linha nasce em `media_assets` nesta chamada — só a credencial e o id são reservados (SDD § Riscos técnicos e mitigação — "Upload de imagem interrompido no meio do envio": um upload que falha no meio não deixa nenhuma seção apontando para um arquivo inexistente, porque o registro só existe depois da confirmação).
+
+**Decisão de validação:** mesmo padrão de `validarSiteMetadata`/`validarLead` — sem `class-validator`/DTO decorado, a regra vive no Domínio (`validarSolicitacaoUpload`, `apps/api/src/domain/media/validar-solicitacao-upload.ts`). "Só imagem, sem vídeo" é tratado como regra de negócio do que o CMS aceita como mídia (não uma checagem de forma de payload), por isso vive no Domínio e não num DTO da Apresentação.
+
 ## Testes de integração e e2e
 
-Os testes de `apps/api/src/infrastructure` (`npm run test --prefix apps/api -- infra`), o e2e do `AuthGuard` (`presentation/auth/auth.e2e.test.ts`, `npm run test --prefix apps/api -- auth`), o e2e do módulo de conteúdo (`presentation/content/content.e2e.test.ts`, `npm run test --prefix apps/api -- content`) e o e2e do módulo de metadados (`presentation/metadata/metadata.e2e.test.ts`, `npm run test --prefix apps/api -- metadata`) rodam contra o Supabase LOCAL de verdade, não mocks do SDK — os e2e sobem a aplicação Nest completa (`AppModule`) via `@nestjs/testing` + `supertest`, com um usuário/login reais:
+Os testes de `apps/api/src/infrastructure` (`npm run test --prefix apps/api -- infra`), o e2e do `AuthGuard` (`presentation/auth/auth.e2e.test.ts`, `npm run test --prefix apps/api -- auth`), o e2e do módulo de conteúdo (`presentation/content/content.e2e.test.ts`, `npm run test --prefix apps/api -- content`), o e2e do módulo de metadados (`presentation/metadata/metadata.e2e.test.ts`, `npm run test --prefix apps/api -- metadata`) e o e2e do módulo de mídia (`presentation/media/media.e2e.test.ts`, `npm run test --prefix apps/api -- media`) rodam contra o Supabase LOCAL de verdade, não mocks do SDK — os e2e sobem a aplicação Nest completa (`AppModule`) via `@nestjs/testing` + `supertest`, com um usuário/login reais (o de mídia inclusive faz um upload real contra o Storage local, com a credencial que a rota devolve):
 
 ```bash
 npx supabase start   # sobe Postgres/Auth/Storage locais
@@ -96,6 +117,7 @@ npm run test --prefix apps/api -- infra     # repositórios + verificador de tok
 npm run test --prefix apps/api -- auth      # AuthGuard e2e (inclui o teste acima do verificador)
 npm run test --prefix apps/api -- content   # módulo de conteúdo e2e (GET /api/content + CRUD de seções)
 npm run test --prefix apps/api -- metadata  # módulo de metadados e2e (GET/PUT /api/admin/metadata + reflexo em GET /api/content)
+npm run test --prefix apps/api -- media     # módulo de mídia e2e (POST /api/admin/media/upload-url + upload real ao Storage)
 npx supabase stop    # não deixe os containers rodando ao final
 ```
 

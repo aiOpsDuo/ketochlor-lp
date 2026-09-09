@@ -21,4 +21,10 @@ Casos de uso consumidos por `presentation/metadata/metadata-admin.controller.ts`
 - `ConsultarMetadataUseCase` — `GET /api/admin/metadata`: devolve o registro único tal como persistido.
 - `AtualizarMetadataUseCase` — `PUT /api/admin/metadata`: valida o corpo via `validarSiteMetadata` (Domínio) ANTES de persistir.
 
-Demais subpastas (`media`, `leads`) vazias nesta tarefa — populadas pelas tarefas futuras da fase `api` do plano.
+## `media/` (tarefa `api/modulo-media`)
+
+Caso de uso consumido por `presentation/media/media-admin.controller.ts`, injetando a porta `MediaAssetsRepository` (Domínio) pelo token `MEDIA_ASSETS_REPOSITORY` (ligado à implementação Supabase em `presentation/media/media.module.ts`):
+
+- `EmitirCredencialUploadUseCase` — `POST /api/admin/media/upload-url`: valida o corpo via `validarSolicitacaoUpload` (Domínio) ANTES de reservar o id/emitir a credencial; chama só `MediaAssetsRepository.emitirCredencialUpload` (nunca `criar` — esse método existe na porta desde `api/infra-supabase-adapters` para a confirmação pós-upload, mas não é exposto por nenhuma rota nesta tarefa, ver nota de decisão no controller).
+
+Demais subpasta (`leads`) vazia nesta tarefa — populada pela tarefa futura da fase `api` do plano.
