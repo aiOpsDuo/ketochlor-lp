@@ -196,7 +196,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: api/modulo-auth
 - Execução: sequencial (mesmo `app.module.ts` de `modulo-auth`)
 - Toca documentação: sim — `docs/API.md`
-- Status: pendente
+- Status: concluída — PR #20 (squash-merge em `main`, `1ec85d0`). `GET /api/content` sempre devolve as 11 chaves (seção não publicada = `null`, nunca omitida). `ItemVisibilityMap` preservado quando `PUT` omite `itemVisibility` (evita zerar visibilidade num salvamento que só mexe em texto). 49 testes e2e reais contra Supabase local.
 
 #### modulo-metadata — Módulo de metadados
 - Origem: planejada
