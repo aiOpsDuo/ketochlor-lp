@@ -1,8 +1,26 @@
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { AuthProvider } from './auth/auth-context'
+import { ProtectedRoute } from './auth/protected-route'
+import { PublicOnlyRoute } from './auth/public-only-route'
+import { DashboardPage } from './pages/dashboard-page'
+import { LoginPage } from './pages/login-page'
+
 export default function App() {
+  // `basename="/admin"` casa com `base: '/admin/'` de vite.config.ts (SDD §
+  // "Ponto único de entrada"): a rota `/login` do React Router já resolve
+  // para a URL real `/admin/login`, sem duplicar o prefixo.
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-2 p-8 text-center">
-      <h1 className="text-2xl font-semibold">Painel Ketochlor</h1>
-      <p className="text-gray-600">Em construção</p>
-    </main>
+    <BrowserRouter basename="/admin">
+      <AuthProvider>
+        <Routes>
+          <Route element={<PublicOnlyRoute />}>
+            <Route path="/login" element={<LoginPage />} />
+          </Route>
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<DashboardPage />} />
+          </Route>
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
