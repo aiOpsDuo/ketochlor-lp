@@ -278,7 +278,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: painel/tela-login, api/modulo-metadata
 - Execução: **paralela** com `painel/tela-leads`, em worktree isolado — decisão explícita do usuário (2026-09-09), aceitando resolver um eventual conflito de merge trivial em `App.tsx` (uma linha de `<Route>` cada); `AdminLayout` (PR #29) já tem o link de nav pronto, então nenhuma das duas precisa tocá-lo
 - Toca documentação: sim — `docs/PAINEL.md`
-- Status: pendente
+- Status: concluída — PR #31 (squash-merge em `main`, `08dbc44`). Estendeu `api-client.ts` (compatível com uso existente) para expor `erros` de validação por campo.
 
 #### tela-leads — Consulta e exportação de leads
 - Origem: planejada
@@ -288,7 +288,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: painel/tela-login, api/modulo-leads
 - Execução: **paralela** com `painel/tela-metadados`, em worktree isolado — mesma decisão registrada acima
 - Toca documentação: sim — `docs/PAINEL.md`
-- Status: pendente
+- Status: concluída — PR #32 (squash-merge em `main`, `01bfc4f`). Conflito trivial esperado em `App.tsx`/`docs/PAINEL.md` (uma rota de cada tarefa) resolvido pelo orquestrador via rebase; `api-client.ts` teve auto-merge limpo (helper compartilhado extraído por esta tarefa preservou o campo `erros` da outra). **Lição registrada:** worktrees isolam o checkout do git, mas não isolam serviços locais compartilhados (Supabase local, portas de dev) — as duas tarefas competiram pela mesma instância do Supabase local e por portas padrão, resolvido usando portas alternativas numa delas; processos órfãos (`vite` em 5173/5174) ficaram para trás e precisaram de limpeza manual do orquestrador ao final.
 
 ### Fase: lp
 
