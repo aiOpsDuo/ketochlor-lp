@@ -12,6 +12,8 @@ export * from './visibilidade/filtrar-conteudo-publicado';
 
 export * from './leads/validar-lead';
 
+export * from './metadata/validar-site-metadata';
+
 // Portas implementadas pela Infraestrutura (`api/infra-supabase-adapters`) —
 // interfaces puras, sem import de framework nem de Supabase (a Infraestrutura
 // depende do Domínio implementando-as, nunca o contrário).

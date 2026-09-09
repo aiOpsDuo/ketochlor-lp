@@ -12,4 +12,13 @@ Casos de uso consumidos por `presentation/content/*.controller.ts`, cada um `@In
 - `AtualizarSecaoUseCase` — `PUT /api/admin/sections/:key`: valida `data` via `validarConteudoSecao` (Domínio) ANTES de persistir; nunca grava um `data` inválido.
 - `AlternarVisibilidadeSecaoUseCase` — `PATCH /api/admin/sections/:key/visibility`.
 
-Demais subpastas (`media`, `leads`, `metadata`) vazias nesta tarefa — populadas pelas tarefas futuras da fase `api` do plano.
+`ConsultarConteudoPublicadoUseCase` também injeta `SITE_METADATA_REPOSITORY` (token de `metadata/site-metadata-repository.token.ts`) desde a tarefa `api/modulo-metadata`, para compor `metadata` na resposta de `GET /api/content` — ver comentário de decisão no próprio caso de uso sobre por que ele foi estendido em vez de substituído por um caso de uso que compõe dois outros.
+
+## `metadata/` (tarefa `api/modulo-metadata`)
+
+Casos de uso consumidos por `presentation/metadata/metadata-admin.controller.ts`, injetando a porta `SiteMetadataRepository` (Domínio) pelo token `SITE_METADATA_REPOSITORY` (ligado à implementação Supabase em `presentation/metadata/metadata.module.ts`, exportado dali para uso também por `application/content`):
+
+- `ConsultarMetadataUseCase` — `GET /api/admin/metadata`: devolve o registro único tal como persistido.
+- `AtualizarMetadataUseCase` — `PUT /api/admin/metadata`: valida o corpo via `validarSiteMetadata` (Domínio) ANTES de persistir.
+
+Demais subpastas (`media`, `leads`) vazias nesta tarefa — populadas pelas tarefas futuras da fase `api` do plano.

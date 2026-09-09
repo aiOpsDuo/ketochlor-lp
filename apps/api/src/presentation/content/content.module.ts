@@ -10,6 +10,7 @@ import {
   criarSupabaseAdminClient,
   SupabaseContentSectionsRepository,
 } from '../../infrastructure';
+import { MetadataModule } from '../metadata/metadata.module';
 import { ContentAdminController } from './content-admin.controller';
 import { ContentPublicController } from './content-public.controller';
 
@@ -33,8 +34,17 @@ const contentSectionsRepositoryProvider: Provider = {
  * (público) + CRUD administrativo de seções sob `/api/admin/sections`
  * (protegido pelo `AuthGuard` global de `AuthModule`, sem precisar
  * importá-lo aqui — o guard é global via `APP_GUARD`, não escopado a módulo).
+ *
+ * Importa `MetadataModule` (tarefa `api/modulo-metadata`) para resolver
+ * `SITE_METADATA_REPOSITORY` — `ConsultarConteudoPublicadoUseCase` passou a
+ * depender dessa porta para compor `metadata` na resposta de `GET
+ * /api/content` (ver comentário de decisão no próprio caso de uso). Só o
+ * provider exportado é reaproveitado; nenhum controller de `MetadataModule`
+ * "vaza" por causa deste import — o Nest só registra rotas dos controllers
+ * declarados em cada módulo, o `imports` aqui é só para resolução de DI.
  */
 @Module({
+  imports: [MetadataModule],
   controllers: [ContentPublicController, ContentAdminController],
   providers: [
     contentSectionsRepositoryProvider,
