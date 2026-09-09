@@ -4,6 +4,7 @@ import { ProtectedRoute } from './auth/protected-route'
 import { PublicOnlyRoute } from './auth/public-only-route'
 import { AdminLayout } from './layout/admin-layout'
 import { LoginPage } from './pages/login-page'
+import { MetadataPage } from './pages/metadata/metadata-page'
 import { SectionDetailPage } from './pages/sections/section-detail-page'
 import { SectionListPage } from './pages/sections/section-list-page'
 
@@ -27,6 +28,7 @@ export default function App() {
             <Route element={<AdminLayout />}>
               <Route index element={<SectionListPage />} />
               <Route path="sections/:key" element={<SectionDetailPage />} />
+              <Route path="metadata" element={<MetadataPage />} />
             </Route>
           </Route>
         </Routes>
