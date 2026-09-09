@@ -10,6 +10,7 @@ Variáveis de ambiente lidas de `import.meta.env` pelo Vite em build time (`apps
 |---|---|---|
 | `VITE_SUPABASE_URL` | sim | URL da API do projeto Supabase — a mesma usada por `apps/api` (local: `http://127.0.0.1:54321`, ver [`docs/BANCO-DE-DADOS.md`](./BANCO-DE-DADOS.md)). |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | sim | Chave `anon`/publicável do projeto Supabase. **Nunca** a `service_role` — essa é exclusiva de `apps/api` (ver [`docs/API.md`](./API.md)) e nunca deve chegar a código que roda no navegador (SDD § "Isolamento das credenciais e da superfície pública"). |
+| `VITE_SUPABASE_STORAGE_BUCKET` | não (default `images`) | Bucket de Storage das imagens do CMS (`lib/media-upload.ts`, upload de imagem do formulário de edição de seção) — o mesmo bucket configurado em `SUPABASE_STORAGE_BUCKET` de `apps/api/.env.example`. |
 
 Os valores em `apps/admin/.env.example` já vêm preenchidos com os defaults **públicos e conhecidos** de qualquer instância local do Supabase CLI (mesma chave `anon` documentada em [`docs/BANCO-DE-DADOS.md`](./BANCO-DE-DADOS.md) e usada pelos testes de `apps/api`) — não são segredo real, servem só para desenvolvimento contra `npx supabase start` local. Um ambiente de produção real usa a chave publicável do projeto Supabase dedicado ao Ketochlor.
 
@@ -58,7 +59,7 @@ Dentro de `<Route element={<ProtectedRoute />}>`, `App.tsx` aninha um segundo n�
 `apps/admin/src/layout/admin-layout.tsx` é o elemento pai de toda rota sob `<ProtectedRoute />` (registrado em `App.tsx`, `<Route element={<AdminLayout />}>`, com `<Outlet />` renderizando a página de cada rota filha). Um único cabeçalho, presente em toda tela autenticada:
 
 - Nome do painel ("Painel Ketochlor").
-- Navegação (`NavLink`) para as três áreas: "Seções" (`/`), "Metadados" (`/metadata`) e "Leads" (`/leads`). Os dois últimos links já existem antes de as páginas correspondentes existirem (`painel/tela-metadados`, `painel/tela-leads`, ambas dependentes só desta tarefa) — clicar neles hoje é um 404 esperado, até essas tarefas registrarem a rota em `App.tsx`.
+- Navegação (`NavLink`) para as três áreas: "Seções" (`/`), "Metadados" (`/metadata`) e "Leads" (`/leads`) — as três rotas registradas em `App.tsx` (ver "Rotas hoje" acima), com `painel/tela-metadados` e `painel/tela-leads` implementadas em paralelo depois desta tarefa.
 - Botão "Sair", que chama `supabase.auth.signOut()`. O próprio `onAuthStateChange` do `AuthProvider` limpa a sessão em memória e `ProtectedRoute` redireciona ao login — nenhuma navegação manual é feita pelo botão (mesmo comportamento de antes, só que agora centralizado no layout em vez de duplicado em cada página).
 
 ## Listagem de seções (`painel/listagem-secoes`)
