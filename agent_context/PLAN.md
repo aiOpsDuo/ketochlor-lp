@@ -387,7 +387,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: integracao/verificacao-ponta-a-ponta
 - Execução: sequencial
 - Toca documentação: sim (é a própria tarefa)
-- Status: pendente
+- Status: concluída — PR #54 (squash-merge em `main`, `ebbe32f`). Todo comando do README reexecutado de verdade (dev, build, testes, Docker); seção "Status" atualizada de "em implementação" para completo; 5 divergências entre `/docs` e o código real corrigidas (referência a `dist/main.js`/`node:20-alpine` desatualizada em `docs/DOCKER.md`, variável `VITE_SUPABASE_STORAGE_BUCKET` faltando em `docs/PAINEL.md`, notas sobre telas/módulos "ainda não implementados" que já existiam). Reverificado pelo orquestrador: 84/84 (api) e 63/63 (lp) testes, build geral ok. **Plano de Implementação concluído por completo — todas as 8 fases (fundacao, dados, content-schema, api, painel, lp, seo, integracao) e a fase de cauda `ajustes` fechadas.**
 
 ### Fase: ajustes
 
