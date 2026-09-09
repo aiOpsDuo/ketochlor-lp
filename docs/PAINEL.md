@@ -40,10 +40,11 @@ Rotas hoje:
 | `/login` | `/admin/login` | `LoginPage` | Só sem sessão — com sessão válida, redireciona à listagem de seções (`PublicOnlyRoute`) |
 | `/` (índice) | `/admin` | `SectionListPage`, dentro de `AdminLayout` | Só com sessão — sem sessão válida, redireciona ao login (`ProtectedRoute`) |
 | `/sections/:key` | `/admin/sections/:key` | `SectionDetailPage` (placeholder), dentro de `AdminLayout` | Idem |
+| `/metadata` | `/admin/metadata` | `MetadataPage`, dentro de `AdminLayout` | Idem |
 
 `ProtectedRoute` e `PublicOnlyRoute` (`apps/admin/src/auth/`) são as duas guardas: ambas leem `useAuth()` e usam `<Navigate replace>` para redirecionar antes de renderizar a rota real, cobrindo a exigência do PRD de que "nenhuma tela sob `/admin` é alcançável sem sessão válida".
 
-Dentro de `<Route element={<ProtectedRoute />}>`, `App.tsx` aninha um segundo nível — `<Route element={<AdminLayout />}>` — que envolve toda rota autenticada com o cabeçalho de navegação (ver "Layout e navegação" abaixo). Uma rota autenticada nova (`painel/tela-metadados` → `/metadata`, `painel/tela-leads` → `/leads`) só precisa de um `<Route path="..." element={...} />` a mais dentro desse mesmo `<Route element={<AdminLayout />}>` — o link de navegação para as duas já existe em `AdminLayout` desde esta tarefa (`painel/listagem-secoes`), apontando para rotas que só passam a existir quando essas tarefas forem implementadas.
+Dentro de `<Route element={<ProtectedRoute />}>`, `App.tsx` aninha um segundo nível — `<Route element={<AdminLayout />}>` — que envolve toda rota autenticada com o cabeçalho de navegação (ver "Layout e navegação" abaixo). Uma rota autenticada nova (`painel/tela-metadados` → `/metadata`, já registrada; `painel/tela-leads` → `/leads`, pendente) só precisa de um `<Route path="..." element={...} />` a mais dentro desse mesmo `<Route element={<AdminLayout />}>` — o link de navegação para as duas já existe em `AdminLayout` desde a tarefa `painel/listagem-secoes`.
 
 **Nota de segurança:** estas guardas são só uma conveniência de UX no cliente — a barreira real de autorização é o `AuthGuard` da API (`apps/api`, ver `docs/API.md`), que rejeita qualquer chamada a `/api/admin/*` sem um token válido. Mesmo que alguém burle a UI do painel, nenhum dado administrativo sai do servidor sem o token correto.
 
@@ -71,6 +72,16 @@ Cada linha mostra:
 Clicar em uma linha navega para `/sections/:key` (URL real `/admin/sections/:key`), hoje servida por `apps/admin/src/pages/sections/section-detail-page.tsx` — um placeholder ("Edição da seção {key} — em construção") que só prova que a navegação funciona. O formulário real de edição (campos de texto, listas, upload de imagem) chega na tarefa `painel/formulario-edicao-secao`.
 
 `apps/admin/src/lib/api-client.ts` (`apiFetch`, `ApiError`) é genérico o bastante para as próximas telas autenticadas (`painel/tela-metadados`, `painel/tela-leads`) reaproveitarem sem reimplementar o cabeçalho `Authorization` ou o tratamento de erro — nenhuma URL absoluta de API é montada em lugar nenhum do painel: tanto o dev server (proxy de `apps/lp/vite.config.ts`) quanto o nginx de produção (`docker/nginx.conf`) servem painel e API sob o mesmo domínio, então um caminho relativo (`/api/admin/sections`) já resolve certo nos dois ambientes.
+
+## Metadados da página (`painel/tela-metadados`)
+
+`apps/admin/src/pages/metadata/metadata-page.tsx` é a rota `/metadata` (URL real `/admin/metadata`): busca `GET /api/admin/metadata` ao montar e salva via `PUT /api/admin/metadata` (`docs/API.md` § Metadados), mesmo padrão de tela autenticada de `SectionListPage` (`apiFetch` com `session.access_token`, estado de carregamento/erro explícito).
+
+Formulário controlado com três campos — `title`, `description` e `ogImageMediaId` — e três estados visíveis ao operador: carregando (busca inicial), erro de validação ao salvar (mensagem real devolvida pela API, nunca uma mensagem genérica de "erro ao salvar") e confirmação de sucesso. Salvar com `title`/`description` vazio não navega nem limpa o que o operador já digitou — só mostra o erro, exatamente como a API o descreve.
+
+**Simplificação declarada desta tarefa:** `ogImageMediaId` é um campo de texto livre para colar o id de um `media_assets` já existente, não um seletor de imagem com upload de verdade. O upload real de arquivo (`POST /api/admin/media/upload-url` + envio ao Storage, já documentado em [`docs/API.md` § Mídia](./API.md)) é escopo da tarefa `painel/formulario-edicao-secao`; quando ela existir, o mesmo seletor de imagem usado ali pode substituir este campo de texto sem mudar o contrato com a API (`ogImageMediaId` continua sendo só um id de string ou `null`).
+
+**Extensão de `api-client.ts` nesta tarefa:** `ApiError` passou a carregar também `erros: { campo, mensagem }[] | null` (`null` fora de um `422` com a extensão `erros` do formato uniforme de erro, `docs/API.md` § Autenticação → "Formato de erro uniforme") — necessário para `MetadataPage` mostrar a mensagem de validação real por campo, em vez de só o `message` genérico do topo da resposta. Mudança aditiva e compatível com o uso já existente em `SectionListPage`.
 
 ## Como testar localmente com um usuário de operador
 
