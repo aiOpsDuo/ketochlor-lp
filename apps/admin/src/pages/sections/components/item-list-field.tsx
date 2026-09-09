@@ -23,10 +23,11 @@ interface ItemListFieldEditorProps {
  * Cada operação de reordenar/remover aplica a MESMA troca de índice ao array
  * de itens e ao array paralelo `visibilidade` (`ItemVisibilityMap` da API) —
  * é assim que os dois nunca dessincronizam entre um salvamento e outro (ver
- * `../list-utils.ts`). Esta tela não expõe nenhum controle para ocultar um
- * item (isso é `painel/controle-visibilidade`, tarefa seguinte no
- * `PLAN.md`) — só preserva o array corretamente alinhado para quando essa
- * tela existir.
+ * `../list-utils.ts`). O checkbox "Visível" de cada item (`painel/controle-
+ * visibilidade`) só troca a POSIÇÃO correspondente de `visibilidade`, nunca
+ * o item em si — o item continua existindo em `itens` e volta a aparecer na
+ * LP assim que reativado e a seção é salva (`PUT` reenvia os dois arrays
+ * juntos, ver `section-detail-page.tsx`).
  */
 export function ItemListFieldEditor({
   label,
@@ -50,6 +51,12 @@ export function ItemListFieldEditor({
     onChange(removerIndice(itens, indice), removerIndice(visibilidade, indice))
   }
 
+  /** Alterna só a posição `indice` de `visibilidade` — nunca mexe em `itens` (ocultar não remove). */
+  function alternarVisibilidade(indice: number) {
+    const novaVisibilidade = visibilidade.map((visivel, i) => (i === indice ? !visivel : visivel))
+    onChange(itens, novaVisibilidade)
+  }
+
   function adicionar() {
     onChange([...itens, itemVazio(camposItem)], [...visibilidade, true])
   }
@@ -70,7 +77,15 @@ export function ItemListFieldEditor({
             <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
               Item {indice + 1}
             </span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1 text-xs text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={visibilidade[indice] ?? true}
+                  onChange={() => alternarVisibilidade(indice)}
+                />
+                {(visibilidade[indice] ?? true) ? 'Visível' : 'Oculto'}
+              </label>
               <button
                 type="button"
                 onClick={() => mover(indice, -1)}

@@ -86,6 +86,8 @@ export function SectionDetailPage() {
   const [salvando, setSalvando] = useState(false)
   const [erroSalvar, setErroSalvar] = useState<EstadoDeErro | null>(null)
   const [salvoComSucesso, setSalvoComSucesso] = useState(false)
+  const [alternandoVisibilidade, setAlternandoVisibilidade] = useState(false)
+  const [erroVisibilidade, setErroVisibilidade] = useState<string | null>(null)
 
   const chaveValida = ehChaveDeSecao(chaveDaRota)
   const descritores = useMemo<CampoDescritor[]>(
@@ -232,6 +234,39 @@ export function SectionDetailPage() {
     }
   }
 
+  /**
+   * Alterna a publicação da SEÇÃO INTEIRA (`painel/controle-visibilidade`,
+   * distinto de ocultar um item de lista): `PATCH
+   * /api/admin/sections/:key/visibility` não recebe corpo, só inverte
+   * `is_published` no servidor e devolve o documento atualizado — por isso
+   * a chamada não depende de `formData`/`handleSubmit` e não precisa que o
+   * operador esteja no meio de uma edição de texto para funcionar. O novo
+   * `isPublished` (e `updatedAt`) vem sempre da RESPOSTA da API, nunca
+   * invertido otimisticamente no cliente, para a tela nunca mostrar um
+   * estado que o servidor não confirmou.
+   */
+  async function alternarVisibilidadeDaSecao() {
+    if (!session || !chaveValida || !secao) {
+      return
+    }
+    setAlternandoVisibilidade(true)
+    setErroVisibilidade(null)
+    try {
+      const atualizado = await apiFetch<SecaoDetalhe>(
+        `/api/admin/sections/${chaveDaRota}/visibility`,
+        session.access_token,
+        { method: 'PATCH' },
+      )
+      setSecao(atualizado)
+    } catch (erro) {
+      setErroVisibilidade(
+        erro instanceof ApiError ? erro.message : 'Não foi possível alternar a visibilidade da seção.',
+      )
+    } finally {
+      setAlternandoVisibilidade(false)
+    }
+  }
+
   if (!chaveValida) {
     return (
       <p role="alert" className="text-sm text-red-600">
@@ -262,6 +297,35 @@ export function SectionDetailPage() {
       <h1 className="mb-4 text-xl font-semibold text-gray-900">
         {SECTION_LABELS[chaveDaRota]}
       </h1>
+
+      <div className="mb-4 flex items-center gap-3 rounded border border-gray-200 bg-gray-50 p-3">
+        <span
+          className={
+            secao.isPublished
+              ? 'rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800'
+              : 'rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600'
+          }
+        >
+          {secao.isPublished ? 'Publicada' : 'Não publicada'}
+        </span>
+        <button
+          type="button"
+          onClick={alternarVisibilidadeDaSecao}
+          disabled={alternandoVisibilidade}
+          className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 disabled:opacity-50"
+        >
+          {alternandoVisibilidade
+            ? 'Atualizando…'
+            : secao.isPublished
+              ? 'Ocultar seção'
+              : 'Publicar seção'}
+        </button>
+        {erroVisibilidade && (
+          <span role="alert" className="text-xs text-red-600">
+            {erroVisibilidade}
+          </span>
+        )}
+      </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         {descritores.map((descritor) => (

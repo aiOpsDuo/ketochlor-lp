@@ -100,8 +100,6 @@ Rótulos em português amigável por CHAVE de campo (`apps/admin/src/pages/secti
 
 `SectionDetailPage` sempre envia `data` **e** `itemVisibility` juntos no mesmo `PUT`, em TODO salvamento — nunca um sem o outro, mesmo quando nenhuma lista mudou nessa edição específica. `itemVisibility` é reconstruído a partir do estado local atual (que já é mantido em sincronia índice a índice pelo `ItemListFieldEditor`) para todo campo de lista-item da seção, a cada `handleSubmit`. Essa é a forma mais simples de nunca correr o risco descrito no `PLAN.md` (reordenar/reduzir uma lista e persistir um `itemVisibility` desalinhado) — a alternativa (só enviar `itemVisibility` quando "algo mudou" numa lista) exigiria detectar exatamente esse "algo mudou", uma superfície de bug maior do que sempre reenviar o mapa completo.
 
-Esta tela **não** expõe nenhum controle para ocultar/reexibir um item ou uma seção inteira — isso é a tarefa seguinte do `PLAN.md`, `painel/controle-visibilidade`. O que esta tarefa garante é que os arrays cheguem a essa tarefa futura sempre alinhados.
-
 `StringListFieldEditor` (só `problema.paragraphs`) é deliberadamente um componente separado: adiciona/remove/reordena parágrafo mas NÃO tem `ItemVisibilityMap` associado, porque a visibilidade de item (Domínio) cobre listas de ITEM de conteúdo com significado próprio (uma pergunta, uma linha de dosagem), não um texto que só está dividido em parágrafos por conveniência de edição.
 
 ### Subestruturas fixas
@@ -123,6 +121,18 @@ Diferente da simplificação aceita em `painel/tela-metadados` (`ogImageMediaId`
 ### Erros de validação e confirmação de sucesso
 
 Ao salvar: sucesso mostra "Seção salva com sucesso." (`role="status"`) e atualiza o formulário com o documento devolvido pela API. Uma falha de rede/servidor genérica mostra `erro.message`; um `422` com a extensão `erros` (`docs/API.md` § "Formato de erro uniforme") é mapeado por CAMINHO exato (`issue.path.join('.')` do Zod, ex. `"dosagem.1.volumeMl"`, `"logo.alt"`, `"eyebrow"`) para o campo correspondente na árvore de renderização — cada editor de campo recebe o `caminhoBase` do seu nível e sabe procurar seu próprio erro no mapa. Em qualquer caso de erro, `formData` permanece intacto: o operador nunca perde uma edição em andamento nem é levado para outra tela.
+
+## Controle de visibilidade (`painel/controle-visibilidade`)
+
+Dois controles distintos, ambos "ocultar sem apagar" (PRD § "Controle de visibilidade de item e de seção"): um para a SEÇÃO inteira, outro para um ITEM de dentro de uma lista.
+
+### Visibilidade de seção inteira
+
+No topo de `SectionDetailPage` (acima do formulário, fora do `<form>`), um badge ("Publicada"/"Não publicada" — mesmo estilo visual de `SectionListPage`) ao lado de um botão ("Ocultar seção"/"Publicar seção", o rótulo já indica a AÇÃO que o clique vai fazer, não o estado atual) que chama `PATCH /api/admin/sections/:key/visibility` (`docs/API.md` § Conteúdo administrativo — sem corpo, só inverte `is_published` no servidor e devolve o documento atualizado). O novo `isPublished`/`updatedAt` exibidos vêm sempre da RESPOSTA da API (`setSecao(atualizado)`), nunca invertidos otimisticamente no cliente antes de o servidor confirmar — e a chamada é independente de `formData`/`handleSubmit`: alternar a visibilidade não exige (nem afeta) uma edição de texto em andamento nem precisa do botão "Salvar" do formulário.
+
+### Visibilidade de item de lista
+
+Cada item dentro de `ItemListFieldEditor` (`prova_autoridade.stats`, `protocolo.dosagem`, `diferenciais.items`, `faq.perguntas`) ganhou um checkbox "Visível"/"Oculto" na mesma linha dos botões de mover/remover já existentes (`painel/formulario-edicao-secao`). Desmarcar o checkbox só troca a posição correspondente do array paralelo `visibilidade` (`ItemVisibilityMap`) — nunca mexe no array `itens` — usando exatamente o mesmo mecanismo de `onChange(itens, visibilidade)` que reordenar/remover já usam (ver "Listas de item e sincronia do `ItemVisibilityMap`" acima). Como qualquer outra edição de lista, ocultar um item só é persistido no próximo clique em "Salvar" da seção — não há chamada de rede própria para o checkbox — e o item continua existindo (e editável) na tela mesmo oculto; ele só desaparece de `GET /api/content` (e da LP) depois do `PUT`, e volta assim que o checkbox é remarcado e a seção é salva de novo.
 
 ## Metadados da página (`painel/tela-metadados`)
 
