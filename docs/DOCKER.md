@@ -8,11 +8,7 @@ Empacotamento de produção do ponto único de entrada já usado em desenvolvime
 docker compose up --build -d
 ```
 
-Aguarde o serviço `api` ficar `healthy` antes de testar (`docker compose ps` mostra o status). Para encerrar e liberar os recursos:
-
-```bash
-docker compose down
-```
+Aguarde o serviço `api` ficar `healthy` antes de testar (`docker compose ps` mostra o status). Para derrubar, ver [Derrubar](#derrubar) ao final.
 
 ## Serviços
 
@@ -51,8 +47,57 @@ Para rodar contra uma instância local do Supabase CLI (`npx supabase start`), o
 
 O painel (`apps/admin`, servido por `proxy` em `/admin`) lê suas próprias variáveis `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` de `apps/admin/.env` em tempo de build do Vite (não do `.env` da raiz nem de build args do Compose) — ver `apps/admin/.env.example`. Sem esse arquivo o painel builda normalmente, mas falha ao carregar no navegador; isso não afeta a LP (`/`) nem o healthcheck da `api`.
 
+## Quando reconstruir (`--build`) vs. só reiniciar
+
+- Mudou uma variável `VITE_*` (`apps/admin/.env`)? Precisa de `docker compose up --build -d` — essas variáveis são lidas pelo Vite em tempo de build (estágio `web-build` do `docker/Dockerfile`) e já ficam embutidas no JavaScript servido pelo `proxy`; reiniciar o container não muda o que já foi compilado.
+- Mudou uma variável de servidor (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_JWKS_URL`, `SUPABASE_STORAGE_BUCKET`)? Basta `docker compose up -d` (sem `--build`) — o serviço `api` as lê de `process.env` em tempo de execução (`docker-compose.yml` → `environment:`), não em build.
+- Mudou código de qualquer uma das três aplicações? `docker compose up --build -d`.
+
+## O que quem for publicar precisa saber
+
+1. **A `api` não é publicada no host.** O serviço não declara `ports`, só é alcançável pela rede interna do compose, pelo nome de serviço `api` — a única superfície exposta é a porta única do `proxy` (`8080`).
+2. **Este compose não resolve TLS.** Quem for publicar precisa terminar HTTPS em algo na frente (load balancer do provedor, um proxy reverso adicional) e encaminhar para a porta do `proxy`.
+3. **Nenhuma migração de banco roda aqui.** O compose só builda e serve as três aplicações; aplicar `supabase/migrations/` a um projeto Supabase real é um passo à parte — ver [BANCO-DE-DADOS.md](BANCO-DE-DADOS.md).
+
+## Verificação de segredo no bundle do proxy
+
+Nenhuma credencial de servidor pode chegar ao navegador — o `proxy` só serve os builds estáticos de `apps/lp`/`apps/admin`, e nenhum dos dois deveria conter `SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_JWT_SECRET`. Verificado de verdade contra a pilha local (`docker compose up --build -d`), com um controle positivo — a chave publicável do painel (`VITE_SUPABASE_PUBLISHABLE_KEY`) **precisa** aparecer, senão a varredura não está olhando os arquivos certos:
+
+```bash
+SEG=$(grep '^SUPABASE_SERVICE_ROLE_KEY=' .env | cut -d= -f2-)
+JWTS=$(grep '^SUPABASE_JWT_SECRET=' .env | cut -d= -f2-)
+PUB=$(grep 'VITE_SUPABASE_PUBLISHABLE_KEY=' apps/admin/.env | cut -d= -f2-)
+
+docker exec -e SEG="$SEG" -e JWTS="$JWTS" -e PUB="$PUB" ketochlor-lp-proxy-1 sh -c '
+  R=/usr/share/nginx/html
+  echo "SUPABASE_SERVICE_ROLE_KEY (segredo): $(grep -rlF "$SEG" $R | wc -l) ocorrencias"
+  echo "SUPABASE_JWT_SECRET (segredo):        $(grep -rlF "$JWTS" $R | wc -l) ocorrencias"
+  echo "controle positivo - VITE_SUPABASE_PUBLISHABLE_KEY deve aparecer:"
+  grep -rlF "$PUB" $R
+'
+```
+
+Resultado real, observado nesta verificação:
+
+```
+SUPABASE_SERVICE_ROLE_KEY (segredo): 0 ocorrencias
+SUPABASE_JWT_SECRET (segredo):        0 ocorrencias
+controle positivo - VITE_SUPABASE_PUBLISHABLE_KEY deve aparecer:
+/usr/share/nginx/html/admin/assets/index-DA2xcGN1.js
+```
+
+Zero ocorrências dos dois segredos de servidor, com o controle positivo confirmando que a varredura de fato leu o bundle do painel (o nome do arquivo `index-*.js` muda a cada build — o que importa é a chave publicável aparecer em algum arquivo sob `admin/assets/`).
+
 ## Detalhes de implementação
 
 - `docker/Dockerfile`: multi-stage — um estágio `deps` compartilhado (`node:22-alpine`, exigido em runtime por `@supabase/realtime-js`/`WebSocket` nativo) instala as dependências do monorepo inteiro (`npm ci` na raiz, já que `apps/*`/`packages/*` são workspaces); `web-build`/`api-build` partem dele, cada um buildando `packages/content-schema` antes de `apps/lp`/`apps/admin`/`apps/api` (nenhum dos três builda esse workspace sozinho — `npm ci` só resolve o link, não o `dist`); os estágios finais `web` (nginx) e `api` (`node:22-alpine`) só recebem o resultado do build, não as devDependencies.
 - `docker/nginx.conf`: serve `apps/lp/dist` na raiz e `apps/admin/dist` em `/admin` (mesmo diretório de estáticos, sem `alias`, para que `/admin` sem barra final responda `200` sem redirect) e repassa `/api/` ao serviço `api` sem reescrever o caminho — a API já expõe suas rotas sob o prefixo global `/api`.
 - **Metadados de SEO já vêm prontos no `index.html` servido pelo nginx** — não há nenhuma configuração de borda adicional aqui. `apps/lp/dist/index.html` já sai do build de `apps/lp` (estágio `web-build`) com `<title>`/`<meta name="description">`/`<meta property="og:image">` reais, embutidos pelo Injetor de SEO em tempo de build (hook `postbuild`, ver [`docs/API.md` § "Injetor de SEO"](API.md)); o `proxy` (nginx) só serve esse arquivo como está. Efeito prático: uma alteração de metadados só aparece em `http://localhost:8080/` depois de rebuildar a imagem `web` (`docker compose up --build`), não com um simples `docker compose restart`.
+
+## Derrubar
+
+```bash
+docker compose down
+```
+
+Isso não interfere com `npm run dev` ([RODAR-SEM-DOCKER.md](RODAR-SEM-DOCKER.md)): a pilha Docker só ocupa a porta `8080` do host (a `api` não expõe porta nenhuma), enquanto `npm run dev` usa `5173`/`5174`/`3000` — os dois convivem sem conflito de porta.
