@@ -355,7 +355,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: content-schema/definir-schemas-secoes, dados/migration-content-sections, api/modulo-content
 - Execução: sequencial
 - Toca documentação: não
-- Status: pendente
+- Status: concluída — PR #50 (squash-merge em `main`, `2745e3e`). `supabase/seed.sql` gerado a partir de `CONTENT_SECTIONS` (script em `apps/api/scripts/`), rodado automaticamente pelo Supabase CLI em todo `db reset`; `ON CONFLICT DO UPDATE` idempotente, só toca `data` (preserva `is_published`/`item_visibility` de edições do painel). Reverificado pelo orquestrador ponta a ponta (seed → banco → `GET /api/content`) com conteúdo real batendo campo a campo, e idempotência confirmada re-rodando o seed. Migração para o projeto Supabase de PRODUÇÃO real continua manual, documentada em `docs/BANCO-DE-DADOS.md` — nenhum projeto de produção foi provisionado (ação fora do alcance de um subagente).
 
 #### verificacao-ponta-a-ponta — Verificação do fluxo completo
 - Origem: planejada
