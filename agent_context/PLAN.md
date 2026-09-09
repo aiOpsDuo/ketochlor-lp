@@ -365,7 +365,17 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: todas as tarefas de `fundacao`, `dados`, `content-schema`, `api`, `painel`, `lp` e `seo`
 - Execução: sequencial
 - Toca documentação: sim — insumo para a revisão final do README
-- Status: pendente
+- Status: concluída — PR #52 (squash-merge em `main`, `0ee6789`, correções encontradas durante a verificação). Checklist completo, verificado com comandos reais contra Supabase local + `docker compose up --build` (não simulado):
+  1. Login real (Supabase Auth local, usuário de teste) — token obtido e usado nas chamadas seguintes.
+  2. Editado `hero.heading` via `PUT /api/admin/sections/hero`; `GET /api/content` refletiu o novo texto imediatamente, sem rebuild.
+  3. `PATCH /api/admin/sections/hero/visibility`: seção virou `null` em `GET /api/content` ao ocultar, voltou com o conteúdo intacto ao reativar.
+  4. `POST /api/leads` real criou um lead; apareceu em `GET /api/admin/leads` e no `GET /api/admin/leads/export.csv` (CSV com cabeçalho e a linha certa).
+  5. API derrubada (`docker compose stop api`): `curl http://localhost:8080/` continuou `200`, servindo o HTML/JS estático (o fallback ao instantâneo local em runtime já é coberto pela suíte de `PublishedContentProvider.test.tsx`/`App.test.tsx`, não reexecutado em browser real por falta de display no sandbox).
+  6. `docker compose up --build`: `curl` em `/`, `/admin` e `/api/health` — todos `200`.
+  7. Metadados reais publicados via `PUT /api/admin/metadata` (dentro do container, através do proxy) + rebuild da imagem `proxy` → `curl http://localhost:8080/` mostrou `<title>`/`<meta description>` reais no HTML puro, sem JS.
+  8. `docker compose down` sem containers/volumes órfãos.
+
+  **Dois bugs reais encontrados e corrigidos no processo (PR #52):** (a) `apps/api/src/main.ts` não carregava `.env` sozinho fora dos testes — corrigido com `dotenv/config`; (b) `.env.example` da raiz usava `127.0.0.1` para `SUPABASE_URL`/`SUPABASE_JWKS_URL`, que dentro do container `api` aponta para o próprio container, não o host do Supabase local — corrigido para `host.docker.internal`. Sem essa segunda correção, `docker compose up` subia e o healthcheck passava, mas toda rota que de fato falava com o Supabase (login, salvar, listar) falhava — um gap que só uma verificação genuinamente ponta a ponta (não só `/api/health`) revelou.
 
 ### Fase: documentacao
 
