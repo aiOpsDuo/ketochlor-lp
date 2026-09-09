@@ -39,7 +39,7 @@ Rotas hoje:
 |---|---|---|---|
 | `/login` | `/admin/login` | `LoginPage` | Só sem sessão — com sessão válida, redireciona à listagem de seções (`PublicOnlyRoute`) |
 | `/` (índice) | `/admin` | `SectionListPage`, dentro de `AdminLayout` | Só com sessão — sem sessão válida, redireciona ao login (`ProtectedRoute`) |
-| `/sections/:key` | `/admin/sections/:key` | `SectionDetailPage` (placeholder), dentro de `AdminLayout` | Idem |
+| `/sections/:key` | `/admin/sections/:key` | `SectionDetailPage` (formulário de edição, `painel/formulario-edicao-secao`), dentro de `AdminLayout` | Idem |
 | `/metadata` | `/admin/metadata` | `MetadataPage`, dentro de `AdminLayout` | Idem |
 | `/leads` | `/admin/leads` | `LeadsPage`, dentro de `AdminLayout` | Idem |
 
@@ -70,9 +70,59 @@ Cada linha mostra:
 - Se a seção está publicada ou não (`isPublished`).
 - A data da última atualização (`updatedAt`), formatada com `Intl.DateTimeFormat('pt-BR')`.
 
-Clicar em uma linha navega para `/sections/:key` (URL real `/admin/sections/:key`), hoje servida por `apps/admin/src/pages/sections/section-detail-page.tsx` — um placeholder ("Edição da seção {key} — em construção") que só prova que a navegação funciona. O formulário real de edição (campos de texto, listas, upload de imagem) chega na tarefa `painel/formulario-edicao-secao`.
+Clicar em uma linha navega para `/sections/:key` (URL real `/admin/sections/:key`), servida por `apps/admin/src/pages/sections/section-detail-page.tsx` — o formulário de edição descrito na próxima seção.
 
 `apps/admin/src/lib/api-client.ts` (`apiFetch`, `ApiError`) é genérico o bastante para as próximas telas autenticadas (`painel/tela-metadados`, `painel/tela-leads`) reaproveitarem sem reimplementar o cabeçalho `Authorization` ou o tratamento de erro — nenhuma URL absoluta de API é montada em lugar nenhum do painel: tanto o dev server (proxy de `apps/lp/vite.config.ts`) quanto o nginx de produção (`docker/nginx.conf`) servem painel e API sob o mesmo domínio, então um caminho relativo (`/api/admin/sections`) já resolve certo nos dois ambientes.
+
+## Edição de seção (`painel/formulario-edicao-secao`)
+
+`apps/admin/src/pages/sections/section-detail-page.tsx` é a rota `/sections/:key` (URL real `/admin/sections/:key`): busca `GET /api/admin/sections/:key` ao montar (`data`, `itemVisibility`, `isPublished` — `docs/API.md` § Conteúdo) e salva via `PUT /api/admin/sections/:key`, mesmo padrão de tela autenticada das demais.
+
+### Formulário GERADO a partir do schema, não 11 telas hardcoded
+
+`apps/admin/src/pages/sections/schema-fields.ts` (`descreverCamposDaSecao`) faz introspecção direta do schema **Zod** de cada seção, importado de `@ketochlor/content-schema` (agora também dependência de `apps/admin`) — nenhuma segunda definição de "quais campos a seção X tem" existe no painel. A partir do `shape` do schema, cada campo de topo de seção cai em um de cinco tipos, cada um com seu próprio componente em `apps/admin/src/pages/sections/components/` (SRP — um componente por tipo de campo, nenhum "form builder" genérico além do que as 11 seções reais precisam):
+
+| Forma do schema Zod | Tipo detectado | Componente | Comportamento |
+|---|---|---|---|
+| `z.string()` | `texto` | `ScalarFieldEditor` | `<input>` ou `<textarea>`, decidido pelo TAMANHO ATUAL do valor (> 60 caracteres ou com quebra de linha vira `<textarea>`) — o schema não distingue "texto curto" de "parágrafo" (os dois são só `z.string()`), então o widget é decidido pelo conteúdo, não por uma anotação de schema nova. |
+| A mesma instância de `imageFieldSchema` (`@ketochlor/content-schema/shared.ts`), comparada por **igualdade de referência** | `imagem` | `ImageFieldEditor` | Ver "Upload de imagem" abaixo. |
+| `z.array(z.string())` (só `problema.paragraphs` hoje) | `lista-texto` | `StringListFieldEditor` | Adicionar/remover/reordenar parágrafo — **sem** `ItemVisibilityMap` associado (ver "Listas de item" abaixo). |
+| `z.array(z.object({...}))` (`prova_autoridade.stats`, `protocolo.dosagem`, `diferenciais.items`, `faq.perguntas`) | `lista-item` | `ItemListFieldEditor` | Adicionar/editar/remover/reordenar item, com `ItemVisibilityMap` sincronizado. |
+| Objeto aninhado que não é `imageFieldSchema` (`fenotipos.agudo`/`.cronico`, `mecanismo.cetoconazol`/`.clorexidina`, `protocolo.closing`) | `estrutura-fixa` | `FixedStructFieldEditor` | Campos editáveis, cardinalidade fechada — **sem** nenhum botão de adicionar/remover. |
+
+Os campos escalares DENTRO de um item de lista ou de uma subestrutura fixa (ex. `dosagem[i].volumeMl`, `agudo.badge`) são sempre texto ou número (`z.ZodNumber` vira `<input type="number">`) — nenhuma das 11 seções hoje aninha uma lista ou uma imagem dentro de um item/subestrutura; se isso mudar, `schema-fields.ts` e os componentes de item precisam crescer (decisão de proporcionalidade registrada no próprio arquivo).
+
+Rótulos em português amigável por CHAVE de campo (`apps/admin/src/pages/sections/field-labels.ts`, `rotuloDoCampo`) — não por seção, já que uma chave como `titulo`/`corpo` se repete com o mesmo sentido em mais de uma seção. Uma chave sem entrada cadastrada cai numa versão "humanizada" automática da própria chave, em vez de quebrar a tela.
+
+### Listas de item e sincronia do `ItemVisibilityMap`
+
+`ItemListFieldEditor` (usado por `prova_autoridade.stats`, `protocolo.dosagem`, `diferenciais.items`, `faq.perguntas`) oferece adicionar, editar, remover e reordenar (mover para cima/para baixo — decisão de escopo desta tarefa, sem drag-and-drop). Toda operação de mover/remover aplica a MESMA troca de índice ao array de conteúdo e ao array paralelo de `itemVisibility` daquele campo (`apps/admin/src/pages/sections/list-utils.ts`, `moverIndice`/`removerIndice`, chamadas duas vezes com o mesmo índice/direção) — é assim que os dois nunca dessincronizam entre uma reordenação e a próxima, já que nenhum item de `content-schema` tem `id` estável (`ItemVisibilityMap` é um mapa alinhado por ÍNDICE, ver `apps/api/src/domain/visibilidade/filtrar-conteudo-publicado.ts`).
+
+`SectionDetailPage` sempre envia `data` **e** `itemVisibility` juntos no mesmo `PUT`, em TODO salvamento — nunca um sem o outro, mesmo quando nenhuma lista mudou nessa edição específica. `itemVisibility` é reconstruído a partir do estado local atual (que já é mantido em sincronia índice a índice pelo `ItemListFieldEditor`) para todo campo de lista-item da seção, a cada `handleSubmit`. Essa é a forma mais simples de nunca correr o risco descrito no `PLAN.md` (reordenar/reduzir uma lista e persistir um `itemVisibility` desalinhado) — a alternativa (só enviar `itemVisibility` quando "algo mudou" numa lista) exigiria detectar exatamente esse "algo mudou", uma superfície de bug maior do que sempre reenviar o mapa completo.
+
+Esta tela **não** expõe nenhum controle para ocultar/reexibir um item ou uma seção inteira — isso é a tarefa seguinte do `PLAN.md`, `painel/controle-visibilidade`. O que esta tarefa garante é que os arrays cheguem a essa tarefa futura sempre alinhados.
+
+`StringListFieldEditor` (só `problema.paragraphs`) é deliberadamente um componente separado: adiciona/remove/reordena parágrafo mas NÃO tem `ItemVisibilityMap` associado, porque a visibilidade de item (Domínio) cobre listas de ITEM de conteúdo com significado próprio (uma pergunta, uma linha de dosagem), não um texto que só está dividido em parágrafos por conveniência de edição.
+
+### Subestruturas fixas
+
+`FixedStructFieldEditor` (`fenotipos.agudo`/`.cronico`, `mecanismo.cetoconazol`/`.clorexidina`, `protocolo.closing`) renderiza os campos editáveis da subestrutura sem nenhuma UI de adicionar/remover — a cardinalidade fechada é garantida simplesmente por o componente nunca oferecer esse botão, não por uma trava adicional (o schema Zod já impede a API de aceitar uma terceira chave nesse objeto).
+
+### Upload de imagem — decisão: upload REAL, com URL editável como reforço
+
+`ImageFieldEditor` (`apps/admin/src/pages/sections/components/image-field.tsx`) implementa o upload de arquivo **real**, direto do navegador ao Supabase Storage, seguindo o fluxo já documentado em `docs/API.md` § Mídia: `POST /api/admin/media/upload-url` (credencial temporária) → `supabase.storage.from(bucket).uploadToSignedUrl(...)` (SDK do Supabase, `apps/admin/src/lib/media-upload.ts`) → `getPublicUrl(...)` para obter a URL pública, que vira o valor de `imagem.url`. Esta é a mesma instância de cliente Supabase já usada para Auth (`lib/supabase-client.ts`) — a credencial temporária, não a chave publicável, é quem autoriza a escrita no bucket.
+
+Diferente da simplificação aceita em `painel/tela-metadados` (`ogImageMediaId` como texto livre, sem upload nenhum), aqui o operador realmente envia o arquivo pelo painel. O campo "URL da imagem" continua editável ABAIXO do botão de upload, não como substituto dele, por dois motivos:
+1. O conteúdo migrado de `content-schema/definir-schemas-secoes` usa caminhos estáticos da LP (`/assets/...`) que não são upload nenhum — o operador precisa poder deixá-los como estão ao editar só um texto da mesma seção, sem ser forçado a reenviar toda imagem.
+2. É o mesmo texto que a API valida e devolve em `erros` (`imageFieldSchema`) se ficar vazio — reaproveitado como o local onde esse erro aparece.
+
+**Lacuna conhecida, não introduzida por esta tarefa:** o upload não chama `MediaAssetsRepository.criar` (não existe rota HTTP para essa confirmação — `docs/API.md` § Mídia já registra isso como fora do escopo de `api/modulo-media`), então não nasce uma linha de auditoria em `media_assets` para os uploads feitos por aqui. Isso não impede a imagem de funcionar na LP: `imageFieldSchema` só guarda `{ url, alt }`, nunca um id de mídia, e o bucket `images` é público para leitura — falta só a contabilidade de `media_assets`, não a funcionalidade.
+
+`alt` é sempre obrigatório, lado a lado com o upload (PRD § Fluxo de UX). Bloqueio **no cliente**: `SectionDetailPage` verifica todo campo de imagem antes de chamar a API e recusa salvar (sem nenhuma requisição de rede) se algum `alt` estiver vazio, mostrando a mensagem junto ao campo — a validação `422` de `imageFieldSchema` continua ativa como rede de segurança caso esse bloqueio seja contornado.
+
+### Erros de validação e confirmação de sucesso
+
+Ao salvar: sucesso mostra "Seção salva com sucesso." (`role="status"`) e atualiza o formulário com o documento devolvido pela API. Uma falha de rede/servidor genérica mostra `erro.message`; um `422` com a extensão `erros` (`docs/API.md` § "Formato de erro uniforme") é mapeado por CAMINHO exato (`issue.path.join('.')` do Zod, ex. `"dosagem.1.volumeMl"`, `"logo.alt"`, `"eyebrow"`) para o campo correspondente na árvore de renderização — cada editor de campo recebe o `caminhoBase` do seu nível e sabe procurar seu próprio erro no mapa. Em qualquer caso de erro, `formData` permanece intacto: o operador nunca perde uma edição em andamento nem é levado para outra tela.
 
 ## Metadados da página (`painel/tela-metadados`)
 
@@ -80,7 +130,7 @@ Clicar em uma linha navega para `/sections/:key` (URL real `/admin/sections/:key
 
 Formulário controlado com três campos — `title`, `description` e `ogImageMediaId` — e três estados visíveis ao operador: carregando (busca inicial), erro de validação ao salvar (mensagem real devolvida pela API, nunca uma mensagem genérica de "erro ao salvar") e confirmação de sucesso. Salvar com `title`/`description` vazio não navega nem limpa o que o operador já digitou — só mostra o erro, exatamente como a API o descreve.
 
-**Simplificação declarada desta tarefa:** `ogImageMediaId` é um campo de texto livre para colar o id de um `media_assets` já existente, não um seletor de imagem com upload de verdade. O upload real de arquivo (`POST /api/admin/media/upload-url` + envio ao Storage, já documentado em [`docs/API.md` § Mídia](./API.md)) é escopo da tarefa `painel/formulario-edicao-secao`; quando ela existir, o mesmo seletor de imagem usado ali pode substituir este campo de texto sem mudar o contrato com a API (`ogImageMediaId` continua sendo só um id de string ou `null`).
+**Simplificação declarada desta tarefa:** `ogImageMediaId` é um campo de texto livre para colar o id de um `media_assets` já existente, não um seletor de imagem com upload de verdade. `painel/formulario-edicao-secao` implementou o upload real de arquivo (`POST /api/admin/media/upload-url` + envio ao Storage, ver seção "Edição de seção" acima) para os campos de imagem das SEÇÕES (`imageFieldSchema`, `{ url, alt }`) — `ogImageMediaId` continua um campo à parte porque seu contrato é diferente (um id de `media_assets`, não uma URL): adaptar esta tela para upload real fica para quando essa diferença de contrato for revisitada, não é um simples reaproveitamento do mesmo componente.
 
 **Extensão de `api-client.ts` nesta tarefa:** `ApiError` passou a carregar também `erros: { campo, mensagem }[] | null` (`null` fora de um `422` com a extensão `erros` do formato uniforme de erro, `docs/API.md` § Autenticação → "Formato de erro uniforme") — necessário para `MetadataPage` mostrar a mensagem de validação real por campo, em vez de só o `message` genérico do topo da resposta. Mudança aditiva e compatível com o uso já existente em `SectionListPage`.
 
