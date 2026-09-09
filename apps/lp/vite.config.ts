@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 // Ponto único de entrada em desenvolvimento (SDD § "Camadas e padrão
@@ -30,5 +30,9 @@ export default defineConfig({
         rewrite: (path) => (path === '/admin' ? '/admin/' : path),
       },
     },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
   },
 })
