@@ -226,7 +226,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: api/modulo-media
 - Execução: sequencial (mesmo `app.module.ts`)
 - Toca documentação: sim — `docs/API.md`
-- Status: pendente
+- Status: concluída — PR #25 (squash-merge em `main`, `88f458a`). CSV formatado por função própria (RFC 4180, sem dependência nova). `LeadsRepository.excluir` passou a devolver `boolean` para sinalizar 404 sem query extra. **Fase `api` concluída por completo** — 84/84 testes na suíte final.
 
 ### Fase: painel
 
