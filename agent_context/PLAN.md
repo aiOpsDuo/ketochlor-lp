@@ -321,7 +321,7 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Dependências: api/modulo-leads, lp/migrar-secoes-para-cms
 - Execução: sequencial
 - Toca documentação: não
-- Status: pendente
+- Status: concluída — PR #42 (squash-merge em `main`, `6206f1e`). TODO de Salesforce removido (confirmado por teste de regressão que faz grep no próprio arquivo). Verificação real (não mock) contra API+Supabase local confirmou criação de lead e rejeição por consentimento ausente/API fora do ar. 24/24 testes.
 
 #### instantaneo-de-conteudo — Script de instantâneo de conteúdo
 - Origem: planejada
