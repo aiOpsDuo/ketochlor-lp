@@ -31,8 +31,8 @@ export const protocoloInitialContent: Protocolo = {
   estabilidadeBadge: '12 MESES DE ESTABILIDADE',
   closing: {
     product: 'Ketochlor®',
-    highlight: 'é o único do mercado',
-    text: 'Garantia de estabilidade por 12 meses após aberto, permitindo o tratamento completo, sem interrupção por perda de eficácia e sem desperdício para o tutor.',
+    highlight: 'é o único do mercado com estabilidade de 12 meses após aberto',
+    text: 'Permitindo o tratamento completo, sem interrupção por perda de eficácia e sem desperdício para o tutor.',
   },
   dosagem: [
     { peso: '< 4,99', volumeMl: '10' },

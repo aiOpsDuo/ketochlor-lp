@@ -14,7 +14,7 @@ export const problemaInitialContent: Problema = {
   eyebrow: 'O PROBLEMA',
   heading: 'O ciclo que se repete',
   paragraphs: [
-    'A Dermatite Atópica Canina (DAC) raramente aparece sozinha. A ruptura da barreira cutânea e outras alterações fisiológicas, levam à disbiose abrindo espaço para infecções. ',
+    'A Dermatite Atópica Canina (DAC) raramente aparece sozinha. A ruptura da barreira cutânea e outras alterações fisiológicas, levam à disbiose abrindo espaço para infecções secundárias – bacterianas e fúngicas – que se retroalimentam com o prurido e a inflamação de base.',
     'O resultado, na prática clínica, é um ciclo recorrente: o tutor trata a crise, os sinais melhoram, e semanas depois o quadro retorna, muitas vezes mais intenso.',
     'Romper esse ciclo exige controlar as duas frentes de infecção secundária ao mesmo tempo, e não apenas uma delas.',
   ],

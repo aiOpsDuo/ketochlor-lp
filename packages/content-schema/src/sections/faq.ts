@@ -31,7 +31,7 @@ export const faqInitialContent: Faq = {
     {
       question: 'Ketochlor deve ser usado de forma contínua em cães com DAC?',
       answer:
-        'Não. A recomendação da literatura é que, após o tratamento das infecções secundárias por 4 a 5 semanas, o paciente passe a usar um shampoo hidratante de forma contínua (como Allermyl(r)), retornando ao uso do Ketochlor somente se houver recidiva do processo infeccioso.',
+        'Não. A recomendação da literatura é que, após o tratamento das infecções secundárias por 4 a 5 semanas, o paciente passe a usar um shampoo hidratante de forma contínua (como Allermyl®), retornando ao uso do Ketochlor somente se houver recidiva do processo infeccioso.',
     },
     {
       question: 'Ketochlor® substitui o tratamento sistêmico da DAC?',
