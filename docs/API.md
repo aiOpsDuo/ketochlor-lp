@@ -16,9 +16,9 @@ Variáveis de ambiente lidas de `process.env` (`apps/api/src/infrastructure/conf
 
 O verificador de token (`apps/api/src/infrastructure/auth/jwks-token-verificador.ts`) é híbrido: lê o algoritmo (`alg`) de cada JWT recebido e escolhe a estratégia certa — `SUPABASE_JWT_SECRET` para tokens `HS*`, `SUPABASE_JWKS_URL` para qualquer outro algoritmo. Configurar as duas variáveis ao mesmo tempo é seguro e é o que os testes de integração fazem.
 
-`apps/api/src/main.ts` carrega `apps/api/.env` sozinho (`import 'dotenv/config'`, primeira linha do arquivo) — basta o arquivo existir para `npm run dev --prefix apps/api` (ou `npm run dev` na raiz) já enxergar as variáveis, sem precisar exportá-las manualmente no shell. Em produção (Docker/Compose) não há `apps/api/.env` na imagem — `docker-compose.yml` injeta as mesmas variáveis diretamente via `environment:` (ver [`docs/DOCKER.md`](./DOCKER.md)), e `dotenv` não sobrescreve uma variável já definida em `process.env` nem lança erro quando o arquivo não existe.
+`apps/api/src/main.ts` carrega `apps/api/.env` sozinho (`import 'dotenv/config'`, primeira linha do arquivo) — basta o arquivo existir para `npm run dev --prefix apps/api` (ou `npm run dev` na raiz) já enxergar as variáveis, sem precisar exportá-las manualmente no shell. Empacotado via Docker/Compose não há `apps/api/.env` na imagem — `docker-compose.yml` injeta as mesmas variáveis diretamente via `environment:` (ver [`docs/DOCKER.md`](./DOCKER.md)), e `dotenv` não sobrescreve uma variável já definida em `process.env` nem lança erro quando o arquivo não existe.
 
-Os valores em `apps/api/.env.example` já vêm preenchidos com os defaults **públicos e conhecidos** de qualquer instância local do Supabase CLI (mesmos documentados em [`docs/BANCO-DE-DADOS.md`](./BANCO-DE-DADOS.md)) — não são segredo real, servem só para desenvolvimento e para os testes de integração rodarem contra `npx supabase start` local. Um ambiente de produção real usa um projeto Supabase próprio, com sua própria `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_JWKS_URL`.
+Os valores em `apps/api/.env.example` já vêm preenchidos com os defaults **públicos e conhecidos** de qualquer instância local do Supabase CLI (mesmos documentados em [`docs/BANCO-DE-DADOS.md`](./BANCO-DE-DADOS.md)) — não são segredo real, servem só para desenvolvimento e para os testes de integração rodarem contra `npx supabase start` local. Um ambiente real (o Supabase de homologação hoje, ou um futuro projeto de produção do cliente) usa um projeto Supabase próprio, com sua própria `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_JWKS_URL` — ver [`docs/BANCO-DE-DADOS.md` § Homologação](./BANCO-DE-DADOS.md).
 
 ## Autenticação (`api/modulo-auth`)
 
@@ -193,4 +193,4 @@ npm run test --prefix apps/api -- operators # módulo de operadores e2e (GET/POS
 npx supabase stop    # não deixe os containers rodando ao final
 ```
 
-`apps/api/vitest.setup.ts` carrega `apps/api/.env` (via `dotenv`) antes da suíte, mesmo mecanismo já usado por `apps/api/src/main.ts` (ver "Configuração" acima) — só para desenvolvimento/teste local; em produção não existe `apps/api/.env`, as variáveis chegam via `docker-compose.yml`.
+`apps/api/vitest.setup.ts` carrega `apps/api/.env` (via `dotenv`) antes da suíte, mesmo mecanismo já usado por `apps/api/src/main.ts` (ver "Configuração" acima) — só para desenvolvimento/teste local; empacotado via Docker/Compose não existe `apps/api/.env`, as variáveis chegam via `docker-compose.yml`.
