@@ -421,7 +421,7 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Dependências: painel/controle-visibilidade (última tarefa que tocou `apps/admin` antes desta)
 - Execução: sequencial
 - Toca documentação: sim — `docs/PAINEL.md` (nota curta sobre a identidade visual compartilhada)
-- Status: pendente
+- Status: concluída — PR #62 (squash-merge em `main`, `73aa3ab`). `packages/design-tokens` (sem build, TS puro) com as cores reais do Ketochlor, mesmos nomes já usados em `apps/lp`; `docker/Dockerfile` atualizado (só precisa do `package.json` do pacote, sem passo de build). Layout com sidebar recolhível (estado em localStorage) + gaveta mobile; componentes `Card`/`Notice`/`ActionBar`/`FormField` extraídos para `apps/admin/src/shared/`; cor de marca só como acento, botão primário em neutro (`slate-900`); dark mode deliberadamente não implementado (não pedido). **Bug real encontrado e corrigido pelo subagente**: variantes de erro/normal de borda de campo somadas em vez de mutuamente exclusivas — ordem alfabética das classes do Tailwind fazia a cor neutra vencer sobre a de erro, campo inválido aparecia sem destaque (só detectado em navegador real). Reverificado pelo orquestrador: build de todos os workspaces, 63/63 testes da LP, `docker compose build` (sem `up`, sem afetar os containers do usuário que seguiam rodando em produção durante a tarefa), nenhuma menção ao projeto irmão.
 
 ## Ordem de execução
 
