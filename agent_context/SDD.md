@@ -62,7 +62,7 @@ T1, T2 e T3 são publicados como artefatos estáticos em CDN; T4 é um serviço 
 | **Domínio** | Esquemas de seção, regras de validação de conteúdo, regras de visibilidade, invariantes do lead. Sem nenhum import de framework ou de Supabase. | Nada |
 | **Infraestrutura** | Adaptadores que implementam as portas: repositórios Supabase, armazenamento, verificador de token. | Domínio (implementa suas portas) |
 
-**Padrão arquitetural:** **Hexagonal (Ports & Adapters)**, com módulos NestJS por domínio (`content`, `media`, `leads`, `auth`, `metadata`). Justificativa: o PRD exige que credenciais e acesso a dados fiquem confinados ao servidor e que nenhum cliente alcance o Supabase diretamente para ler/gravar conteúdo — isolar Supabase atrás de portas é o que permite testar regras de conteúdo e de lead sem tocar em serviço externo, e o que torna "adicionar um campo novo" uma mudança de esquema em vez de uma mudança espalhada por camadas.
+**Padrão arquitetural:** **Hexagonal (Ports & Adapters)**, com módulos NestJS por domínio (`content`, `media`, `leads`, `auth`, `metadata`, `operators`). Justificativa: o PRD exige que credenciais e acesso a dados fiquem confinados ao servidor e que nenhum cliente alcance o Supabase diretamente para ler/gravar conteúdo — isolar Supabase atrás de portas é o que permite testar regras de conteúdo e de lead sem tocar em serviço externo, e o que torna "adicionar um campo novo" uma mudança de esquema em vez de uma mudança espalhada por camadas.
 
 **Regra de dependência:** **estrita**. Cada camada só conhece a imediatamente inferior; o Domínio não conhece ninguém. A Infraestrutura depende do Domínio (implementa suas interfaces), nunca o contrário. Consequências obrigatórias:
 
@@ -233,6 +233,11 @@ Prefixo de rota único: `/api`. Formato de erro uniforme: `{ "message": string, 
 - `GET /api/admin/leads?from=&to=` (autenticado) → lista paginada, mais recente primeiro, com filtro por período.
 - `GET /api/admin/leads/export.csv?from=&to=` (autenticado) → exportação da mesma listagem em CSV.
 - `DELETE /api/admin/leads/:id` (autenticado) → exclusão a pedido do titular.
+
+**Operadores (tarefa `ajustes/modulo-operadores`, autenticado):** gestão de quem pode logar no painel — **sem tabela própria no banco**, cada operador é integralmente um usuário do Supabase Auth (o mesmo que já autentica via JWT verificado por `AuthGuard`).
+- `GET /api/admin/operators` → lista todos os operadores, mais recente primeiro.
+- `POST /api/admin/operators` → cria um operador (`email`, `senha`, `nome`), já pronto para logar (`email_confirm: true`, sem confirmação por e-mail); `422` se inválido.
+- `DELETE /api/admin/operators/:id` → remove um operador; `409` se `:id` é a própria conta do token ou se só resta 1 operador (as duas invariantes que travariam o próprio acesso administrativo ao painel); `404` se `:id` não existe.
 
 **Autenticação:** login e sessão são responsabilidade do Supabase Auth, consumido diretamente pelo painel via SDK cliente (`@supabase/supabase-js`, com a chave publicável) — a API não implementa endpoint de login; ela apenas verifica o token recebido em cada requisição administrativa contra o JWKS do projeto Supabase.
 

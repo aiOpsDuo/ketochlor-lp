@@ -8,4 +8,5 @@ export * from './supabase/content-sections.repository';
 export * from './supabase/site-metadata.repository';
 export * from './supabase/media-assets.repository';
 export * from './supabase/leads.repository';
+export * from './supabase/operadores.repository';
 export * from './auth/jwks-token-verificador';

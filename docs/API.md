@@ -132,6 +132,27 @@ Primeiro módulo real de produto da API (`apps/api/src/presentation/content/`, `
 
 **`DELETE /api/admin/leads/:id`** exclui o registro e devolve `204 No Content`; `404 Not Found` se `id` não corresponde a nenhum lead. Decisão de implementação: `LeadsRepository.excluir` (existente desde `api/infra-supabase-adapters`) foi estendida para devolver `boolean` (havia registro e foi removido, ou não) em vez de `void` — o `delete` do Postgres, com `.select('id')` encadeado, já informa quantas linhas afetou, sem exigir uma consulta de leitura extra antes de excluir.
 
+## Operadores (`ajustes/modulo-operadores`)
+
+`apps/api/src/presentation/operators/`, `apps/api/src/application/operators/`. Gestão de quem pode logar no painel administrativo. **Sem tabela própria no banco**: um "operador" é, integralmente, um usuário do Supabase Auth — o mesmo que já autentica o painel (é dele que vem o JWT verificado por `AuthGuard`) — então as três rotas abaixo só falam com `auth.admin.listUsers/createUser/deleteUser`, nunca com uma migration ou tabela `operators` nova. Três rotas:
+
+| Rota | Autenticação | Descrição |
+|---|---|---|
+| `GET /api/admin/operators` | `Bearer <jwt>` | Lista todos os operadores, mais recente primeiro. |
+| `POST /api/admin/operators` | `Bearer <jwt>` | Cria um novo operador, já pronto para logar. |
+| `DELETE /api/admin/operators/:id` | `Bearer <jwt>` | Remove um operador permanentemente. |
+
+**`GET /api/admin/operators`** devolve `{ id, email, nome, criadoEm, ultimoLoginEm }[]`, ordenado por `criadoEm` decrescente. `nome` vem de `user_metadata.name` (preenchido na criação, ver abaixo); se um usuário do Supabase Auth não tiver esse campo (ex.: criado fora deste módulo, direto no Supabase Studio), a API deriva um nome legível a partir da parte local do e-mail — `nome` nunca chega vazio na resposta. `ultimoLoginEm` é `null` até o primeiro login bem-sucedido.
+
+**`POST /api/admin/operators`** — corpo `{ "email": string, "senha": string, "nome": string }`.
+- `nome`/`email` vazios, `email` com formato inválido, ou `senha` com menos de 6 caracteres (o mínimo do próprio Supabase Auth) → `422 Unprocessable Entity`, corpo `{ "message": string, "statusCode": 422, "erros": [{ "campo": string, "mensagem": string }, ...] }` — mesmo formato de erro das outras rotas administrativas; nenhuma conta é criada (`validarCriacaoOperador`, Domínio, é a única porta de entrada).
+- Sucesso → `201`, devolve o operador criado. **A conta nasce pronta para logar** (`email_confirm: true` na chamada a `auth.admin.createUser`) — sem link nem e-mail de confirmação adicional; quem cria um operador pelo painel entrega a senha inicial a essa pessoa por fora.
+
+**`DELETE /api/admin/operators/:id`** exclui a conta do Supabase Auth e devolve `204 No Content`. Duas invariantes são checadas ANTES da exclusão — as duas travariam o próprio acesso administrativo ao painel — e respondem `409 Conflict` (`ConflictException`, mesmo padrão de captura de erro de domínio já usado em `ContentAdminController` para `ChaveSecaoInvalidaError`):
+- **Própria conta**: `:id` é igual ao id do operador do token (`request.usuario.sub`) → `409`, `{ "message": "Você não pode remover a própria conta." }`.
+- **Último operador restante**: só existe 1 operador no total → `409`, `{ "message": "Não é possível remover o único operador restante." }`. Na prática, este ramo é inatingível via chamada HTTP real: quem chama só tem um JWT válido se é, ele mesmo, um operador existente, então uma lista de tamanho 1 nunca contém um alvo diferente de quem chama — o caso "própria conta" sempre intercepta primeiro. A checagem é mantida como defesa em profundidade (`RemoverOperadorUseCase`, Aplicação) e coberta isoladamente por um teste de unidade com um repositório falso (`remover-operador.use-case.test.ts`), já que o e2e real não consegue construir esse estado sem apagar os demais operadores do Supabase local.
+- `:id` que não corresponde a nenhum operador existente → `404 Not Found`.
+
 ## Injetor de SEO (`seo/injetor-metadados`)
 
 `GET /api/content` (acima) é a fonte de `metadata` tanto para a LP em runtime quanto para o Injetor de SEO — mas o Injetor **não chama essa rota diretamente em produção**. Ele roda como script de build da LP (`apps/lp/scripts/injetar-metadados.mjs`, hook `postbuild` de `apps/lp/package.json`, depois de `vite build`): reaproveita o mesmo `apps/lp/src/content/content-snapshot.json` que o `prebuild` (Instantâneo de conteúdo) já gerou a partir de uma chamada real a `GET /api/content`, e reescreve `apps/lp/dist/index.html`, substituindo (ou inserindo, se ausente) `<title>`, `<meta name="description">` e `<meta property="og:image">` com `metadata.title`/`metadata.description`/`metadata.ogImageUrl`.
@@ -158,7 +179,7 @@ curl -s http://localhost:8092/   # título/descrição/og:image reais, sem execu
 
 ## Testes de integração e e2e
 
-Os testes de `apps/api/src/infrastructure` (`npm run test --prefix apps/api -- infra`), o e2e do `AuthGuard` (`presentation/auth/auth.e2e.test.ts`, `npm run test --prefix apps/api -- auth`), o e2e do módulo de conteúdo (`presentation/content/content.e2e.test.ts`, `npm run test --prefix apps/api -- content`), o e2e do módulo de metadados (`presentation/metadata/metadata.e2e.test.ts`, `npm run test --prefix apps/api -- metadata`), o e2e do módulo de mídia (`presentation/media/media.e2e.test.ts`, `npm run test --prefix apps/api -- media`) e o e2e do módulo de leads (`presentation/leads/leads.e2e.test.ts`, `npm run test --prefix apps/api -- leads`) rodam contra o Supabase LOCAL de verdade, não mocks do SDK — os e2e sobem a aplicação Nest completa (`AppModule`) via `@nestjs/testing` + `supertest`, com um usuário/login reais (o de mídia inclusive faz um upload real contra o Storage local, com a credencial que a rota devolve):
+Os testes de `apps/api/src/infrastructure` (`npm run test --prefix apps/api -- infra`), o e2e do `AuthGuard` (`presentation/auth/auth.e2e.test.ts`, `npm run test --prefix apps/api -- auth`), o e2e do módulo de conteúdo (`presentation/content/content.e2e.test.ts`, `npm run test --prefix apps/api -- content`), o e2e do módulo de metadados (`presentation/metadata/metadata.e2e.test.ts`, `npm run test --prefix apps/api -- metadata`), o e2e do módulo de mídia (`presentation/media/media.e2e.test.ts`, `npm run test --prefix apps/api -- media`), o e2e do módulo de leads (`presentation/leads/leads.e2e.test.ts`, `npm run test --prefix apps/api -- leads`) e o e2e do módulo de operadores (`presentation/operators/operators.e2e.test.ts`, `npm run test --prefix apps/api -- operators`) rodam contra o Supabase LOCAL de verdade, não mocks do SDK — os e2e sobem a aplicação Nest completa (`AppModule`) via `@nestjs/testing` + `supertest`, com um usuário/login reais (o de mídia inclusive faz um upload real contra o Storage local, com a credencial que a rota devolve). O ramo "último operador restante" de `RemoverOperadorUseCase` é coberto à parte, por um teste de unidade com repositório falso (`application/operators/remover-operador.use-case.test.ts`, `npm run test --prefix apps/api -- remover-operador`) — ver "Operadores" acima para o motivo de não ser alcançável via e2e real:
 
 ```bash
 npx supabase start   # sobe Postgres/Auth/Storage locais
@@ -168,6 +189,7 @@ npm run test --prefix apps/api -- content   # módulo de conteúdo e2e (GET /api
 npm run test --prefix apps/api -- metadata  # módulo de metadados e2e (GET/PUT /api/admin/metadata + reflexo em GET /api/content)
 npm run test --prefix apps/api -- media     # módulo de mídia e2e (POST /api/admin/media/upload-url + upload real ao Storage)
 npm run test --prefix apps/api -- leads     # módulo de leads e2e (POST /api/leads público + GET/DELETE /api/admin/leads*)
+npm run test --prefix apps/api -- operators # módulo de operadores e2e (GET/POST/DELETE /api/admin/operators*)
 npx supabase stop    # não deixe os containers rodando ao final
 ```
 
