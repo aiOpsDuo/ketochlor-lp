@@ -1,6 +1,11 @@
+import { Download, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../auth/auth-context'
 import { ApiError, apiFetch, apiFetchTexto } from '../../lib/api-client'
+import { Card } from '../../shared/Card'
+import { Notice } from '../../shared/Notice'
+import { atributosDeCampo } from '../../shared/FormField'
+import { CLASSE_ROTULO, classeDeBotao, classeDeCampo } from '../../shared/classes'
 import type { LeadResumo } from './lead-summary'
 
 const formatadorDeData = new Intl.DateTimeFormat('pt-BR', {
@@ -64,6 +69,13 @@ function baixarCsv(conteudoCsv: string, nomeDoArquivo: string): void {
  * Lista `GET /api/admin/leads?from=&to=`, já devolvida mais recente primeiro
  * pela própria API (`LeadsRepository.listarPorPeriodo`, `ORDER BY created_at
  * DESC`) — esta tela não reordena no cliente.
+ *
+ * A exclusão de um lead (ação irreversível) exige dois cliques deliberados na
+ * própria célula da linha — "Excluir" e depois "Confirmar" — em vez de um
+ * `window.confirm`: o diálogo nativo tira o foco da tabela e não mostra em
+ * qual linha a ação vai cair, exatamente a informação de que quem confirma
+ * precisa. A chamada de API resultante é a mesma (`DELETE
+ * /api/admin/leads/:id`).
  */
 export function LeadsPage() {
   const { session } = useAuth()
@@ -73,6 +85,12 @@ export function LeadsPage() {
   const [to, setTo] = useState('')
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
   const [exportando, setExportando] = useState(false)
+  /**
+   * Lead cuja exclusão está aguardando o segundo clique de confirmação — a
+   * confirmação acontece na própria célula da tabela, em dois passos, em vez
+   * de um diálogo do navegador que interrompe a página inteira.
+   */
+  const [confirmandoExclusaoId, setConfirmandoExclusaoId] = useState<string | null>(null)
 
   const buscarLeads = useCallback(async () => {
     if (!session) {
@@ -96,6 +114,10 @@ export function LeadsPage() {
 
   useEffect(() => {
     let cancelado = false
+    // A lista está sendo recarregada (troca de período): uma confirmação de
+    // exclusão pendente aponta para uma linha que pode nem existir no
+    // resultado novo, então ela é descartada junto.
+    setConfirmandoExclusaoId(null)
     buscarLeads().then(() => {
       if (cancelado) {
         return
@@ -108,12 +130,6 @@ export function LeadsPage() {
 
   async function handleExcluir(lead: LeadResumo) {
     if (!session) {
-      return
-    }
-    const confirmado = window.confirm(
-      `Excluir o lead de "${lead.nome}" (${lead.email})? Esta ação não pode ser desfeita.`,
-    )
-    if (!confirmado) {
       return
     }
 
@@ -129,6 +145,7 @@ export function LeadsPage() {
       setErro(mensagem)
     } finally {
       setExcluindoId(null)
+      setConfirmandoExclusaoId(null)
     }
   }
 
@@ -156,99 +173,148 @@ export function LeadsPage() {
   }
 
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-xl font-semibold text-gray-900">Leads</h1>
+    <div className="flex flex-col gap-5">
+      <header>
+        <h1 className="text-2xl font-semibold text-navy">Leads</h1>
+        <p className="mt-1 text-sm text-graytxt">
+          Cadastros recebidos pelo formulário da página, do mais recente para o mais antigo.
+        </p>
+      </header>
+
+      <Card>
         <div className="flex flex-wrap items-end gap-3">
-          <label className="flex flex-col text-sm text-gray-600">
-            De
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="leads-de" className={CLASSE_ROTULO}>
+              De
+            </label>
             <input
+              {...atributosDeCampo('leads-de')}
               type="date"
               value={from}
               onChange={(evento) => setFrom(evento.target.value)}
-              className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-900"
+              className={classeDeCampo(false, 'w-auto')}
             />
-          </label>
-          <label className="flex flex-col text-sm text-gray-600">
-            Até
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="leads-ate" className={CLASSE_ROTULO}>
+              Até
+            </label>
             <input
+              {...atributosDeCampo('leads-ate')}
               type="date"
               value={to}
               onChange={(evento) => setTo(evento.target.value)}
-              className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-900"
+              className={classeDeCampo(false, 'w-auto')}
             />
-          </label>
+          </div>
           <button
             type="button"
             onClick={handleExportarCsv}
             disabled={exportando || !leads || leads.length === 0}
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className={classeDeBotao('secundario', 'medio', 'ml-auto')}
           >
+            <Download aria-hidden="true" className="h-4 w-4" />
             {exportando ? 'Exportando…' : 'Exportar CSV'}
           </button>
         </div>
-      </div>
+      </Card>
 
-      {erro && (
-        <p role="alert" className="mb-4 text-sm text-red-600">
-          {erro}
-        </p>
-      )}
+      {erro && <Notice tipo="erro">{erro}</Notice>}
 
       {!leads ? (
-        <p className="text-sm text-gray-500">Carregando leads…</p>
+        <p className="text-sm text-graytxt">Carregando leads…</p>
       ) : leads.length === 0 ? (
-        <p className="text-sm text-gray-500">Nenhum lead encontrado para o período selecionado.</p>
+        <Card>
+          <p className="text-sm text-graytxt">
+            Nenhum lead encontrado para o período selecionado.
+          </p>
+        </Card>
       ) : (
-        <div className="overflow-x-auto rounded border border-gray-200 bg-white">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50 text-left text-xs font-medium uppercase text-gray-500">
-              <tr>
-                <th className="px-4 py-2">Nome</th>
-                <th className="px-4 py-2">E-mail</th>
-                <th className="px-4 py-2">Telefone</th>
-                <th className="px-4 py-2">CRMV</th>
-                <th className="px-4 py-2">Cidade/UF</th>
-                <th className="px-4 py-2">Especialidade</th>
-                <th className="px-4 py-2">Cliente Virbac</th>
-                <th className="px-4 py-2">Contato comercial</th>
-                <th className="px-4 py-2">Origem</th>
-                <th className="px-4 py-2">Recebido em</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {leads.map((lead) => (
-                <tr key={lead.id}>
-                  <td className="px-4 py-2 font-medium text-gray-900">{lead.nome}</td>
-                  <td className="px-4 py-2 text-gray-700">{lead.email}</td>
-                  <td className="px-4 py-2 text-gray-700">{lead.telefone ?? '—'}</td>
-                  <td className="px-4 py-2 text-gray-700">{lead.crmv ?? '—'}</td>
-                  <td className="px-4 py-2 text-gray-700">{lead.estadoCidade ?? '—'}</td>
-                  <td className="px-4 py-2 text-gray-700">{lead.especialidade ?? '—'}</td>
-                  <td className="px-4 py-2 text-gray-700">{lead.jaClienteVirbac ? 'Sim' : 'Não'}</td>
-                  <td className="px-4 py-2 text-gray-700">
-                    {lead.desejaContatoComercial ? 'Sim' : 'Não'}
-                  </td>
-                  <td className="px-4 py-2 text-gray-700">{lead.origem ?? '—'}</td>
-                  <td className="px-4 py-2 text-gray-700">
-                    {formatadorDeData.format(new Date(lead.createdAt))}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleExcluir(lead)}
-                      disabled={excluindoId === lead.id}
-                      className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {excluindoId === lead.id ? 'Excluindo…' : 'Excluir'}
-                    </button>
-                  </td>
+        // `!p-0`: a tabela já tem espaçamento por célula — ver `Card`.
+        <Card className="!p-0">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-graytxt">
+                <tr>
+                  <th className="px-4 py-2.5">Nome</th>
+                  <th className="px-4 py-2.5">E-mail</th>
+                  <th className="px-4 py-2.5">Telefone</th>
+                  <th className="px-4 py-2.5">CRMV</th>
+                  <th className="px-4 py-2.5">Cidade/UF</th>
+                  <th className="px-4 py-2.5">Especialidade</th>
+                  <th className="px-4 py-2.5">Cliente Virbac</th>
+                  <th className="px-4 py-2.5">Contato comercial</th>
+                  <th className="px-4 py-2.5">Origem</th>
+                  <th className="px-4 py-2.5">Recebido em</th>
+                  <th className="px-4 py-2.5" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              {/* `divide-y` no corpo em vez de borda por célula: uma linha só
+                  precisa de um separador horizontal, e a grade completa
+                  competiria com o próprio dado. */}
+              <tbody className="divide-y divide-cardborder">
+                {leads.map((lead) => (
+                  <tr key={lead.id} className="align-top transition hover:bg-lighttint">
+                    <td className="whitespace-nowrap px-4 py-2.5 font-medium text-navy">
+                      {lead.nome}
+                    </td>
+                    <td className="px-4 py-2.5 text-graytxt">{lead.email}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-graytxt">
+                      {lead.telefone ?? '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-graytxt">{lead.crmv ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-graytxt">{lead.estadoCidade ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-graytxt">{lead.especialidade ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-graytxt">
+                      {lead.jaClienteVirbac ? 'Sim' : 'Não'}
+                    </td>
+                    <td className="px-4 py-2.5 text-graytxt">
+                      {lead.desejaContatoComercial ? 'Sim' : 'Não'}
+                    </td>
+                    <td className="px-4 py-2.5 text-graytxt">{lead.origem ?? '—'}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-graytxt">
+                      {formatadorDeData.format(new Date(lead.createdAt))}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      {confirmandoExclusaoId === lead.id ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleExcluir(lead)}
+                            disabled={excluindoId === lead.id}
+                            aria-label={`Confirmar a exclusão do lead de ${lead.nome} (${lead.email})`}
+                            className={classeDeBotao('perigo', 'pequeno')}
+                          >
+                            {excluindoId === lead.id ? 'Excluindo…' : 'Confirmar'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmandoExclusaoId(null)}
+                            disabled={excluindoId === lead.id}
+                            aria-label={`Cancelar a exclusão do lead de ${lead.nome}`}
+                            className={classeDeBotao('secundario', 'pequeno')}
+                          >
+                            Cancelar
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmandoExclusaoId(lead.id)}
+                          aria-label={`Excluir o lead de ${lead.nome} (${lead.email})`}
+                          className={classeDeBotao('perigo', 'pequeno')}
+                        >
+                          <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                          Excluir
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
     </div>
   )

@@ -1,6 +1,7 @@
+import { atributosDeCampo, FormField } from '../../../shared/FormField'
+import { classeDeCampo } from '../../../shared/classes'
 import type { TipoEscalar } from '../schema-fields'
 
-const CLASSE_CAMPO = 'rounded border border-gray-300 px-3 py-2 text-base'
 // Acima deste tamanho (ou com quebra de linha), o campo de texto vira uma
 // `<textarea>` em vez de `<input>` — decisão deliberada desta tarefa: o
 // schema Zod não distingui "texto curto" de "parágrafo" (os dois são só
@@ -27,27 +28,24 @@ interface ScalarFieldEditorProps {
  * "um número", nunca duplicado por contexto).
  */
 export function ScalarFieldEditor({ id, label, tipo, value, onChange, erro }: ScalarFieldEditorProps) {
+  const atributos = atributosDeCampo(id, { erro })
+  const classe = classeDeCampo(Boolean(erro))
+
   if (tipo === 'numero') {
     const valorNumero = typeof value === 'number' ? value : Number(value ?? 0)
     return (
-      <label htmlFor={id} className="flex flex-col gap-1 text-sm text-gray-700">
-        {label}
+      <FormField id={id} label={label} erro={erro}>
         <input
-          id={id}
+          {...atributos}
           type="number"
           value={Number.isNaN(valorNumero) ? '' : valorNumero}
           onChange={(evento) => {
             const novoValor = evento.target.valueAsNumber
             onChange(Number.isNaN(novoValor) ? 0 : novoValor)
           }}
-          className={CLASSE_CAMPO}
+          className={classe}
         />
-        {erro && (
-          <span role="alert" className="text-xs text-red-600">
-            {erro}
-          </span>
-        )}
-      </label>
+      </FormField>
     )
   }
 
@@ -55,30 +53,24 @@ export function ScalarFieldEditor({ id, label, tipo, value, onChange, erro }: Sc
   const multilinha = texto.length > LIMIAR_MULTILINHA || texto.includes('\n')
 
   return (
-    <label htmlFor={id} className="flex flex-col gap-1 text-sm text-gray-700">
-      {label}
+    <FormField id={id} label={label} erro={erro}>
       {multilinha ? (
         <textarea
-          id={id}
+          {...atributos}
           rows={4}
           value={texto}
           onChange={(evento) => onChange(evento.target.value)}
-          className={CLASSE_CAMPO}
+          className={classe}
         />
       ) : (
         <input
-          id={id}
+          {...atributos}
           type="text"
           value={texto}
           onChange={(evento) => onChange(evento.target.value)}
-          className={CLASSE_CAMPO}
+          className={classe}
         />
       )}
-      {erro && (
-        <span role="alert" className="text-xs text-red-600">
-          {erro}
-        </span>
-      )}
-    </label>
+    </FormField>
   )
 }

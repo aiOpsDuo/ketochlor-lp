@@ -1,5 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase-client'
+import { Card } from '../shared/Card'
+import { Notice } from '../shared/Notice'
+import { atributosDeCampo, FormField } from '../shared/FormField'
+import { classeDeBotao, classeDeCampo } from '../shared/classes'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
@@ -27,46 +31,62 @@ export function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-      <h1 className="text-2xl font-semibold">Painel Ketochlor</h1>
-      <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4" noValidate>
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          E-mail
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(evento) => setEmail(evento.target.value)}
-            className="rounded border border-gray-300 px-3 py-2 text-base"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          Senha
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            value={senha}
-            onChange={(evento) => setSenha(evento.target.value)}
-            className="rounded border border-gray-300 px-3 py-2 text-base"
-          />
-        </label>
+    <main className="flex min-h-screen items-center justify-center bg-lighttint p-4">
+      {/* Cartão estreito e centralizado sobre fundo neutro, sem imagem nem
+          split-screen: a tela de entrada de uma ferramenta interna não
+          precisa vender nada a quem já tem a credencial. */}
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex flex-col items-center gap-3 text-center">
+          <span
+            aria-hidden="true"
+            className="flex h-11 w-11 items-center justify-center rounded-xl bg-navy text-lg font-bold text-white"
+          >
+            K
+          </span>
+          <div>
+            <h1 className="text-xl font-semibold text-navy">Painel Ketochlor</h1>
+            <p className="mt-1 text-sm text-graytxt">Entre para editar o conteúdo da página.</p>
+          </div>
+        </div>
 
-        {erro && (
-          <p role="alert" className="text-sm text-red-600">
-            {erro}
-          </p>
-        )}
+        <Card>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+            <FormField id="login-email" label="E-mail">
+              <input
+                {...atributosDeCampo('login-email')}
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(evento) => setEmail(evento.target.value)}
+                className={classeDeCampo(false)}
+              />
+            </FormField>
 
-        <button
-          type="submit"
-          disabled={enviando}
-          className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-        >
-          {enviando ? 'Entrando…' : 'Entrar'}
-        </button>
-      </form>
+            <FormField id="login-senha" label="Senha">
+              <input
+                {...atributosDeCampo('login-senha')}
+                type="password"
+                required
+                autoComplete="current-password"
+                value={senha}
+                onChange={(evento) => setSenha(evento.target.value)}
+                className={classeDeCampo(false)}
+              />
+            </FormField>
+
+            {erro && <Notice tipo="erro">{erro}</Notice>}
+
+            <button
+              type="submit"
+              disabled={enviando}
+              className={classeDeBotao('primario', 'medio', 'w-full')}
+            >
+              {enviando ? 'Entrando…' : 'Entrar'}
+            </button>
+          </form>
+        </Card>
+      </div>
     </main>
   )
 }

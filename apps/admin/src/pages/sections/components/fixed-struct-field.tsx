@@ -28,22 +28,24 @@ export function FixedStructFieldEditor({
   errosPorCaminho,
 }: FixedStructFieldEditorProps) {
   return (
-    <fieldset className="flex flex-col gap-3 rounded border border-gray-200 p-3">
-      <legend className="px-1 text-sm font-medium text-gray-700">{label}</legend>
-      {campos.map((campo) => {
-        const caminho = `${caminhoBase}.${campo.chave}`
-        return (
-          <ScalarFieldEditor
-            key={campo.chave}
-            id={caminho}
-            label={rotuloDoCampo(campo.chave)}
-            tipo={campo.tipo}
-            value={valor[campo.chave]}
-            onChange={(novoValor) => onChange({ ...valor, [campo.chave]: novoValor })}
-            erro={errosPorCaminho[caminho]}
-          />
-        )
-      })}
+    <fieldset className="min-w-0">
+      <legend className="mb-3 text-sm font-semibold text-navy">{label}</legend>
+      <div className="flex flex-col gap-4 pt-1">
+        {campos.map((campo) => {
+          const caminho = `${caminhoBase}.${campo.chave}`
+          return (
+            <ScalarFieldEditor
+              key={campo.chave}
+              id={caminho}
+              label={rotuloDoCampo(campo.chave)}
+              tipo={campo.tipo}
+              value={valor[campo.chave]}
+              onChange={(novoValor) => onChange({ ...valor, [campo.chave]: novoValor })}
+              erro={errosPorCaminho[caminho]}
+            />
+          )
+        })}
+      </div>
     </fieldset>
   )
 }

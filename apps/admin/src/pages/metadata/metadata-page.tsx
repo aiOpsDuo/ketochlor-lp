@@ -1,6 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../../auth/auth-context'
 import { ApiError, apiFetch } from '../../lib/api-client'
+import { ActionBar } from '../../shared/ActionBar'
+import { Card } from '../../shared/Card'
+import { Notice } from '../../shared/Notice'
+import { atributosDeCampo, FormField } from '../../shared/FormField'
+import { classeDeBotao, classeDeCampo } from '../../shared/classes'
 import type { SiteMetadata } from './site-metadata'
 
 /** Corpo de formulário controlado — sempre texto, mesmo para `ogImageMediaId` (ver comentário abaixo). */
@@ -118,73 +123,84 @@ export function MetadataPage() {
   }
 
   if (erroCarregamento) {
-    return (
-      <p role="alert" className="text-sm text-red-600">
-        {erroCarregamento}
-      </p>
-    )
+    return <Notice tipo="erro">{erroCarregamento}</Notice>
   }
 
   if (!formulario) {
-    return <p className="text-sm text-gray-500">Carregando metadados…</p>
+    return <p className="text-sm text-graytxt">Carregando metadados…</p>
   }
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="mb-4 text-xl font-semibold text-gray-900">Metadados da página</h1>
+    // `pb-24` reserva a altura da `ActionBar` fixa no rodapé.
+    <div className="flex flex-col gap-5 pb-24">
+      <header>
+        <h1 className="text-2xl font-semibold text-navy">Metadados da página</h1>
+        <p className="mt-1 text-sm text-graytxt">
+          Título, descrição e imagem usados por buscadores e por prévias de link em redes sociais.
+        </p>
+      </header>
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          Título
-          <input
-            type="text"
-            required
-            value={formulario.title}
-            onChange={(evento) => setFormulario({ ...formulario, title: evento.target.value })}
-            className="rounded border border-gray-300 px-3 py-2 text-base"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          Descrição
-          <textarea
-            required
-            rows={4}
-            value={formulario.description}
-            onChange={(evento) => setFormulario({ ...formulario, description: evento.target.value })}
-            className="rounded border border-gray-300 px-3 py-2 text-base"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          Id da imagem de compartilhamento (opcional)
-          <input
-            type="text"
-            placeholder="id de media_assets — deixe em branco para remover"
-            value={formulario.ogImageMediaId}
-            onChange={(evento) => setFormulario({ ...formulario, ogImageMediaId: evento.target.value })}
-            className="rounded border border-gray-300 px-3 py-2 text-base"
-          />
-          <span className="text-xs text-gray-500">
-            Upload de imagem real ainda não existe nesta tela — cole aqui o id de uma mídia já cadastrada.
-          </span>
-        </label>
+        <Card>
+          <div className="flex flex-col gap-4">
+            <FormField id="metadata-title" label="Título">
+              <input
+                {...atributosDeCampo('metadata-title')}
+                type="text"
+                required
+                value={formulario.title}
+                onChange={(evento) => setFormulario({ ...formulario, title: evento.target.value })}
+                className={classeDeCampo(false)}
+              />
+            </FormField>
 
-        {erroSalvar && (
-          <p role="alert" className="text-sm text-red-600">
-            {erroSalvar}
-          </p>
-        )}
-        {salvoComSucesso && (
-          <p role="status" className="text-sm text-green-700">
-            Metadados salvos com sucesso.
-          </p>
-        )}
+            <FormField id="metadata-description" label="Descrição">
+              <textarea
+                {...atributosDeCampo('metadata-description')}
+                required
+                rows={4}
+                value={formulario.description}
+                onChange={(evento) =>
+                  setFormulario({ ...formulario, description: evento.target.value })
+                }
+                className={classeDeCampo(false)}
+              />
+            </FormField>
 
-        <button
-          type="submit"
-          disabled={salvando}
-          className="self-start rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-        >
-          {salvando ? 'Salvando…' : 'Salvar'}
-        </button>
+            <FormField
+              id="metadata-og-image"
+              label="Id da imagem de compartilhamento (opcional)"
+              ajuda="Upload de imagem real ainda não existe nesta tela — cole aqui o id de uma mídia já cadastrada."
+            >
+              <input
+                {...atributosDeCampo('metadata-og-image', { temAjuda: true })}
+                type="text"
+                placeholder="id de media_assets — deixe em branco para remover"
+                value={formulario.ogImageMediaId}
+                onChange={(evento) =>
+                  setFormulario({ ...formulario, ogImageMediaId: evento.target.value })
+                }
+                className={classeDeCampo(false)}
+              />
+            </FormField>
+          </div>
+        </Card>
+
+        <ActionBar>
+          {erroSalvar && (
+            <Notice tipo="erro" className="mr-auto">
+              {erroSalvar}
+            </Notice>
+          )}
+          {salvoComSucesso && (
+            <Notice tipo="sucesso" className="mr-auto">
+              Metadados salvos com sucesso.
+            </Notice>
+          )}
+          <button type="submit" disabled={salvando} className={classeDeBotao('primario')}>
+            {salvando ? 'Salvando…' : 'Salvar'}
+          </button>
+        </ActionBar>
       </form>
     </div>
   )

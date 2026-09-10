@@ -1,7 +1,11 @@
+import { ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../auth/auth-context'
 import { ApiError, apiFetch } from '../../lib/api-client'
+import { Card } from '../../shared/Card'
+import { Notice } from '../../shared/Notice'
+import { classeDeEtiqueta } from '../../shared/classes'
 import { SECTION_LABELS } from './section-labels'
 import type { SecaoResumo } from './section-summary'
 
@@ -55,44 +59,49 @@ export function SectionListPage() {
   }, [session])
 
   if (erro) {
-    return (
-      <p role="alert" className="text-sm text-red-600">
-        {erro}
-      </p>
-    )
+    return <Notice tipo="erro">{erro}</Notice>
   }
 
   if (!secoes) {
-    return <p className="text-sm text-gray-500">Carregando seções…</p>
+    return <p className="text-sm text-graytxt">Carregando seções…</p>
   }
 
   return (
-    <div>
-      <h1 className="mb-4 text-xl font-semibold text-gray-900">Seções da landing page</h1>
-      <ul className="divide-y divide-gray-200 rounded border border-gray-200 bg-white">
-        {secoes.map((secao) => (
-          <li key={secao.key}>
-            <Link
-              to={`/sections/${secao.key}`}
-              className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-gray-50"
-            >
-              <span className="font-medium text-gray-900">{SECTION_LABELS[secao.key]}</span>
-              <span
-                className={
-                  secao.isPublished
-                    ? 'rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800'
-                    : 'rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600'
-                }
+    <div className="flex flex-col gap-5">
+      <header>
+        <h1 className="text-2xl font-semibold text-navy">Seções da landing page</h1>
+        <p className="mt-1 text-sm text-graytxt">
+          Escolha uma seção para editar o conteúdo publicado na página.
+        </p>
+      </header>
+
+      {/* `!p-0`: a lista já tem o próprio espaçamento por linha — ver `Card`. */}
+      <Card className="!p-0">
+        <ul className="divide-y divide-cardborder">
+          {secoes.map((secao) => (
+            <li key={secao.key}>
+              <Link
+                to={`/sections/${secao.key}`}
+                className="group flex items-center gap-4 px-4 py-3.5 transition first:rounded-t-xl last:rounded-b-xl hover:bg-lighttint"
               >
-                {secao.isPublished ? 'Publicada' : 'Não publicada'}
-              </span>
-              <span className="text-sm text-gray-500">
-                Atualizado em {formatadorDeData.format(new Date(secao.updatedAt))}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+                <span className="min-w-0 flex-1 truncate font-medium text-navy group-hover:text-blue-institutional">
+                  {SECTION_LABELS[secao.key]}
+                </span>
+                <span className={classeDeEtiqueta(secao.isPublished)}>
+                  {secao.isPublished ? 'Publicada' : 'Não publicada'}
+                </span>
+                <span className="hidden text-xs text-graytxt sm:inline">
+                  Atualizado em {formatadorDeData.format(new Date(secao.updatedAt))}
+                </span>
+                <ChevronRight
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-blue-institutional"
+                />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Card>
     </div>
   )
 }

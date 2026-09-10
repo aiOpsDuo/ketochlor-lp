@@ -1,8 +1,13 @@
 import { CONTENT_SECTIONS, type SectionKey } from '@ketochlor/content-schema'
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/auth-context'
 import { ApiError, apiFetch } from '../../lib/api-client'
+import { ActionBar } from '../../shared/ActionBar'
+import { Card } from '../../shared/Card'
+import { Notice } from '../../shared/Notice'
+import { classeDeBotao, classeDeEtiqueta } from '../../shared/classes'
 import { FixedStructFieldEditor } from './components/fixed-struct-field'
 import { ImageFieldEditor } from './components/image-field'
 import { ItemListFieldEditor } from './components/item-list-field'
@@ -268,97 +273,100 @@ export function SectionDetailPage() {
   }
 
   if (!chaveValida) {
-    return (
-      <p role="alert" className="text-sm text-red-600">
-        "{chaveDaRota}" não é uma das 11 seções do CMS.
-      </p>
-    )
+    return <Notice tipo="erro">"{chaveDaRota}" não é uma das 11 seções do CMS.</Notice>
   }
 
   if (erroCarregamento) {
-    return (
-      <p role="alert" className="text-sm text-red-600">
-        {erroCarregamento}
-      </p>
-    )
+    return <Notice tipo="erro">{erroCarregamento}</Notice>
   }
 
   if (!formData || !secao) {
-    return <p className="text-sm text-gray-500">Carregando seção…</p>
+    return <p className="text-sm text-graytxt">Carregando seção…</p>
   }
 
   const porCampo = erroSalvar?.porCampo ?? {}
 
   return (
-    <div className="max-w-3xl">
-      <Link to="/" className="mb-2 inline-block text-sm text-gray-500 hover:text-gray-900">
-        ← Voltar para as seções
-      </Link>
-      <h1 className="mb-4 text-xl font-semibold text-gray-900">
-        {SECTION_LABELS[chaveDaRota]}
-      </h1>
-
-      <div className="mb-4 flex items-center gap-3 rounded border border-gray-200 bg-gray-50 p-3">
-        <span
-          className={
-            secao.isPublished
-              ? 'rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800'
-              : 'rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600'
-          }
+    // `pb-24` reserva a altura da `ActionBar` fixa no rodapé — sem isso o
+    // último campo do formulário fica coberto por ela.
+    <div className="flex flex-col gap-5 pb-24">
+      <div>
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-sm text-graytxt transition hover:text-blue-institutional"
         >
-          {secao.isPublished ? 'Publicada' : 'Não publicada'}
-        </span>
-        <button
-          type="button"
-          onClick={alternarVisibilidadeDaSecao}
-          disabled={alternandoVisibilidade}
-          className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 disabled:opacity-50"
-        >
-          {alternandoVisibilidade
-            ? 'Atualizando…'
-            : secao.isPublished
-              ? 'Ocultar seção'
-              : 'Publicar seção'}
-        </button>
-        {erroVisibilidade && (
-          <span role="alert" className="text-xs text-red-600">
-            {erroVisibilidade}
-          </span>
-        )}
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          Voltar para as seções
+        </Link>
+        <h1 className="mt-2 text-2xl font-semibold text-navy">{SECTION_LABELS[chaveDaRota]}</h1>
       </div>
 
+      <Card>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={classeDeEtiqueta(secao.isPublished)}>
+            {secao.isPublished ? 'Publicada' : 'Não publicada'}
+          </span>
+          <button
+            type="button"
+            onClick={alternarVisibilidadeDaSecao}
+            disabled={alternandoVisibilidade}
+            className={classeDeBotao('secundario', 'pequeno')}
+          >
+            {secao.isPublished ? (
+              <EyeOff aria-hidden="true" className="h-3.5 w-3.5" />
+            ) : (
+              <Eye aria-hidden="true" className="h-3.5 w-3.5" />
+            )}
+            {alternandoVisibilidade
+              ? 'Atualizando…'
+              : secao.isPublished
+                ? 'Ocultar seção'
+                : 'Publicar seção'}
+          </button>
+          <p className="text-xs text-graytxt">
+            Uma seção oculta continua editável aqui, mas não aparece na página publicada.
+          </p>
+        </div>
+        {erroVisibilidade && (
+          <Notice tipo="erro" className="mt-3">
+            {erroVisibilidade}
+          </Notice>
+        )}
+      </Card>
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+        {/* Um cartão por campo de topo de seção: é o `Card` que dá a moldura
+            branca, então os editores compostos (imagem, listas, subestrutura)
+            trazem só o próprio `fieldset`/`legend`, sem borda própria. */}
         {descritores.map((descritor) => (
-          <CampoDaSecao
-            key={descritor.chave}
-            descritor={descritor}
-            formData={formData}
-            visibilidade={visibilidade}
-            onAtualizarCampo={atualizarCampo}
-            onAtualizarListaDeItens={atualizarListaDeItens}
-            errosPorCaminho={porCampo}
-            accessToken={session?.access_token ?? ''}
-          />
+          <Card key={descritor.chave}>
+            <CampoDaSecao
+              descritor={descritor}
+              formData={formData}
+              visibilidade={visibilidade}
+              onAtualizarCampo={atualizarCampo}
+              onAtualizarListaDeItens={atualizarListaDeItens}
+              errosPorCaminho={porCampo}
+              accessToken={session?.access_token ?? ''}
+            />
+          </Card>
         ))}
 
-        {erroSalvar && (
-          <p role="alert" className="text-sm text-red-600">
-            {erroSalvar.mensagem}
-          </p>
-        )}
-        {salvoComSucesso && (
-          <p role="status" className="text-sm text-green-700">
-            Seção salva com sucesso.
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={salvando}
-          className="self-start rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-        >
-          {salvando ? 'Salvando…' : 'Salvar'}
-        </button>
+        <ActionBar>
+          {erroSalvar && (
+            <Notice tipo="erro" className="mr-auto">
+              {erroSalvar.mensagem}
+            </Notice>
+          )}
+          {salvoComSucesso && (
+            <Notice tipo="sucesso" className="mr-auto">
+              Seção salva com sucesso.
+            </Notice>
+          )}
+          <button type="submit" disabled={salvando} className={classeDeBotao('primario')}>
+            {salvando ? 'Salvando…' : 'Salvar'}
+          </button>
+        </ActionBar>
       </form>
     </div>
   )
