@@ -259,7 +259,6 @@ Branch por tarefa **obrigatória**, Pull Request **obrigatório** para integrar 
 - Execução: sequencial
 - Status: concluída — PR #34 (squash-merge em `main`, `e0570cd`). Formulário dirigido por introspecção do schema Zod de `@ketochlor/content-schema` (5 formas de campo, sem hardcode por seção). Upload de imagem real (direto ao Storage). Reverificado pelo orquestrador simulando o payload exato da UI (`data`+`itemVisibility` juntos) contra a API real — item oculto corretamente ausente de `GET /api/content`. **Gap conhecido e documentado, não bloqueante:** upload de imagem não cria registro em `media_assets` (não existe endpoint de confirmação pós-upload, fora do contrato do SDD para `api/modulo-media`) — a imagem funciona (URL pública válida), só falta o registro de bookkeeping.
 - Toca documentação: sim — `docs/PAINEL.md`
-- Status: pendente
 
 #### controle-visibilidade — Visibilidade de seção e item
 - Origem: planejada
