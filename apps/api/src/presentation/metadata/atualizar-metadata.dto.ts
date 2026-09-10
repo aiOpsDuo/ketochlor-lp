@@ -10,5 +10,5 @@
 export interface AtualizarMetadataDto {
   title: string;
   description: string;
-  ogImageMediaId: string | null;
+  ogImageUrl: string | null;
 }

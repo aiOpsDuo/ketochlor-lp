@@ -24,7 +24,7 @@ describe('SupabaseSiteMetadataRepository (infra)', () => {
     const atualizado = await repositorio.atualizar({
       title: 'Ketochlor® — título de teste de integração',
       description: 'Descrição de teste de integração.',
-      ogImageMediaId: null,
+      ogImageUrl: null,
       updatedBy: operadorId,
     });
 

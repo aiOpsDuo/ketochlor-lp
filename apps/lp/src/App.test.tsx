@@ -26,7 +26,7 @@ function construirConteudoCompleto(): PublishedContent {
       cta_secundario: CONTENT_SECTIONS.cta_secundario.initialContent,
       faq: CONTENT_SECTIONS.faq.initialContent,
     },
-    metadata: { title: 'Ketochlor®', description: 'desc', ogImageMediaId: null },
+    metadata: { title: 'Ketochlor®', description: 'desc', ogImageUrl: null },
   };
 }
 

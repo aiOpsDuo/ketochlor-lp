@@ -12,7 +12,7 @@ const ID_SINGLETON = true;
 interface SiteMetadataRow {
   title: string;
   description: string;
-  og_image_media_id: string | null;
+  og_image_url: string | null;
   updated_at: string;
   updated_by: string | null;
 }
@@ -21,7 +21,7 @@ function paraSiteMetadataPersistido(row: SiteMetadataRow): SiteMetadataPersistid
   return {
     title: row.title,
     description: row.description,
-    ogImageMediaId: row.og_image_media_id,
+    ogImageUrl: row.og_image_url,
     updatedAt: row.updated_at,
     updatedBy: row.updated_by,
   };
@@ -52,7 +52,7 @@ export class SupabaseSiteMetadataRepository implements SiteMetadataRepository {
       .update({
         title: input.title,
         description: input.description,
-        og_image_media_id: input.ogImageMediaId,
+        og_image_url: input.ogImageUrl,
         updated_at: new Date().toISOString(),
         updated_by: input.updatedBy,
       })

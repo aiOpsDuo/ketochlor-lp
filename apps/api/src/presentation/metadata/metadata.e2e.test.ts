@@ -76,7 +76,7 @@ describe('Metadata (e2e) — GET/PUT /api/admin/metadata + GET /api/content', ()
     await repositorioDireto.atualizar({
       title: estadoOriginal.title,
       description: estadoOriginal.description,
-      ogImageMediaId: estadoOriginal.ogImageMediaId,
+      ogImageUrl: estadoOriginal.ogImageUrl,
       updatedBy: estadoOriginal.updatedBy,
     });
 
@@ -94,7 +94,7 @@ describe('Metadata (e2e) — GET/PUT /api/admin/metadata + GET /api/content', ()
     it('rejeita PUT /api/admin/metadata sem token', async () => {
       await request(app.getHttpServer())
         .put('/api/admin/metadata')
-        .send({ title: 'Título', description: 'Descrição', ogImageMediaId: null })
+        .send({ title: 'Título', description: 'Descrição', ogImageUrl: null })
         .expect(401);
     });
   });
@@ -104,7 +104,7 @@ describe('Metadata (e2e) — GET/PUT /api/admin/metadata + GET /api/content', ()
       const resposta = await request(app.getHttpServer())
         .put('/api/admin/metadata')
         .set('Authorization', authHeader())
-        .send({ title: '   ', description: 'Descrição válida de teste', ogImageMediaId: null });
+        .send({ title: '   ', description: 'Descrição válida de teste', ogImageUrl: null });
 
       expect(resposta.status).toBe(422);
       expect(Array.isArray(resposta.body.erros)).toBe(true);
@@ -117,29 +117,59 @@ describe('Metadata (e2e) — GET/PUT /api/admin/metadata + GET /api/content', ()
       const resposta = await request(app.getHttpServer())
         .put('/api/admin/metadata')
         .set('Authorization', authHeader())
-        .send({ title: 'Título válido de teste', description: '', ogImageMediaId: null });
+        .send({ title: 'Título válido de teste', description: '', ogImageUrl: null });
 
       expect(resposta.status).toBe(422);
       expect(
         resposta.body.erros.some((erro: { campo: string }) => erro.campo === 'description'),
       ).toBe(true);
     });
+
+    it('recusa ogImageUrl que não é uma URL http(s) válida com 422 (correção `ajustes/corrige-imagem-metadados`)', async () => {
+      const resposta = await request(app.getHttpServer())
+        .put('/api/admin/metadata')
+        .set('Authorization', authHeader())
+        .send({
+          title: 'Título válido de teste',
+          description: 'Descrição válida de teste',
+          ogImageUrl: 'não-é-uma-url',
+        });
+
+      expect(resposta.status).toBe(422);
+      expect(
+        resposta.body.erros.some((erro: { campo: string }) => erro.campo === 'ogImageUrl'),
+      ).toBe(true);
+    });
+
+    it('aceita ogImageUrl como uma URL http(s) válida', async () => {
+      const resposta = await request(app.getHttpServer())
+        .put('/api/admin/metadata')
+        .set('Authorization', authHeader())
+        .send({
+          title: 'Título válido de teste',
+          description: 'Descrição válida de teste',
+          ogImageUrl: 'https://exemplo.com/imagem-social.png',
+        });
+
+      expect(resposta.status).toBe(200);
+      expect(resposta.body.ogImageUrl).toBe('https://exemplo.com/imagem-social.png');
+    });
   });
 
   describe('PUT /api/admin/metadata → reflexo imediato em GET /api/admin/metadata e GET /api/content', () => {
-    it('salva title/description/ogImageMediaId, preenche updatedBy, e reflete nos dois GETs', async () => {
+    it('salva title/description/ogImageUrl, preenche updatedBy, e reflete nos dois GETs', async () => {
       const novoTitle = `Ketochlor® — título de teste e2e ${randomUUID()}`;
       const novaDescription = 'Descrição de teste e2e para os metadados do site.';
 
       const respostaPut = await request(app.getHttpServer())
         .put('/api/admin/metadata')
         .set('Authorization', authHeader())
-        .send({ title: novoTitle, description: novaDescription, ogImageMediaId: null });
+        .send({ title: novoTitle, description: novaDescription, ogImageUrl: null });
 
       expect(respostaPut.status).toBe(200);
       expect(respostaPut.body.title).toBe(novoTitle);
       expect(respostaPut.body.description).toBe(novaDescription);
-      expect(respostaPut.body.ogImageMediaId).toBeNull();
+      expect(respostaPut.body.ogImageUrl).toBeNull();
       expect(respostaPut.body.updatedBy).toBe(userId);
 
       const respostaGetAdmin = await request(app.getHttpServer())

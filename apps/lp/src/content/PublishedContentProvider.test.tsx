@@ -30,7 +30,7 @@ describe('PublishedContentProvider / usePublishedContent', () => {
         json: () =>
           Promise.resolve({
             sections: contentSnapshot.sections,
-            metadata: { title: 'Título vindo da API', description: 'd', ogImageMediaId: null },
+            metadata: { title: 'Título vindo da API', description: 'd', ogImageUrl: null },
           }),
       }),
     );

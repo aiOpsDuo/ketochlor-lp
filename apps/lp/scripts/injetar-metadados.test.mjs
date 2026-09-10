@@ -108,7 +108,7 @@ describe('injetarMetadados', () => {
     const resultado = injetarMetadados(HTML_BASE, {
       title: 'Título real',
       description: 'Descrição real.',
-      ogImageMediaId: 'https://exemplo.com/social.png',
+      ogImageUrl: 'https://exemplo.com/social.png',
     });
 
     expect(resultado).toContain('<title>Título real</title>');
@@ -126,16 +126,16 @@ describe('injetarMetadados', () => {
     const resultado = injetarMetadados(HTML_BASE, {
       title: '   ',
       description: '',
-      ogImageMediaId: null,
+      ogImageUrl: null,
     });
     expect(resultado).toBe(HTML_BASE);
   });
 
-  it('ignora ogImageMediaId quando é um id cru (não uma URL), sem quebrar o HTML', () => {
+  it('ignora ogImageUrl quando é um id cru (não uma URL), sem quebrar o HTML', () => {
     const resultado = injetarMetadados(HTML_BASE, {
       title: 'Título real',
       description: 'Descrição real.',
-      ogImageMediaId: 'media-id-cru-123',
+      ogImageUrl: 'media-id-cru-123',
     });
     expect(resultado).toContain('<title>Título real</title>');
     expect(resultado).not.toContain('og:image');
@@ -166,7 +166,7 @@ describe('injetarMetadadosNoBuild', () => {
         metadata: {
           title: 'Ketochlor real',
           description: 'Descrição publicada real.',
-          ogImageMediaId: 'https://exemplo.com/og.png',
+          ogImageUrl: 'https://exemplo.com/og.png',
         },
       }),
       'utf-8',
@@ -195,7 +195,7 @@ describe('injetarMetadadosNoBuild', () => {
   it('não falha e mantém o index.html quando metadata está vazio no instantâneo', async () => {
     await writeFile(
       snapshotPath,
-      JSON.stringify({ sections: {}, metadata: { title: '', description: '', ogImageMediaId: null } }),
+      JSON.stringify({ sections: {}, metadata: { title: '', description: '', ogImageUrl: null } }),
       'utf-8',
     );
 

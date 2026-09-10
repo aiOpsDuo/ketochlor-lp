@@ -26,7 +26,15 @@ export type PublishedSections = {
 export interface PublishedSiteMetadata {
   title: string;
   description: string;
-  ogImageMediaId: string | null;
+  /**
+   * URL pública pronta para uso em `<meta property="og:image">` (SDD §
+   * Modelo de dados — `site_metadata.og_image_url`, renomeada de
+   * `og_image_media_id` na tarefa `ajustes/corrige-imagem-metadados`: o
+   * campo nunca resolvia para uma URL de verdade, porque nenhuma rota da API
+   * chegava a criar o `media_assets` que ele deveria referenciar). `null`
+   * quando nenhuma imagem de compartilhamento foi definida.
+   */
+  ogImageUrl: string | null;
 }
 
 /** Formato completo de `GET /api/content` consumido pela LP. */

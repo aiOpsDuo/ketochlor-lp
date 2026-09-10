@@ -9,7 +9,7 @@
 export interface SiteMetadata {
   title: string
   description: string
-  ogImageMediaId: string | null
+  ogImageUrl: string | null
   updatedAt: string
   updatedBy: string | null
 }

@@ -48,8 +48,8 @@ Quatro tabelas, todas em `public`. Detalhe completo de cada coluna em [`agent_co
 | Tabela | Propósito |
 |---|---|
 | `content_sections` | Uma linha por seção da LP (as 11 seções fechadas do PRD), com o conteúdo em `data jsonb`, a visibilidade de item de lista em `item_visibility jsonb` (ver nota abaixo) e uma flag `is_published` de visibilidade da seção inteira. |
-| `site_metadata` | Registro único (singleton) com título, descrição e imagem de Open Graph do site. |
-| `media_assets` | Um registro por imagem enviada ao Storage, referenciada pelos documentos de `content_sections`/`site_metadata`. |
+| `site_metadata` | Registro único (singleton) com título, descrição e a URL pública (`og_image_url`) da imagem de Open Graph do site. |
+| `media_assets` | Um registro por imagem enviada ao Storage pelo fluxo de confirmação de `POST /api/admin/media/upload-url` (`docs/API.md` § Mídia) — hoje nenhum documento de `content_sections`/`site_metadata` referencia essas linhas por id; ambos guardam a URL pública diretamente (ver nota abaixo). |
 | `leads` | Um registro por envio do formulário de Material Técnico da LP pública. |
 
 ### Row Level Security
@@ -59,6 +59,10 @@ RLS está **habilitado nas quatro tabelas, sem nenhuma policy** para os papéis 
 ### `content_sections.item_visibility`
 
 Coluna adicionada pela migration `20260908210000_add_item_visibility_to_content_sections.sql` (tarefa `api/infra-supabase-adapters`), separada de `data` de propósito: guarda o `ItemVisibilityMap` do Domínio (`apps/api/src/domain/visibilidade/filtrar-conteudo-publicado.ts`), um mapa `{ campoDaLista: boolean[] }` alinhado por índice às listas dentro de `data`. Não fica dentro do próprio `data` porque os esquemas Zod de `@ketochlor/content-schema` usam modo "strip" — um campo de visibilidade ali seria descartado silenciosamente pela validação. O repositório de Infraestrutura sempre escreve `data` e `item_visibility` na mesma instrução `UPDATE`, nunca em duas queries separadas, para as duas nunca ficarem dessincronizadas (ver `agent_context/PLAN.md`, nota de design após `api/dominio-esquemas-e-regras`).
+
+### `site_metadata.og_image_url` (renomeada de `og_image_media_id`)
+
+A migration `20260910120000_rename_site_metadata_og_image_to_url.sql` (tarefa `ajustes/corrige-imagem-metadados`, achado de QA) renomeia a coluna `og_image_media_id` (`uuid`) para `og_image_url` e a retipa para `text`. Motivo: a coluna nasceu como referência a `media_assets.id`, mas nenhuma rota da API jamais criava esse registro (`MediaAssetsRepository.criar` existe mas nenhum caso de uso o chama, ver linha de `media_assets` na tabela acima) — o campo era sempre `null` na prática. Agora guarda a URL pública diretamente, validada em `PUT /api/admin/metadata` (`docs/API.md` § Metadados), o mesmo padrão já usado pelas imagens de seção (`{ url, alt }` em `content_sections.data`).
 
 ### Bucket de Storage
 
