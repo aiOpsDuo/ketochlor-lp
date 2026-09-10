@@ -1,0 +1,149 @@
+# Blueprint do Render — a pilha inteira num serviço só.
+#
+# Um serviço, um processo, uma porta, e por consequência uma origem:
+#
+#   https://<nome>.onrender.com/          -> LP        (apps/lp)
+#   https://<nome>.onrender.com/admin     -> painel    (apps/admin)
+#   https://<nome>.onrender.com/api/*     -> API       (apps/api)
+#
+# É o mesmo "ponto único de entrada" do SDD, e é ele que dita este desenho: o
+# painel tem de dividir a origem com a LP. Serviço estático + serviço web
+# separados dariam dois endereços; dois serviços com o nginx do
+# `docker/nginx.conf` encaminhando dariam o endereço certo, ao custo de uma
+# peça a mais para pagar e para cair. Quem une os caminhos aqui é o próprio
+# processo da API — ver `apps/api/src/presentation/static-sites.ts`.
+#
+# Runtime `node`, e não `docker`: as duas funcionam, e a diferença está em
+# `docs/RENDER.md` § "Node nativo ou Docker". O `docker-compose.yml` da raiz
+# continua sendo o caminho local, com nginx e as duas imagens.
+#
+# Como aplicar: no painel do Render, New > Blueprint, aponte para este
+# repositório. O Render pede os valores marcados com `sync: false` — nenhum
+# segredo vive neste arquivo.
+
+services:
+  - type: web
+    name: ketochlor
+    runtime: node
+    # Free hiberna depois de 15 min sem tráfego, e a primeira visita seguinte
+    # espera o processo subir (perto de um minuto). Para quem vai validar
+    # conteúdo no painel isso incomoda — se incomodar, `starter` não hiberna, e
+    # a troca é esta linha.
+    plan: free
+    region: oregon
+    # A branch de publicação. `main` não serve para o Render sem as alterações
+    # que estão aqui (ver docs/RENDER.md).
+    branch: deploy-homolog
+
+    # `--include=dev` não é redundante: `NODE_ENV=production` abaixo vale
+    # TAMBÉM durante o build, e o npm trata essa variável como `--omit=dev`.
+    # Sem o `--include=dev` o build morre no `tsc -b` da LP e do painel, porque
+    # `vite`, `typescript`, `tailwindcss` e `@nestjs/cli` são todos
+    # devDependencies — construir estas aplicações exige as dependências de
+    # desenvolvimento, por definição.
+    #
+    # `packages/content-schema` primeiro, e explicitamente: `npm ci` só cria o
+    # link `node_modules/@ketochlor/content-schema` -> `packages/content-schema`,
+    # não builda workspace nenhum, e o pacote aponta `main` para `dist/`. Sem
+    # este passo, o `prebuild` da LP (`gerar-instantaneo-de-conteudo.mjs`, que
+    # importa `CONTENT_SECTIONS`) quebra antes do primeiro `vite build`. Mesma
+    # ordem do `docker/Dockerfile`.
+    #
+    # `packages/design-tokens` NÃO entra na lista de propósito: não tem script
+    # `build` — `main` aponta direto para `src/index.ts`, transpilado on-the-fly
+    # pelo loader do Tailwind (ver o comentário no `docker/Dockerfile`).
+    #
+    # Os builds explícitos, e não o `npm run build` da raiz: aqui a lista é o
+    # contrato do deploy. Se um dia entrar um workspace novo no monorepo, é
+    # melhor ele faltar visivelmente nesta linha do que entrar sem ninguém ter
+    # decidido que ele vai ao ar.
+    buildCommand: >-
+      npm ci --include=dev
+      && npm run build -w packages/content-schema
+      && npm run build -w apps/lp
+      && npm run build -w apps/admin
+      && npm run build -w apps/api
+
+    # `dist/src/main.js`, e não `dist/main.js`: `nest build` preserva `src/`
+    # dentro de `dist/` (ver `apps/api/nest-cli.json`, `sourceRoot: "src"`) —
+    # o mesmo caminho do `CMD` do `docker/Dockerfile`.
+    #
+    # `node ...` direto, e não um `npm start`: um processo só, sem o npm no
+    # meio para engolir sinal de parada. O diretório de trabalho é a raiz do
+    # repositório, mas isso não importa — `static-sites.ts` acha os `dist` a
+    # partir de `__dirname`, não do diretório de trabalho.
+    startCommand: node apps/api/dist/src/main.js
+
+    # A sonda que o Render usa para decidir se a versão nova entrou no ar. Sem
+    # ela, uma publicação que sobe e morre em laço passa por saudável.
+    healthCheckPath: /api/health
+
+    envVars:
+      # Explícita, e não herdada de `engines.node`: `@supabase/supabase-js`
+      # (^2.116) exige o WebSocket nativo que só existe a partir do Node 22 —
+      # com Node 20 a API sobe, inicializa os módulos e morre ao instanciar o
+      # cliente Supabase com "Node.js detected but native WebSocket not found",
+      # em laço de reinício, sem nunca ficar saudável. 22 é a versão do
+      # `docker/Dockerfile`, e é nela que o projeto é verificado.
+      - key: NODE_VERSION
+        value: "22"
+
+      # Em build, é o que exige o `--include=dev` acima — ver o comentário do
+      # `buildCommand`. Em execução, é o que faz o Vite/Nest assumirem modo de
+      # produção.
+      - key: NODE_ENV
+        value: production
+
+      # --- Servidor: só o processo vê estas -----------------------------
+      # `sync: false` mantém o valor fora do repositório: o Render o pede ao
+      # aplicar o blueprint e o guarda no serviço. São as mesmas variáveis de
+      # `apps/api/.env.example`, validadas em
+      # `apps/api/src/infrastructure/config/supabase-env.ts`.
+      - key: SUPABASE_URL
+        sync: false
+      # Chave `service_role` — ignora RLS. Jamais no navegador.
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Chaves públicas com que a API verifica o token dos operadores.
+      # Normalmente <SUPABASE_URL>/auth/v1/.well-known/jwks.json
+      #
+      # `supabase-env.ts` exige esta OU `SUPABASE_JWT_SECRET`. Contra um projeto
+      # Supabase real é esta: projetos atuais assinam com chave assimétrica.
+      # Só um projeto legado que nunca migrou precisa do segredo HS256 —
+      # descomente abaixo se for o caso.
+      - key: SUPABASE_JWKS_URL
+        sync: false
+      # - key: SUPABASE_JWT_SECRET
+      #   sync: false
+
+      # Bucket de Storage das imagens do CMS. Opcional — o default é "images".
+      # Se descomentar, mantenha igual a `VITE_SUPABASE_STORAGE_BUCKET`: são o
+      # mesmo bucket visto dos dois lados (a API assina o upload, o painel
+      # envia os bytes).
+      # - key: SUPABASE_STORAGE_BUCKET
+      #   value: images
+
+      # --- Navegador: embutidas no build do painel -----------------------
+      # Públicas por definição — o Vite as escreve no arquivo que vai ao
+      # navegador. NUNCA acrescente aqui a chave `service_role`.
+      #
+      # No runtime `node` elas são variáveis de ambiente comuns e o Vite as lê
+      # do ambiente do build, sem precisar de `ARG` nenhum. A LP não usa
+      # nenhuma: ela fala com `/api/*` por caminho relativo, na mesma origem.
+      - key: VITE_SUPABASE_URL
+        sync: false
+      # Chave publicável/anon. Só troca e-mail e senha por um token; não alcança
+      # o banco (RLS) nem o Storage sem sessão.
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      # - key: VITE_SUPABASE_STORAGE_BUCKET
+      #   value: images
+
+      # Opcional. O `prebuild` da LP tenta gerar o instantâneo de conteúdo a
+      # partir de uma API no ar; sem esta variável ele tenta `localhost:3000`,
+      # falha em silêncio e preserva o instantâneo já commitado — que é o
+      # comportamento correto e não derruba o build. Apontar para o serviço já
+      # publicado faz cada deploy embarcar o conteúdo mais recente como reserva.
+      # Deixe comentada no PRIMEIRO deploy: o serviço ainda não existe.
+      # - key: CONTENT_SNAPSHOT_API_URL
+      #   value: https://ketochlor.onrender.com/api/content

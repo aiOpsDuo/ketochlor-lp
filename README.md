@@ -12,7 +12,7 @@ Landing page B2B de captação de leads (médicos-veterinários) para o Ketochlo
 |---|---|
 | LP pública (`apps/lp`) | React 18 + Vite 5 + TypeScript 5 + Tailwind 3 |
 | Painel (`apps/admin`) | React 18 + Vite 5 + TypeScript 5 |
-| API do CMS (`apps/api`) | NestJS 11 (Node 20+) + TypeScript 5 |
+| API do CMS (`apps/api`) | NestJS 11 (Node 22+) + TypeScript 5 |
 | Plataforma de dados | Supabase (Postgres + Storage + Auth) |
 
 Decisões e trade-offs de cada escolha: [agent_context/SDD.md § Decisões técnicas e trade-offs](agent_context/SDD.md).
@@ -39,3 +39,4 @@ Para editar com recarga automática, ou depurar um dos três processos isoladame
 - Conteúdo da LP, esquemas de seção e como adicionar um campo novo: [docs/CONTEUDO-DA-LP.md](docs/CONTEUDO-DA-LP.md)
 - API: configuração, variáveis de ambiente e testes de integração: [docs/API.md](docs/API.md)
 - Painel: configuração, autenticação e fluxo de login: [docs/PAINEL.md](docs/PAINEL.md)
+- Publicar em homologação no Render (a pilha inteira num serviço só): [docs/RENDER.md](docs/RENDER.md)

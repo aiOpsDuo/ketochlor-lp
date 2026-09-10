@@ -1,0 +1,159 @@
+# syntax=docker/dockerfile:1
+
+# Imagem de publicação no Render: UM contêiner, UMA porta, tudo na mesma origem.
+#
+#   <url do serviço>/          -> LP
+#   <url do serviço>/admin     -> painel
+#   <url do serviço>/api/*     -> API
+#
+# Alternativa ao runtime `node` declarado em `render.yaml` — ver
+# `docs/RENDER.md` § "Node nativo ou Docker". As duas rotas sobem exatamente o
+# mesmo código; só muda quem monta o ambiente.
+#
+# Por que um Dockerfile próprio, e não um estágio a mais em `docker/Dockerfile`:
+# o Render não expõe o `--target` do Docker (o `render.yaml` tem
+# `dockerfilePath` e `dockerContext`, e nada de alvo), então lá sempre se
+# constrói o ÚLTIMO estágio do arquivo. Um alvo `render` no fim daquele
+# Dockerfile funcionaria hoje e quebraria calado no dia em que alguém
+# acrescentasse um estágio depois dele.
+#
+# Diferença de arquitetura em relação ao `docker-compose.yml`: lá são dois
+# contêineres (API + nginx) e o nginx une os caminhos. Um serviço do Render é um
+# contêiner com uma porta, e `/admin` precisa ser a mesma origem de `/` e
+# `/api/*`. Manter o nginx exigiria dois serviços, um encaminhando para o outro
+# — mais uma peça para pagar e para cair. Então o próprio processo da API serve
+# os dois `dist`, com o mesmo mapa de caminhos do `docker/nginx.conf`; a
+# implementação está em `apps/api/src/presentation/static-sites.ts`.
+#
+# Nenhum segredo entra aqui. O Render traduz as variáveis de ambiente do serviço
+# em argumentos de build, e por isso só as `VITE_*` — públicas por definição, o
+# Vite as embute no arquivo servido ao navegador — têm `ARG` correspondente.
+# `SUPABASE_SERVICE_ROLE_KEY` não tem, de propósito: ela só existe em variável
+# de ambiente, em execução, e nunca numa camada de imagem.
+#
+# Build sempre a partir da raiz do monorepo (contexto = `.`), nunca a partir de
+# `docker/`: os workspaces precisam ser instalados juntos via `npm ci` na raiz.
+
+# Node 22, não 20: `@supabase/supabase-js` (^2.116) exige o `WebSocket` global
+# nativo, disponível só a partir do Node 22 — em Node 20 o cliente falha ao
+# instanciar mesmo com todas as variáveis corretas ("Node.js detected but native
+# WebSocket not found"). Mesma versão do `docker/Dockerfile`: as duas imagens
+# precisam subir o mesmo código.
+ARG NODE_VERSION=22-alpine
+
+# ---------------------------------------------------------------------------
+# Dependências de desenvolvimento — o que os builds precisam. Copiar só os
+# manifestos antes do código faz esta camada sobreviver a qualquer alteração de
+# fonte, e é o que mantém o build do Render curto na maioria das publicações.
+#
+# Todo workspace declarado em `workspaces` precisa ter o `package.json` presente
+# ANTES de `npm ci`: é ele que faz o npm criar o link
+# `node_modules/@ketochlor/<pacote>` -> `packages/<pacote>`. Faltando o arquivo,
+# `npm ci` falha por divergência com o lockfile — que já lista o workspace — em
+# vez de simplesmente ignorá-lo.
+# ---------------------------------------------------------------------------
+FROM node:${NODE_VERSION} AS deps
+WORKDIR /repo
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/admin/package.json apps/admin/
+COPY apps/lp/package.json apps/lp/
+COPY packages/content-schema/package.json packages/content-schema/
+COPY packages/design-tokens/package.json packages/design-tokens/
+RUN npm ci
+
+# ---------------------------------------------------------------------------
+# Dependências de execução — as mesmas versões do lockfile, sem as de
+# desenvolvimento. É a base da imagem final.
+# ---------------------------------------------------------------------------
+FROM node:${NODE_VERSION} AS deps-producao
+WORKDIR /repo
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/admin/package.json apps/admin/
+COPY apps/lp/package.json apps/lp/
+COPY packages/content-schema/package.json packages/content-schema/
+COPY packages/design-tokens/package.json packages/design-tokens/
+RUN npm ci --omit=dev
+
+# ---------------------------------------------------------------------------
+# Código-fonte sobre as dependências de desenvolvimento.
+# ---------------------------------------------------------------------------
+FROM deps AS fonte
+COPY . .
+
+# ---------------------------------------------------------------------------
+# `packages/content-schema` antes de tudo: `npm ci` só criou o link entre os
+# workspaces, não buildou nenhum, e o pacote aponta `main` para `dist/`. A API
+# o consome em runtime (`CONTENT_SECTIONS` é valor real, não só tipo) e o
+# `prebuild` da LP o importa.
+#
+# `packages/design-tokens` não aparece aqui de propósito: não tem script
+# `build` — é TypeScript puro consumido pelo loader do Tailwind, que o
+# transpila on-the-fly. Ver o comentário no `docker/Dockerfile`.
+# ---------------------------------------------------------------------------
+FROM fonte AS build-schema
+RUN npm run build -w packages/content-schema
+
+# ---------------------------------------------------------------------------
+# Build da API.
+# ---------------------------------------------------------------------------
+FROM build-schema AS build-api
+RUN npm run build -w apps/api
+
+# ---------------------------------------------------------------------------
+# Build da LP e do painel.
+#
+# O painel sai com `base: '/admin/'` (`apps/admin/vite.config.ts`), que é
+# justamente o que faz `<url do serviço>/admin` funcionar sem reescrever
+# caminho nenhum em execução.
+#
+# A LP não recebe `ARG` nenhum: ela fala com `/api/content` e `/api/leads` por
+# caminho relativo. Com origem única não existe requisição entre origens — é
+# por isso que a API não precisa liberar CORS para o Render.
+#
+# O `prebuild` da LP tenta baixar o instantâneo de conteúdo de uma API no ar;
+# aqui não há nenhuma, ele falha em silêncio e preserva o instantâneo commitado.
+# É o comportamento projetado, e não derruba o build.
+# ---------------------------------------------------------------------------
+FROM build-schema AS build-web
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ARG VITE_SUPABASE_STORAGE_BUCKET
+ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL} \
+    VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY} \
+    VITE_SUPABASE_STORAGE_BUCKET=${VITE_SUPABASE_STORAGE_BUCKET}
+RUN npm run build -w apps/lp && npm run build -w apps/admin
+
+# ---------------------------------------------------------------------------
+# Imagem final.
+#
+# Parte de `deps-producao` em vez de copiar node_modules para uma imagem limpa:
+# num monorepo o npm nem sempre iça tudo para a raiz — `jose` e `zod`, por
+# exemplo, podem ficar em `apps/<app>/node_modules` quando há outra versão em
+# outro workspace. Copiar só `/repo/node_modules` deixaria a API subindo e
+# morrendo em `Cannot find module`. Herdar o estágio traz a árvore inteira, no
+# lugar em que o `npm ci` a deixou.
+#
+# Os `dist` da LP e do painel vão para o lugar em que o repositório os deixa
+# (`apps/lp/dist`, `apps/admin/dist`), porque é ali que `static-sites.ts` os
+# procura — relativo ao próprio arquivo compilado, sem variável de ambiente no
+# caminho.
+#
+# Sem `EXPOSE` e sem porta fixa: o Render injeta `PORT` e descobre a porta pelo
+# processo que escuta. `main.ts` lê `PORT` e escuta em `0.0.0.0` — em localhost
+# o Render não acharia porta aberta nenhuma.
+#
+# `dist/src/main.js`, e não `dist/main.js`: `nest build` preserva `src/` dentro
+# de `dist/` (`apps/api/nest-cli.json`, `sourceRoot: "src"`).
+# ---------------------------------------------------------------------------
+FROM deps-producao AS render
+WORKDIR /repo/apps/api
+ENV NODE_ENV=production
+COPY --from=build-api /repo/apps/api/dist /repo/apps/api/dist
+# O pacote de esquemas é uma dependência de workspace: `npm ci` deixou um link
+# em node_modules apontando para cá, então o `dist` precisa existir.
+COPY --from=build-api /repo/packages/content-schema/dist /repo/packages/content-schema/dist
+COPY --from=build-web /repo/apps/lp/dist /repo/apps/lp/dist
+COPY --from=build-web /repo/apps/admin/dist /repo/apps/admin/dist
+CMD ["node", "dist/src/main.js"]
