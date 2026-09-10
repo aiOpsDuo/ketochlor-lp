@@ -413,6 +413,16 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Toca documentação: sim — `docs/DOCKER.md` (variáveis exigidas pelo `docker-compose.yml`), `.env.example` da raiz se ainda não existir um cobrindo essas variáveis para o compose
 - Status: concluída — PR #48 (squash-merge em `main`, `bea4834`). Criado `.env.example` na raiz (não existia). **Três bugs adicionais e pré-existentes descobertos e corrigidos no mesmo PR** (documentados em `agent_context/CHANGELOG.md`): `packages/content-schema` nunca era buildado no Dockerfile antes de `lp`/`admin`/`api` (falha de build), `CMD` da imagem `api` apontava para `dist/main.js` em vez do real `dist/src/main.js` (o layout de output do `nest build` mudou desde `fundacao/docker-single-entry`), e a imagem `node:20-alpine` não tem `WebSocket` nativo exigido por `@supabase/realtime-js` em runtime (trocado para `node:22-alpine`). Reverificado pelo orquestrador: `docker compose up --build` completo, `api` healthy, `curl` em `/api/health`, `/` e `/admin` todos 200.
 
+#### estiliza-painel-admin — Identidade visual do painel coerente com a LP
+- Origem: pedido do usuário
+- Descrição: o usuário pediu para estilizar `apps/admin` seguindo a MESMA ABORDAGEM já usada no painel do projeto irmão (Veggiedent, outra LP do mesmo cliente) — adaptada às cores reais do Ketochlor, nunca copiando valores/nomes daquele outro projeto (são repositórios independentes, sem vínculo de dependência). Padrão a replicar: um pacote pequeno e compartilhado de tokens de cor (só a marca, sem tipografia) consumido por `apps/admin/tailwind.config.ts` via `theme.extend.colors`; layout de painel com barra lateral (colapsável, com estado lembrado) + cabeçalho, conteúdo centralizado com largura máxima; componentes pequenos reaproveitáveis (cartão, aviso de sucesso/erro, barra de ação fixa no rodapé) em vez de um design system pronto; paleta neutra do Tailwind (`slate`) para UI utilitária, cor de marca só como acento (link ativo, hover); tipografia do painel deliberadamente neutra (fonte de sistema), não as fontes de marca da LP.
+- Rastreável a: pedido direto do usuário em 2026-09-10 (fora do PRD/SDD original)
+- Critério de "pronto": `packages/design-tokens` criado com as cores reais do Ketochlor (`navy`, `gold`, `blue.institutional`, `graytxt`, `lighttint`, `cardborder`, já usadas em `apps/lp/tailwind.config.ts`); `apps/admin` restilizado por completo (login, layout, listagem de seções, formulário de edição de seção — todos os tipos de campo —, metadados, leads) sem NENHUMA mudança de comportamento/lógica; `docker/Dockerfile` atualizado para buildar o novo pacote antes de `apps/admin` (mesma classe de bug já corrigida duas vezes nesta fase para `packages/content-schema`); tudo verificado em navegador real e via `docker compose up --build`.
+- Dependências: painel/controle-visibilidade (última tarefa que tocou `apps/admin` antes desta)
+- Execução: sequencial
+- Toca documentação: sim — `docs/PAINEL.md` (nota curta sobre a identidade visual compartilhada)
+- Status: pendente
+
 ## Ordem de execução
 
 ```
