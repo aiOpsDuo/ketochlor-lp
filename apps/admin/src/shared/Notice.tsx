@@ -22,8 +22,8 @@ export function Notice({ tipo, children, className = '' }: NoticeProps) {
   const ehErro = tipo === 'erro'
   const Icone = ehErro ? CircleAlert : CircleCheck
   const cores = ehErro
-    ? 'border-red-200 bg-red-50 text-red-700'
-    : 'border-green-200 bg-green-50 text-green-700'
+    ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300'
+    : 'border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-300'
 
   return (
     <div

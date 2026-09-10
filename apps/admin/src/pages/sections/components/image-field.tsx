@@ -1,9 +1,9 @@
-import { ImageOff, Loader2 } from 'lucide-react'
-import { useState, type ChangeEvent } from 'react'
+import { useState } from 'react'
 import { ApiError } from '../../../lib/api-client'
 import { enviarImagemParaStorage } from '../../../lib/media-upload'
 import { atributosDeCampo, FormField } from '../../../shared/FormField'
-import { CLASSE_ROTULO, classeDeCampo } from '../../../shared/classes'
+import { CLASSE_ERRO_DE_CAMPO, classeDeCampo } from '../../../shared/classes'
+import { Dropzone } from '../../../shared/Dropzone'
 
 interface ImagemValor {
   url: string
@@ -19,21 +19,27 @@ interface ImageFieldEditorProps {
   accessToken: string
 }
 
-const CLASSE_INPUT_DE_ARQUIVO =
-  'block w-full cursor-pointer text-sm text-graytxt file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50'
-
 /**
  * Campo de imagem (SDD § Critérios de aceitação — "Upload de imagem"):
  * upload REAL do arquivo, direto do navegador ao Supabase Storage, usando a
  * credencial temporária de `POST /api/admin/media/upload-url`
- * (`../../../lib/media-upload.ts`) — não a simplificação de colar um id de
- * mídia já usada em `painel/tela-metadados`. A URL resultante fica editável
- * logo abaixo por dois motivos, não como substituto do upload: (1) o
- * conteúdo inicial migrado (`content-schema/definir-schemas-secoes`) usa
- * caminhos estáticos da LP (`/assets/...`), que não são de forma nenhuma um
- * upload do painel, e o operador precisa conseguir mantê-los como estão sem
- * ser forçado a reenviar toda imagem só para editar um texto da mesma seção;
- * (2) é o mesmo texto que a API valida e devolve em `erros` se ficar vazio.
+ * (`../../../lib/media-upload.ts`).
+ *
+ * **Correção da tarefa `ajustes/tema-escuro-logo-e-campo-de-imagem`:** a
+ * caixa de texto "URL da imagem", editável ao lado do upload desde
+ * `ajustes/estiliza-painel-admin`, foi removida por completo — pedido
+ * explícito do usuário: o operador nunca deve ver nem editar uma URL crua. O
+ * campo de imagem agora é só o dropzone (`../../../shared/Dropzone.tsx`,
+ * compartilhado com `MetadataPage` — ver `docs/PAINEL.md`). Sem serviço de
+ * resolução de mídia por id neste projeto (`media_assets` nunca é gravado de
+ * verdade — gap já registrado em `painel/formulario-edicao-secao`), o estado
+ * "tem imagem" vem diretamente de `valor.url` ser uma string não vazia, sem
+ * nenhuma chamada de rede adicional para "buscar" a imagem.
+ *
+ * Preservar uma imagem já migrada (caminho estático da LP, `/assets/...`)
+ * continua funcionando sem a caixa de texto: o operador simplesmente não
+ * troca o arquivo, e `valor.url` permanece o que já era — só passa a não ser
+ * mais VISÍVEL como texto editável.
  *
  * `alt` é sempre obrigatório (PRD § Fluxo de UX — "o texto alternativo é um
  * campo obrigatório ao lado do upload, não um detalhe escondido"): bloqueado
@@ -52,15 +58,7 @@ export function ImageFieldEditor({
   const [enviando, setEnviando] = useState(false)
   const [erroUpload, setErroUpload] = useState<string | null>(null)
 
-  async function handleArquivo(evento: ChangeEvent<HTMLInputElement>) {
-    const arquivo = evento.target.files?.[0]
-    // Permite escolher o mesmo arquivo de novo depois de um erro, sem
-    // precisar trocar de arquivo para o evento `change` disparar de novo.
-    evento.target.value = ''
-    if (!arquivo) {
-      return
-    }
-
+  async function handleArquivo(arquivo: File) {
     setEnviando(true)
     setErroUpload(null)
     try {
@@ -73,81 +71,57 @@ export function ImageFieldEditor({
     }
   }
 
+  function handleRemover() {
+    onChange({ ...valor, url: '' })
+    setErroUpload(null)
+  }
+
   const caminhoUrl = `${caminhoBase}.url`
   const caminhoAlt = `${caminhoBase}.alt`
   // Sufixo próprio: o input de arquivo não corresponde a nenhum caminho do
   // conteúdo salvo (é só o gatilho do upload), então não pode reutilizar
   // `caminhoUrl`/`caminhoAlt`, que são as chaves dos erros vindos da API.
   const caminhoArquivo = `${caminhoBase}.arquivo`
+  // A API ainda valida `url` (`imageFieldSchema`) e pode devolver um erro
+  // nesse caminho (ex. campo vazio) — sem a caixa de texto que antes o
+  // mostrava, ele aparece como texto solto abaixo do dropzone.
   const erroUrl = errosPorCaminho[caminhoUrl]
   const erroAlt = errosPorCaminho[caminhoAlt]
 
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-3 text-sm font-semibold text-navy">{label}</legend>
+      <legend className="mb-3 text-sm font-semibold text-navy dark:text-slate-100">{label}</legend>
 
       <div className="flex flex-col gap-4 pt-1 sm:flex-row">
-        {/* Miniatura sobre fundo neutro, tamanho fixo: a imagem real pode ser
-            de qualquer proporção, e `object-contain` a mostra inteira sem
-            distorcer nem empurrar o formulário para baixo. */}
-        <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-cardborder bg-lighttint">
-          {valor.url ? (
-            <img src={valor.url} alt={valor.alt} className="h-full w-full object-contain" />
-          ) : (
-            <ImageOff aria-hidden="true" className="h-6 w-6 text-slate-400" />
+        <div className="w-full sm:w-56">
+          <Dropzone
+            id={caminhoArquivo}
+            imageUrl={valor.url}
+            imageAlt={valor.alt}
+            uploading={enviando}
+            onFileSelected={handleArquivo}
+            onRemove={handleRemover}
+            ariaLabel={`Enviar imagem para "${label}"`}
+            removeLabel={`Remover a imagem de "${label}"`}
+          />
+          {erroUpload && (
+            <span role="alert" className={`mt-1.5 block ${CLASSE_ERRO_DE_CAMPO}`}>
+              {erroUpload}
+            </span>
+          )}
+          {erroUrl && (
+            <span role="alert" className={`mt-1.5 block ${CLASSE_ERRO_DE_CAMPO}`}>
+              {erroUrl}
+            </span>
           )}
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            {/* `<label htmlFor>` real, e não um `<span>` de aparência de
-                rótulo: um input de arquivo sem rótulo associado é anunciado
-                por leitor de tela só como "botão escolher arquivo", sem dizer
-                de qual campo de imagem ele é. */}
-            <label htmlFor={caminhoArquivo} className={CLASSE_ROTULO}>
-              Enviar novo arquivo
-            </label>
-            <input
-              id={caminhoArquivo}
-              type="file"
-              accept="image/*"
-              onChange={handleArquivo}
-              disabled={enviando}
-              className={CLASSE_INPUT_DE_ARQUIVO}
-            />
-            {enviando && (
-              <span className="flex items-center gap-1.5 text-xs text-graytxt">
-                <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
-                Enviando…
-              </span>
-            )}
-            {erroUpload && (
-              <span role="alert" className="text-sm text-red-600">
-                {erroUpload}
-              </span>
-            )}
-          </div>
-
-          <FormField
-            id={caminhoUrl}
-            label="URL da imagem"
-            ajuda="Mantenha o caminho atual para preservar uma imagem já publicada na página."
-            erro={erroUrl}
-          >
-            <input
-              {...atributosDeCampo(caminhoUrl, { temAjuda: true, erro: erroUrl })}
-              type="text"
-              value={valor.url}
-              onChange={(evento) => onChange({ ...valor, url: evento.target.value })}
-              className={classeDeCampo(Boolean(erroUrl))}
-            />
-          </FormField>
-
           <FormField
             id={caminhoAlt}
             label={
               <>
-                Texto alternativo (alt) <span className="text-red-600">*</span>
+                Texto alternativo (alt) <span className="text-red-600 dark:text-red-400">*</span>
               </>
             }
             ajuda="Descreve a imagem para leitores de tela e buscadores — obrigatório."

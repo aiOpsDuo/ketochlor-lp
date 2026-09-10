@@ -16,7 +16,7 @@ interface ActionBarProps {
  */
 export function ActionBar({ children }: ActionBarProps) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-cardborder bg-white/85 backdrop-blur">
+    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-cardborder bg-white/85 backdrop-blur dark:border-slate-800 dark:bg-slate-900/85">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-end gap-3 px-4 py-3 sm:px-6">
         {children}
       </div>

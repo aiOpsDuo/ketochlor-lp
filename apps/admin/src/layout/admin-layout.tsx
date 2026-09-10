@@ -2,8 +2,10 @@ import {
   LayoutList,
   LogOut,
   Menu,
+  Moon,
   PanelLeftClose,
   PanelLeftOpen,
+  Sun,
   Tags,
   Users,
   X,
@@ -14,6 +16,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/auth-context'
 import { supabase } from '../lib/supabase-client'
 import { classeDeBotao } from '../shared/classes'
+import { useTheme } from '../theme/theme-context'
 
 /**
  * Links de navegação do painel. Renderizados por `<NavegacaoDoPainel />` — uma
@@ -64,6 +67,7 @@ function gravarSidebarRecolhida(recolhida: boolean): void {
  */
 export function AdminLayout() {
   const { session } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const [recolhida, setRecolhida] = useState(lerSidebarRecolhida)
   const [gavetaAberta, setGavetaAberta] = useState(false)
   const { pathname } = useLocation()
@@ -92,14 +96,14 @@ export function AdminLayout() {
   const recuoDoConteudo = recolhida ? 'lg:pl-[4.75rem]' : 'lg:pl-64'
 
   return (
-    <div className="min-h-screen bg-lighttint">
+    <div className="min-h-screen bg-lighttint dark:bg-slate-950">
       {/* Barra lateral — desktop */}
       <aside
-        className={`hidden border-r border-cardborder bg-white lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:flex-col ${larguraDaLateral}`}
+        className={`hidden border-r border-cardborder bg-white lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:flex-col dark:border-slate-800 dark:bg-slate-900 ${larguraDaLateral}`}
       >
         <MarcaDoPainel recolhida={recolhida} />
         <NavegacaoDoPainel somenteIcones={recolhida} />
-        <div className="border-t border-cardborder p-3">
+        <div className="border-t border-cardborder p-3 dark:border-slate-800">
           <button
             type="button"
             onClick={alternarRecolhida}
@@ -128,14 +132,18 @@ export function AdminLayout() {
             onClick={() => setGavetaAberta(false)}
             className="absolute inset-0 bg-navy/40"
           />
-          <div className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-cardborder bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-cardborder px-4 py-4">
-              <span className="font-semibold text-navy">Painel Ketochlor</span>
+          <div className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-cardborder bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex h-16 items-center justify-between gap-2 border-b border-cardborder pl-4 pr-2 dark:border-slate-800">
+              {/* Mesmo logo real da barra lateral de desktop (`LogoDoPainel`,
+                  reaproveitado de `MarcaDoPainel` abaixo) — critério de
+                  "pronto" da tarefa exige o logo TANTO na barra quanto na
+                  gaveta, não só um texto com o nome do painel. */}
+              <LogoDoPainel recolhida={false} />
               <button
                 type="button"
                 onClick={() => setGavetaAberta(false)}
                 aria-label="Fechar menu"
-                className="rounded-lg p-1 text-slate-500 hover:bg-slate-100"
+                className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 <X aria-hidden="true" className="h-5 w-5" />
               </button>
@@ -146,20 +154,34 @@ export function AdminLayout() {
       )}
 
       <div className={recuoDoConteudo}>
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-cardborder bg-white/85 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-cardborder bg-white/85 px-4 backdrop-blur sm:px-6 dark:border-slate-800 dark:bg-slate-900/85">
           <button
             type="button"
             onClick={() => setGavetaAberta(true)}
             aria-label="Abrir menu"
-            className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+            className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden dark:text-slate-300 dark:hover:bg-slate-800"
           >
             <Menu aria-hidden="true" className="h-5 w-5" />
           </button>
-          <span className="font-semibold text-navy">Painel Ketochlor</span>
+          <span className="font-semibold text-navy dark:text-slate-100">Painel Ketochlor</span>
           <div className="ml-auto flex items-center gap-3">
             {session?.user.email && (
-              <span className="hidden text-sm text-graytxt sm:inline">{session.user.email}</span>
+              <span className="hidden text-sm text-graytxt sm:inline dark:text-slate-400">
+                {session.user.email}
+              </span>
             )}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+              className={classeDeBotao('secundario', 'pequeno')}
+            >
+              {theme === 'dark' ? (
+                <Sun aria-hidden="true" className="h-4 w-4" />
+              ) : (
+                <Moon aria-hidden="true" className="h-4 w-4" />
+              )}
+            </button>
             <button
               type="button"
               onClick={handleLogout}
@@ -181,19 +203,48 @@ export function AdminLayout() {
   )
 }
 
+/**
+ * Logo real do Ketochlor (correção da tarefa
+ * `ajustes/tema-escuro-logo-e-campo-de-imagem`; a tarefa anterior
+ * `ajustes/estiliza-painel-admin` optou deliberadamente por um selo com a
+ * letra "K" "no lugar de um logo que o painel não precisa" — decisão
+ * revertida a pedido do usuário).
+ *
+ * **Duplicação de arquivo deliberada e aceita, não um descuido:** o arquivo é
+ * o MESMO PNG que `apps/lp/src/components/Header.tsx`/`Footer.tsx` já servem
+ * (`apps/lp/public/assets/logo-ketochlor-transp.png`), copiado para
+ * `apps/admin/public/assets/` porque `apps/admin` é um app Vite próprio e não
+ * pode importar de dentro de `apps/lp`, e este logo é um arquivo estático
+ * local — não uma URL pública de Storage compartilhável entre os dois apps
+ * sem mexer em `apps/lp` (fora do escopo desta tarefa). Se o arquivo de
+ * origem mudar, esta cópia precisa ser atualizada junto.
+ */
 function MarcaDoPainel({ recolhida }: { recolhida: boolean }) {
   return (
-    <div className="flex h-16 items-center gap-2 border-b border-cardborder px-4">
-      {/* Bloco na cor âncora da marca — a única presença de cor "cheia" da
-          marca no painel, no lugar de um logo que o painel não precisa. */}
-      <span
-        aria-hidden="true"
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-navy text-sm font-bold text-white"
-      >
-        K
-      </span>
-      {!recolhida && <span className="truncate font-semibold text-navy">Ketochlor</span>}
+    <div className="flex h-16 items-center border-b border-cardborder px-4 dark:border-slate-800">
+      <LogoDoPainel recolhida={recolhida} />
     </div>
+  )
+}
+
+/**
+ * Só o logo + nome, sem a borda/altura fixa de `MarcaDoPainel` — extraído
+ * porque a gaveta mobile precisa do MESMO logo ao lado do próprio botão de
+ * fechar, na mesma linha, e não pode reusar `MarcaDoPainel` inteiro sem
+ * herdar uma segunda borda/padding que não fazem sentido ali (mesmo
+ * raciocínio de `NavegacaoDoPainel`: nenhum markup de logo duplicado entre
+ * os dois lugares que o mostram).
+ */
+function LogoDoPainel({ recolhida }: { recolhida: boolean }) {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <img
+        src="/assets/logo-ketochlor-transp.png"
+        alt="Ketochlor"
+        className="h-8 w-auto shrink-0"
+      />
+      {!recolhida && <span className="truncate font-semibold text-navy dark:text-slate-100">Ketochlor</span>}
+    </span>
   )
 }
 
@@ -218,10 +269,14 @@ function NavegacaoDoPainel({ somenteIcones }: { somenteIcones: boolean }) {
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
                   somenteIcones ? 'justify-center' : '',
                   // Cor de marca só como acento do item ativo — o resto da
-                  // navegação é neutro (ver docs/PAINEL.md).
+                  // navegação é neutro (ver docs/PAINEL.md). No escuro,
+                  // `blue-institutional` (#26468A) perde contraste sobre um
+                  // fundo já escuro, então o acento troca para um azul mais
+                  // claro (`blue-300`) só nessa variante — a cor de marca em
+                  // si continua reservada ao modo claro.
                   isActive
-                    ? 'bg-blue-institutional/10 text-blue-institutional'
-                    : 'text-graytxt hover:bg-slate-100 hover:text-navy',
+                    ? 'bg-blue-institutional/10 text-blue-institutional dark:bg-blue-400/10 dark:text-blue-300'
+                    : 'text-graytxt hover:bg-slate-100 hover:text-navy dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
                 ]
                   .filter((parte) => parte.length > 0)
                   .join(' ')

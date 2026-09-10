@@ -63,39 +63,41 @@ export function SectionListPage() {
   }
 
   if (!secoes) {
-    return <p className="text-sm text-graytxt">Carregando seções…</p>
+    return <p className="text-sm text-graytxt dark:text-slate-400">Carregando seções…</p>
   }
 
   return (
     <div className="flex flex-col gap-5">
       <header>
-        <h1 className="text-2xl font-semibold text-navy">Seções da landing page</h1>
-        <p className="mt-1 text-sm text-graytxt">
+        <h1 className="text-2xl font-semibold text-navy dark:text-slate-100">
+          Seções da landing page
+        </h1>
+        <p className="mt-1 text-sm text-graytxt dark:text-slate-400">
           Escolha uma seção para editar o conteúdo publicado na página.
         </p>
       </header>
 
       {/* `!p-0`: a lista já tem o próprio espaçamento por linha — ver `Card`. */}
       <Card className="!p-0">
-        <ul className="divide-y divide-cardborder">
+        <ul className="divide-y divide-cardborder dark:divide-slate-800">
           {secoes.map((secao) => (
             <li key={secao.key}>
               <Link
                 to={`/sections/${secao.key}`}
-                className="group flex items-center gap-4 px-4 py-3.5 transition first:rounded-t-xl last:rounded-b-xl hover:bg-lighttint"
+                className="group flex items-center gap-4 px-4 py-3.5 transition first:rounded-t-xl last:rounded-b-xl hover:bg-lighttint dark:hover:bg-slate-800/60"
               >
-                <span className="min-w-0 flex-1 truncate font-medium text-navy group-hover:text-blue-institutional">
+                <span className="min-w-0 flex-1 truncate font-medium text-navy group-hover:text-blue-institutional dark:text-slate-100 dark:group-hover:text-blue-300">
                   {SECTION_LABELS[secao.key]}
                 </span>
                 <span className={classeDeEtiqueta(secao.isPublished)}>
                   {secao.isPublished ? 'Publicada' : 'Não publicada'}
                 </span>
-                <span className="hidden text-xs text-graytxt sm:inline">
+                <span className="hidden text-xs text-graytxt sm:inline dark:text-slate-400">
                   Atualizado em {formatadorDeData.format(new Date(secao.updatedAt))}
                 </span>
                 <ChevronRight
                   aria-hidden="true"
-                  className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-blue-institutional"
+                  className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-blue-institutional dark:group-hover:text-blue-300"
                 />
               </Link>
             </li>
