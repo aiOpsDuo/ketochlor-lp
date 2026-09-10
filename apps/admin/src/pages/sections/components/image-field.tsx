@@ -1,6 +1,9 @@
+import { ImageOff, Loader2 } from 'lucide-react'
 import { useState, type ChangeEvent } from 'react'
 import { ApiError } from '../../../lib/api-client'
 import { enviarImagemParaStorage } from '../../../lib/media-upload'
+import { atributosDeCampo, FormField } from '../../../shared/FormField'
+import { CLASSE_ROTULO, classeDeCampo } from '../../../shared/classes'
 
 interface ImagemValor {
   url: string
@@ -15,6 +18,9 @@ interface ImageFieldEditorProps {
   errosPorCaminho: Record<string, string>
   accessToken: string
 }
+
+const CLASSE_INPUT_DE_ARQUIVO =
+  'block w-full cursor-pointer text-sm text-graytxt file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50'
 
 /**
  * Campo de imagem (SDD § Critérios de aceitação — "Upload de imagem"):
@@ -69,61 +75,94 @@ export function ImageFieldEditor({
 
   const caminhoUrl = `${caminhoBase}.url`
   const caminhoAlt = `${caminhoBase}.alt`
+  // Sufixo próprio: o input de arquivo não corresponde a nenhum caminho do
+  // conteúdo salvo (é só o gatilho do upload), então não pode reutilizar
+  // `caminhoUrl`/`caminhoAlt`, que são as chaves dos erros vindos da API.
+  const caminhoArquivo = `${caminhoBase}.arquivo`
+  const erroUrl = errosPorCaminho[caminhoUrl]
+  const erroAlt = errosPorCaminho[caminhoAlt]
 
   return (
-    <fieldset className="flex flex-col gap-2 rounded border border-gray-200 p-3">
-      <legend className="px-1 text-sm font-medium text-gray-700">{label}</legend>
+    <fieldset className="min-w-0">
+      <legend className="mb-3 text-sm font-semibold text-navy">{label}</legend>
 
-      {valor.url && (
-        <img
-          src={valor.url}
-          alt={valor.alt}
-          className="h-24 w-auto rounded border border-gray-100 object-contain"
-        />
-      )}
+      <div className="flex flex-col gap-4 pt-1 sm:flex-row">
+        {/* Miniatura sobre fundo neutro, tamanho fixo: a imagem real pode ser
+            de qualquer proporção, e `object-contain` a mostra inteira sem
+            distorcer nem empurrar o formulário para baixo. */}
+        <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-cardborder bg-lighttint">
+          {valor.url ? (
+            <img src={valor.url} alt={valor.alt} className="h-full w-full object-contain" />
+          ) : (
+            <ImageOff aria-hidden="true" className="h-6 w-6 text-slate-400" />
+          )}
+        </div>
 
-      <label className="flex flex-col gap-1 text-sm text-gray-700">
-        Enviar novo arquivo
-        <input type="file" accept="image/*" onChange={handleArquivo} disabled={enviando} />
-      </label>
-      {enviando && <span className="text-xs text-gray-500">Enviando…</span>}
-      {erroUpload && (
-        <span role="alert" className="text-xs text-red-600">
-          {erroUpload}
-        </span>
-      )}
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            {/* `<label htmlFor>` real, e não um `<span>` de aparência de
+                rótulo: um input de arquivo sem rótulo associado é anunciado
+                por leitor de tela só como "botão escolher arquivo", sem dizer
+                de qual campo de imagem ele é. */}
+            <label htmlFor={caminhoArquivo} className={CLASSE_ROTULO}>
+              Enviar novo arquivo
+            </label>
+            <input
+              id={caminhoArquivo}
+              type="file"
+              accept="image/*"
+              onChange={handleArquivo}
+              disabled={enviando}
+              className={CLASSE_INPUT_DE_ARQUIVO}
+            />
+            {enviando && (
+              <span className="flex items-center gap-1.5 text-xs text-graytxt">
+                <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                Enviando…
+              </span>
+            )}
+            {erroUpload && (
+              <span role="alert" className="text-sm text-red-600">
+                {erroUpload}
+              </span>
+            )}
+          </div>
 
-      <label htmlFor={caminhoUrl} className="flex flex-col gap-1 text-sm text-gray-700">
-        URL da imagem
-        <input
-          id={caminhoUrl}
-          type="text"
-          value={valor.url}
-          onChange={(evento) => onChange({ ...valor, url: evento.target.value })}
-          className="rounded border border-gray-300 px-3 py-2 text-base"
-        />
-        {errosPorCaminho[caminhoUrl] && (
-          <span role="alert" className="text-xs text-red-600">
-            {errosPorCaminho[caminhoUrl]}
-          </span>
-        )}
-      </label>
+          <FormField
+            id={caminhoUrl}
+            label="URL da imagem"
+            ajuda="Mantenha o caminho atual para preservar uma imagem já publicada na página."
+            erro={erroUrl}
+          >
+            <input
+              {...atributosDeCampo(caminhoUrl, { temAjuda: true, erro: erroUrl })}
+              type="text"
+              value={valor.url}
+              onChange={(evento) => onChange({ ...valor, url: evento.target.value })}
+              className={classeDeCampo(Boolean(erroUrl))}
+            />
+          </FormField>
 
-      <label htmlFor={caminhoAlt} className="flex flex-col gap-1 text-sm text-gray-700">
-        Texto alternativo (alt) — obrigatório
-        <input
-          id={caminhoAlt}
-          type="text"
-          value={valor.alt}
-          onChange={(evento) => onChange({ ...valor, alt: evento.target.value })}
-          className="rounded border border-gray-300 px-3 py-2 text-base"
-        />
-        {errosPorCaminho[caminhoAlt] && (
-          <span role="alert" className="text-xs text-red-600">
-            {errosPorCaminho[caminhoAlt]}
-          </span>
-        )}
-      </label>
+          <FormField
+            id={caminhoAlt}
+            label={
+              <>
+                Texto alternativo (alt) <span className="text-red-600">*</span>
+              </>
+            }
+            ajuda="Descreve a imagem para leitores de tela e buscadores — obrigatório."
+            erro={erroAlt}
+          >
+            <input
+              {...atributosDeCampo(caminhoAlt, { temAjuda: true, erro: erroAlt })}
+              type="text"
+              value={valor.alt}
+              onChange={(evento) => onChange({ ...valor, alt: evento.target.value })}
+              className={classeDeCampo(Boolean(erroAlt))}
+            />
+          </FormField>
+        </div>
+      </div>
     </fieldset>
   )
 }

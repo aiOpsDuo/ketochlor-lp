@@ -54,13 +54,38 @@ Dentro de `<Route element={<ProtectedRoute />}>`, `App.tsx` aninha um segundo n�
 
 `apps/admin/src/pages/login-page.tsx`: formulário de e-mail/senha, chama `supabase.auth.signInWithPassword`. Uma credencial inválida (e-mail ou senha errados) mostra "E-mail ou senha inválidos." em um elemento `role="alert"`, sem navegar — a mesma mensagem genérica para os dois casos, para não revelar se um e-mail existe ou não na base.
 
+## Identidade visual: cor compartilhada com a LP, tipografia própria
+
+O painel compartilha com a landing page **apenas a paleta de cor da marca**, via o pacote `@ketochlor/design-tokens` (`packages/design-tokens`). O pacote exporta as cores reais do Ketochlor — `navy`, `gold`, `blue.institutional`, `graytxt`, `lighttint`, `cardborder` — e `apps/admin/tailwind.config.ts` as injeta em `theme.extend.colors` com os MESMOS nomes já usados em `apps/lp/tailwind.config.ts`, de modo que uma classe como `text-navy` significa exatamente a mesma coisa nas duas aplicações. Como é `extend` (e não substituição de `theme`), a paleta padrão do Tailwind continua disponível — e é ela, `slate` à frente, que forma toda a UI neutra do painel.
+
+O pacote **não tem passo de build**: `main` aponta direto para `src/index.ts` e não existe script `build`. O único consumidor é o `tailwind.config.ts` de cada app, carregado pelo loader do próprio Tailwind, que transpila TypeScript on-the-fly inclusive através do link de workspace em `node_modules`. Em contrapartida, todo estágio de `docker/Dockerfile` que roda `npm ci` precisa copiar o `package.json` do pacote antes (é ele que cria o link de workspace); o `src/` chega pelo `COPY . .`.
+
+Três decisões de design deliberadas, para não parecerem descuido:
+
+- **Tipografia neutra, não as fontes da marca.** O painel usa a fonte padrão do sistema (`font-sans`), não Sora/Inter da LP. É uma ferramenta interna de edição, e a densidade utilitária de uma tabela de leads ou de um formulário longo não é a mesma de uma página de venda. Só a COR é compartilhada — tipografia e densidade visual são de cada aplicação.
+- **A cor de marca é acento, não preenchimento de ação.** O botão primário (salvar) é `slate-900`, neutro escuro; `blue.institutional` fica reservado ao item ativo de navegação e ao hover de link, e `navy` a texto/heading e ao bloco de marca da barra lateral. Um painel inteiro pintado na cor de CTA da LP perde a hierarquia que a cor deveria dar.
+- **Sem modo escuro.** Não há alternador de tema, e por isso `darkMode` não é declarado no `tailwind.config.ts` (declará-lo sem nenhuma variante `dark:` escrita não muda nada e só sugere um recurso que não existe). Se um modo escuro for pedido no futuro, é uma tarefa própria: `darkMode: 'class'` + variantes `dark:` + o alternador.
+
+### Componentes compartilhados (`apps/admin/src/shared/`)
+
+Componentes pequenos e próprios, não uma biblioteca de terceiros (sem shadcn/Radix/MUI) — ícones vêm de `lucide-react`:
+
+| Arquivo | Papel |
+|---|---|
+| `Card.tsx` | Bloco branco com borda `cardborder` e padding. Recebe `!p-0` quando envolve uma lista/tabela que já tem espaçamento por linha. |
+| `Notice.tsx` | Aviso inline de sucesso (verde) ou erro (vermelho), com ícone e `role="status"`/`role="alert"` conforme o tipo. |
+| `ActionBar.tsx` | Barra fixa no rodapé da viewport para o botão de salvar de formulário longo, com `backdrop-blur`. Quem a usa reserva a altura dela com `pb-24`. |
+| `FormField.tsx` | Rótulo + controle + texto de ajuda + erro, e `atributosDeCampo` para ligar tudo por `aria-describedby`/`aria-invalid`. |
+| `classes.ts` | Classes base de campo e de botão (primário/secundário/perigo). Campo em erro é uma variante **exclusiva**, não um sufixo somado à variante normal: no CSS gerado pelo Tailwind as utilidades de `border-color` saem em ordem alfabética, então `.border-red-400` vem ANTES de `.border-slate-300` e aplicar as duas juntas deixaria a cor neutra vencer. |
+
 ## Layout e navegação (`painel/listagem-secoes`)
 
-`apps/admin/src/layout/admin-layout.tsx` é o elemento pai de toda rota sob `<ProtectedRoute />` (registrado em `App.tsx`, `<Route element={<AdminLayout />}>`, com `<Outlet />` renderizando a página de cada rota filha). Um único cabeçalho, presente em toda tela autenticada:
+`apps/admin/src/layout/admin-layout.tsx` é o elemento pai de toda rota sob `<ProtectedRoute />` (registrado em `App.tsx`, `<Route element={<AdminLayout />}>`, com `<Outlet />` renderizando a página de cada rota filha).
 
-- Nome do painel ("Painel Ketochlor").
-- Navegação (`NavLink`) para as três áreas: "Seções" (`/`), "Metadados" (`/metadata`) e "Leads" (`/leads`) — as três rotas registradas em `App.tsx` (ver "Rotas hoje" acima), com `painel/tela-metadados` e `painel/tela-leads` implementadas em paralelo depois desta tarefa.
-- Botão "Sair", que chama `supabase.auth.signOut()`. O próprio `onAuthStateChange` do `AuthProvider` limpa a sessão em memória e `ProtectedRoute` redireciona ao login — nenhuma navegação manual é feita pelo botão (mesmo comportamento de antes, só que agora centralizado no layout em vez de duplicado em cada página).
+- **Barra lateral** fixa à esquerda em desktop, com a navegação para as três áreas: "Seções" (`/`), "Metadados" (`/metadata`) e "Leads" (`/leads`) — as três rotas registradas em `App.tsx` (ver "Rotas hoje" acima). É recolhível (vira uma coluna só de ícones) e o estado fica lembrado em `localStorage`, na chave `ketochlor.painel.sidebar-recolhida`; leitura e escrita são protegidas por `try/catch`, porque o acessador pode lançar em janela privada ou com dados de site bloqueados — nesse caso o painel simplesmente abre expandido.
+- Abaixo de `lg`, a barra vira uma **gaveta** sobre o conteúdo, aberta pelo botão de menu do cabeçalho e fechada ao navegar. Os dois — barra e gaveta — renderizam o MESMO componente de navegação (`NavegacaoDoPainel`, a partir da mesma lista `LINKS_DE_NAVEGACAO`), nunca markup duplicado: é assim que um link novo não passa a existir só em um dos dois lugares.
+- **Cabeçalho** separado da barra lateral e sempre visível (`sticky`): botão de abrir menu (só em mobile), nome do painel, e-mail do operador logado e botão "Sair", que chama `supabase.auth.signOut()`. O próprio `onAuthStateChange` do `AuthProvider` limpa a sessão em memória e `ProtectedRoute` redireciona ao login — nenhuma navegação manual é feita pelo botão.
+- **Conteúdo** da rota filha centralizado com largura máxima de leitura (`max-w-5xl mx-auto`), nunca esticado na largura toda da tela.
 
 ## Listagem de seções (`painel/listagem-secoes`)
 
@@ -153,7 +178,7 @@ Formulário controlado com três campos — `title`, `description` e `ogImageMed
 
 **Exportação CSV — autenticação do download:** `GET /api/admin/leads/export.csv` exige `Authorization: Bearer <jwt>` (`apps/api/src/presentation/leads/leads-admin.controller.ts` não aceita token via query param), mas uma navegação simples do navegador para essa URL (um `<a href>` normal, ou `window.open`) não anexa nenhum cabeçalho customizado — a API responderia `401`. A tela resolve isso buscando o CSV com `fetch` autenticado (`apiFetchTexto`, nova função em `apps/admin/src/lib/api-client.ts`, irmã de `apiFetch` para respostas que não são JSON) e então monta o download no próprio cliente: `Blob` com o texto recebido (`type: 'text/csv;charset=utf-8'`) + `URL.createObjectURL` + um `<a download>` programático clicado via `HTMLElement.click()`, revogando a URL do objeto logo depois. O nome do arquivo inclui o período filtrado (`leads-<from>-a-<to>.csv`) quando algum filtro está ativo, ou `leads.csv` sem filtro algum.
 
-**Exclusão:** o botão "Excluir" de cada linha pede confirmação com `window.confirm` (texto inclui nome e e-mail do lead, para não ser um clique único acidental) antes de chamar `DELETE /api/admin/leads/:id`; a listagem é refeita a partir da API assim que a exclusão é confirmada pelo servidor, então o lead removido nunca reaparece nem depende de o cliente "adivinhar" o novo estado. `DELETE` bem-sucedido devolve `204 No Content` (sem corpo) — `apiFetch` foi ajustado para não tentar fazer `.json()` de uma resposta sem conteúdo (`HTTP_STATUS_SEM_CONTEUDO`), o que quebraria essa chamada (e qualquer outra rota futura que devolva `204`).
+**Exclusão:** o botão "Excluir" de cada linha exige **dois cliques deliberados, confirmados na própria célula** — "Excluir" troca a célula por "Confirmar"/"Cancelar", e só "Confirmar" chama `DELETE /api/admin/leads/:id`. Substituiu um `window.confirm` na tarefa `ajustes/estiliza-painel-admin`: o diálogo nativo tira o foco da tabela e não mostra em qual linha a ação vai cair, exatamente a informação de que quem confirma precisa. A proteção contra o clique único acidental é a mesma, e a chamada de API é idêntica. Trocar o período do filtro descarta uma confirmação pendente, porque a linha que ela apontava pode não existir no resultado novo. a listagem é refeita a partir da API assim que a exclusão é confirmada pelo servidor, então o lead removido nunca reaparece nem depende de o cliente "adivinhar" o novo estado. `DELETE` bem-sucedido devolve `204 No Content` (sem corpo) — `apiFetch` foi ajustado para não tentar fazer `.json()` de uma resposta sem conteúdo (`HTTP_STATUS_SEM_CONTEUDO`), o que quebraria essa chamada (e qualquer outra rota futura que devolva `204`).
 
 Colunas da tabela: nome, e-mail, telefone, CRMV, cidade/UF, especialidade, "já é cliente Virbac" e "deseja contato comercial" (Sim/Não), origem, data de recebimento (`Intl.DateTimeFormat('pt-BR')`) e a ação de excluir — todos os campos de `LeadPersistido` (`docs/API.md` § Leads), na mesma ordem do CSV.
 

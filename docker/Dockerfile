@@ -21,6 +21,12 @@ COPY apps/lp/package.json apps/lp/package.json
 COPY apps/admin/package.json apps/admin/package.json
 COPY apps/api/package.json apps/api/package.json
 COPY packages/content-schema/package.json packages/content-schema/package.json
+# Todo workspace declarado em `workspaces` (`packages/*`) precisa ter o
+# `package.json` presente ANTES de `npm ci`: é ele que faz o npm criar o link
+# `node_modules/@ketochlor/<pacote>` → `packages/<pacote>`. Faltando o
+# arquivo, `npm ci` falha por divergência com o lockfile — que já lista o
+# workspace — em vez de simplesmente ignorá-lo.
+COPY packages/design-tokens/package.json packages/design-tokens/package.json
 RUN npm ci
 
 # ---- web-build: builda os dois artefatos estáticos (LP + painel) ----
@@ -29,6 +35,16 @@ RUN npm ci
 # quanto o painel importam `@ketochlor/content-schema` em tempo de build, e
 # `npm ci` (estágio `deps`) não builda workspaces automaticamente — só
 # resolve o link entre eles.
+#
+# `packages/design-tokens` NÃO entra nessa lista, e isso é deliberado: o
+# pacote não tem passo de build (`main` aponta direto para `src/index.ts`,
+# TypeScript puro — ver o comentário no `index.ts` dele). Quem o consome é o
+# `tailwind.config.ts` do painel, carregado pelo loader do próprio Tailwind,
+# que transpila o TS on-the-fly inclusive através do link de workspace em
+# `node_modules`. O que ele precisa aqui é só existir: `package.json` no
+# estágio `deps` (acima, para o link) e o `src/` trazido pelo `COPY . .`
+# abaixo. Um `npm run build --workspace=packages/design-tokens` falharia por
+# não haver script `build`.
 FROM deps AS web-build
 COPY . .
 RUN npm run build --workspace=packages/content-schema \
@@ -62,6 +78,10 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/content-schema/package.json packages/content-schema/package.json
+# Mesmo motivo do estágio `deps`: mesmo com `--workspace=apps/api` (que não
+# depende de `@ketochlor/design-tokens`), o `npm ci` valida o lockfile da raiz
+# inteiro e exige o `package.json` de cada workspace declarado.
+COPY packages/design-tokens/package.json packages/design-tokens/package.json
 RUN npm ci --omit=dev --workspace=apps/api
 COPY --from=api-build /repo/packages/content-schema/dist ./packages/content-schema/dist
 COPY --from=api-build /repo/apps/api/dist ./apps/api/dist

@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@ketochlor/content-schema": "^1.0.0",
+    "@ketochlor/design-tokens": "^1.0.0",
     "@supabase/supabase-js": "^2.116.0",
+    "lucide-react": "^0.469.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.18.3",
