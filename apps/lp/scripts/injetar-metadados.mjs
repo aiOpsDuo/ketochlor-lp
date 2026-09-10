@@ -32,17 +32,22 @@
 // para o caso de uso real e cumpre o critério de aceitação literal do SDD:
 // "verificável com uma requisição HTTP simples (sem executar JavaScript)".
 //
-// `metadata.ogImageMediaId` (SDD § Modelo de dados) é hoje um id de
-// referência a `media_assets`, não uma URL pronta — a rota pública
-// `GET /api/content` não resolve esse id para `publicUrl` (nenhum endpoint
-// existente faz essa resolução; ver `apps/admin/src/pages/metadata/
-// metadata-page.tsx`, que trata o campo como texto livre por não existir
-// ainda um seletor de mídia real). Por isso este script só usa
-// `ogImageMediaId` para `og:image` quando o valor já É uma URL absoluta
-// (`http://`/`https://`) — o único formato utilizável hoje sem uma segunda
-// chamada de rede que este script deliberadamente não faz. Um id "cru"
-// (o formato pensado no nome do campo) é ignorado, mantendo o `index.html`
-// como está, até que uma tarefa futura resolva id → URL pública.
+// `metadata.ogImageUrl` (SDD § Modelo de dados; renomeada de
+// `ogImageMediaId` na tarefa `ajustes/corrige-imagem-metadados`) já chega
+// aqui como a URL pública pronta para `og:image`, ou `null` — nunca mais um
+// id de `media_assets` sem resolução (a lacuna original: nenhuma rota da API
+// jamais criava esse registro, então o id nunca virava URL utilizável). O
+// domínio da API (`validarSiteMetadata`) já garante o formato `http(s)://`
+// em `PUT /api/admin/metadata`, então este script poderia, em princípio,
+// confiar cegamente no valor. Ainda assim mantém a mesma checagem defensiva
+// de antes (`ehUrlAbsolutaHttp`) por uma razão distinta da original: o JSON
+// de conteúdo publicado (`content-snapshot.json`, escrito num passo de build
+// anterior a este) é uma superfície de confiança um degrau abaixo do
+// domínio da API — nada impede um instantâneo desatualizado, editado à mão,
+// ou gerado contra uma versão futura da API com uma regra diferente. Ignorar
+// silenciosamente um valor fora do formato esperado (em vez de gravar uma
+// tag `og:image` quebrada) é mais seguro que confiar sem checar, pelo mesmo
+// custo de uma função já existente e testada.
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -67,10 +72,10 @@ export function escaparAtributoHtml(valor) {
 }
 
 /**
- * `true` só para uma URL absoluta http(s) — o único formato de
- * `ogImageMediaId` que este script consegue usar diretamente como
- * `og:image` sem resolver um id contra `media_assets` (ver nota de
- * cabeçalho deste arquivo).
+ * `true` só para uma URL absoluta http(s) — checagem defensiva mínima sobre
+ * `metadata.ogImageUrl` antes de gravá-lo como `og:image` (ver nota de
+ * cabeçalho deste arquivo sobre por que essa checagem continua existindo
+ * mesmo a API já validando o formato).
  */
 export function ehUrlAbsolutaHttp(valor) {
   return typeof valor === 'string' && /^https?:\/\//i.test(valor.trim());
@@ -136,7 +141,7 @@ export function injetarMetadados(html, metadata) {
     resultado = substituirOuInserirDescription(resultado, description);
   }
 
-  const ogImage = metadata?.ogImageMediaId;
+  const ogImage = metadata?.ogImageUrl;
   if (ehUrlAbsolutaHttp(ogImage)) {
     resultado = substituirOuInserirOgImage(resultado, ogImage.trim());
   }

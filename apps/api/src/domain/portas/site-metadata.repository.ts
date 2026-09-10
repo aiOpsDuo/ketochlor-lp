@@ -5,7 +5,7 @@
 export interface SiteMetadataPersistido {
   title: string;
   description: string;
-  ogImageMediaId: string | null;
+  ogImageUrl: string | null;
   updatedAt: string;
   updatedBy: string | null;
 }
@@ -13,7 +13,7 @@ export interface SiteMetadataPersistido {
 export interface AtualizarSiteMetadataInput {
   title: string;
   description: string;
-  ogImageMediaId: string | null;
+  ogImageUrl: string | null;
   updatedBy: string | null;
 }
 

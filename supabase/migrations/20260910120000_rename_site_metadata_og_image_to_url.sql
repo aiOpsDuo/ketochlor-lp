@@ -1,0 +1,22 @@
+-- Corrige site_metadata.og_image_media_id (uuid morto) para og_image_url (text).
+-- Ref.: agent_context/PLAN.md tarefa ajustes/corrige-imagem-metadados;
+--       agent_context/SDD.md § Modelo de dados > site_metadata;
+--       agent_context/CHANGELOG.md, entrada 2026-09-10.
+--
+-- Diagnóstico (achado de QA): og_image_media_id foi modelada como referência a
+-- media_assets.id, mas nenhuma rota da API jamais gravou uma linha em
+-- media_assets — tanto o upload de metadados quanto o de imagem de seção só
+-- emitem uma credencial de envio direto ao Storage e devolvem a URL pública;
+-- o passo de confirmação que gravaria media_assets nunca foi implementado
+-- (ver apps/admin/src/lib/media-upload.ts). As imagens de SEÇÃO nunca
+-- dependeram de media_assets: guardam { url, alt } direto no data jsonb da
+-- seção. Só site_metadata ficou presa ao modelo de id, tornando o campo uma
+-- caixa de texto inútil (ninguém tem um id de media_assets para colar). Esta
+-- migration alinha site_metadata ao mesmo padrão já usado pelas seções:
+-- guardar a URL pública diretamente, sem indireção por media_assets.
+--
+-- O valor da coluna é sempre null em todo ambiente até hoje (nunca foi
+-- possível preenchê-la de fato) — a conversão de tipo abaixo é trivial, mas
+-- `using` é mantido explícito por clareza de intenção.
+alter table site_metadata rename column og_image_media_id to og_image_url;
+alter table site_metadata alter column og_image_url type text using og_image_url::text;

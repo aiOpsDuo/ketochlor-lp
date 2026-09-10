@@ -11,7 +11,7 @@ import { SITE_METADATA_REPOSITORY } from './site-metadata-repository.token';
 export interface AtualizarMetadataInput {
   title: string;
   description: string;
-  ogImageMediaId: string | null;
+  ogImageUrl: string | null;
 }
 
 export type ResultadoAtualizacaoMetadata =
@@ -33,8 +33,8 @@ export class AtualizarMetadataUseCase {
 
   /**
    * @returns `{ sucesso: false, erros }` se `title`/`description` estiverem
-   * vazios ou `ogImageMediaId` não for texto nem nulo (a Apresentação
-   * traduz para `422`); caso contrário, o registro atualizado.
+   * vazios ou `ogImageUrl` não for uma URL `http(s)://` válida nem nulo (a
+   * Apresentação traduz para `422`); caso contrário, o registro atualizado.
    */
   async executar(
     input: AtualizarMetadataInput,

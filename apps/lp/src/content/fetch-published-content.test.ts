@@ -38,7 +38,7 @@ describe('fetchPublishedContent', () => {
         cta_secundario: null,
         faq: null,
       },
-      metadata: { title: 'Ketochlor', description: 'desc', ogImageMediaId: null },
+      metadata: { title: 'Ketochlor', description: 'desc', ogImageUrl: null },
     };
     const fetchMock = mockarFetch({ ok: true, json: () => Promise.resolve(corpoEsperado) });
 

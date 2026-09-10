@@ -1,27 +1,32 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { ImageOff, Loader2 } from 'lucide-react'
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useAuth } from '../../auth/auth-context'
 import { ApiError, apiFetch } from '../../lib/api-client'
+import { enviarImagemParaStorage } from '../../lib/media-upload'
 import { ActionBar } from '../../shared/ActionBar'
 import { Card } from '../../shared/Card'
 import { Notice } from '../../shared/Notice'
 import { atributosDeCampo, FormField } from '../../shared/FormField'
-import { classeDeBotao, classeDeCampo } from '../../shared/classes'
+import { classeDeBotao, classeDeCampo, CLASSE_ROTULO } from '../../shared/classes'
 import type { SiteMetadata } from './site-metadata'
 
-/** Corpo de formulário controlado — sempre texto, mesmo para `ogImageMediaId` (ver comentário abaixo). */
+/** Corpo de formulário controlado — `ogImageUrl` já nasce `string | null`, sem sentinela de texto vazio (ver comentário abaixo). */
 interface FormularioMetadata {
   title: string
   description: string
-  ogImageMediaId: string
+  ogImageUrl: string | null
 }
 
 function paraFormulario(metadata: SiteMetadata): FormularioMetadata {
   return {
     title: metadata.title,
     description: metadata.description,
-    ogImageMediaId: metadata.ogImageMediaId ?? '',
+    ogImageUrl: metadata.ogImageUrl,
   }
 }
+
+const CLASSE_INPUT_DE_ARQUIVO =
+  'block w-full cursor-pointer text-sm text-graytxt file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50'
 
 /**
  * Tela de edição dos metadados de busca/compartilhamento (`/metadata`, SDD §
@@ -31,14 +36,20 @@ function paraFormulario(metadata: SiteMetadata): FormularioMetadata {
  * de tela autenticada de `SectionListPage` (`apiFetch` com
  * `session.access_token`, estado de carregamento/erro explícito).
  *
- * **Simplificação declarada desta tarefa (`painel/tela-metadados`):**
- * `ogImageMediaId` é um campo de texto livre para colar o id de um
- * `media_assets` já existente — não há upload de imagem real aqui. O upload
- * de fato (`POST /api/admin/media/upload-url` + envio ao Storage) é da
- * tarefa `painel/formulario-edicao-secao`, fora do escopo desta tela; quando
- * essa tarefa existir, o mesmo padrão de seletor de imagem pode substituir
- * este campo de texto sem mudar o contrato com a API (`ogImageMediaId`
- * continua sendo só um id de string ou `null`).
+ * **Correção da tarefa `ajustes/corrige-imagem-metadados` (achado de QA):**
+ * `ogImageMediaId` (id de `media_assets` que nenhuma rota da API jamais
+ * preenchia de verdade — ver `agent_context/CHANGELOG.md`) foi substituído
+ * por `ogImageUrl`, e o campo de texto livre virou upload real de imagem com
+ * preview, reaproveitando `enviarImagemParaStorage`
+ * (`apps/admin/src/lib/media-upload.ts`) — a mesma função já usada pelos
+ * campos de imagem de seção (`ImageFieldEditor`). Diferente daquele
+ * componente, aqui NÃO há campo `alt`: `og:image` não carrega texto
+ * alternativo em nenhum lugar do schema (é lido por rastreadores de rede
+ * social, não por leitor de tela), e também não há campo de URL editável ao
+ * lado do upload — diferente das seções, este campo nunca teve um valor
+ * migrado de caminho estático da LP para preservar (era sempre `null`, por
+ * nunca ter funcionado), então não existe o caso de uso que justifica manter
+ * esse texto editável nas seções.
  */
 export function MetadataPage() {
   const { session } = useAuth()
@@ -47,6 +58,8 @@ export function MetadataPage() {
   const [salvando, setSalvando] = useState(false)
   const [erroSalvar, setErroSalvar] = useState<string | null>(null)
   const [salvoComSucesso, setSalvoComSucesso] = useState(false)
+  const [enviandoImagem, setEnviandoImagem] = useState(false)
+  const [erroUploadImagem, setErroUploadImagem] = useState<string | null>(null)
 
   useEffect(() => {
     // `ProtectedRoute` só renderiza esta árvore com sessão presente, mesma
@@ -91,14 +104,13 @@ export function MetadataPage() {
     setSalvoComSucesso(false)
 
     try {
-      const ogImageMediaId = formulario.ogImageMediaId.trim()
       const atualizado = await apiFetch<SiteMetadata>('/api/admin/metadata', session.access_token, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: formulario.title,
           description: formulario.description,
-          ogImageMediaId: ogImageMediaId.length > 0 ? ogImageMediaId : null,
+          ogImageUrl: formulario.ogImageUrl,
         }),
       })
       setFormulario(paraFormulario(atualizado))
@@ -120,6 +132,36 @@ export function MetadataPage() {
     } finally {
       setSalvando(false)
     }
+  }
+
+  async function handleArquivoDeImagem(evento: ChangeEvent<HTMLInputElement>) {
+    const arquivo = evento.target.files?.[0]
+    // Permite escolher o mesmo arquivo de novo depois de um erro, sem
+    // precisar trocar de arquivo para o evento `change` disparar de novo
+    // (mesmo padrão de `ImageFieldEditor`).
+    evento.target.value = ''
+    if (!arquivo || !session || !formulario) {
+      return
+    }
+
+    setEnviandoImagem(true)
+    setErroUploadImagem(null)
+    try {
+      const url = await enviarImagemParaStorage(arquivo, session.access_token)
+      setFormulario({ ...formulario, ogImageUrl: url })
+    } catch (erro) {
+      setErroUploadImagem(erro instanceof ApiError ? erro.message : 'Não foi possível enviar a imagem.')
+    } finally {
+      setEnviandoImagem(false)
+    }
+  }
+
+  function handleRemoverImagem() {
+    if (!formulario) {
+      return
+    }
+    setFormulario({ ...formulario, ogImageUrl: null })
+    setErroUploadImagem(null)
   }
 
   if (erroCarregamento) {
@@ -167,22 +209,66 @@ export function MetadataPage() {
               />
             </FormField>
 
-            <FormField
-              id="metadata-og-image"
-              label="Id da imagem de compartilhamento (opcional)"
-              ajuda="Upload de imagem real ainda não existe nesta tela — cole aqui o id de uma mídia já cadastrada."
-            >
-              <input
-                {...atributosDeCampo('metadata-og-image', { temAjuda: true })}
-                type="text"
-                placeholder="id de media_assets — deixe em branco para remover"
-                value={formulario.ogImageMediaId}
-                onChange={(evento) =>
-                  setFormulario({ ...formulario, ogImageMediaId: evento.target.value })
-                }
-                className={classeDeCampo(false)}
-              />
-            </FormField>
+            <fieldset className="min-w-0">
+              <legend className="mb-3 text-sm font-semibold text-navy">
+                Imagem de compartilhamento (og:image, opcional)
+              </legend>
+
+              <div className="flex flex-col gap-4 pt-1 sm:flex-row">
+                {/* Mesma miniatura de fundo neutro/tamanho fixo de `ImageFieldEditor`
+                    (`pages/sections/components/image-field.tsx`): imagem real pode
+                    ter qualquer proporção, `object-contain` mostra ela inteira. */}
+                <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-cardborder bg-lighttint">
+                  {formulario.ogImageUrl ? (
+                    <img
+                      src={formulario.ogImageUrl}
+                      alt=""
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <ImageOff aria-hidden="true" className="h-6 w-6 text-slate-400" />
+                  )}
+                </div>
+
+                <div className="flex min-w-0 flex-1 flex-col gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="metadata-og-image-arquivo" className={CLASSE_ROTULO}>
+                      Enviar novo arquivo
+                    </label>
+                    <input
+                      id="metadata-og-image-arquivo"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleArquivoDeImagem}
+                      disabled={enviandoImagem}
+                      className={CLASSE_INPUT_DE_ARQUIVO}
+                    />
+                    {enviandoImagem && (
+                      <span className="flex items-center gap-1.5 text-xs text-graytxt">
+                        <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                        Enviando…
+                      </span>
+                    )}
+                    {erroUploadImagem && (
+                      <span role="alert" className="text-sm text-red-600">
+                        {erroUploadImagem}
+                      </span>
+                    )}
+                  </div>
+
+                  {formulario.ogImageUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemoverImagem}
+                      disabled={enviandoImagem}
+                      className={classeDeBotao('secundario', 'pequeno', 'self-start')}
+                    >
+                      Remover imagem
+                    </button>
+                  )}
+                </div>
+              </div>
+            </fieldset>
           </div>
         </Card>
 
