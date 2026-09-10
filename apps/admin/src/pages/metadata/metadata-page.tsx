@@ -216,7 +216,7 @@ export function MetadataPage() {
                   aqui (`og:image` não carrega texto alternativo em nenhum
                   lugar do schema) e sem botão "Remover imagem" separado: o
                   botão de excluir já faz parte do dropzone. */}
-              <div className="w-full sm:w-56">
+              <div className="w-full">
                 <Dropzone
                   id="metadata-og-image-arquivo"
                   imageUrl={formulario.ogImageUrl ?? ''}
@@ -236,21 +236,25 @@ export function MetadataPage() {
           </div>
         </Card>
 
-        <ActionBar>
-          {erroSalvar && (
-            <Notice tipo="erro" className="mr-auto">
-              {erroSalvar}
-            </Notice>
-          )}
-          {salvoComSucesso && (
-            <Notice tipo="sucesso" className="mr-auto">
-              Metadados salvos com sucesso.
-            </Notice>
-          )}
-          <button type="submit" disabled={salvando} className={classeDeBotao('primario')}>
-            {salvando ? 'Salvando…' : 'Salvar'}
-          </button>
-        </ActionBar>
+        <ActionBar
+          end={
+            <>
+              {erroSalvar && (
+                <Notice tipo="erro" className="mr-auto">
+                  {erroSalvar}
+                </Notice>
+              )}
+              {salvoComSucesso && (
+                <Notice tipo="sucesso" className="mr-auto">
+                  Metadados salvos com sucesso.
+                </Notice>
+              )}
+              <button type="submit" disabled={salvando} className={classeDeBotao('primario')}>
+                {salvando ? 'Salvando…' : 'Salvar'}
+              </button>
+            </>
+          }
+        />
       </form>
     </div>
   )

@@ -92,8 +92,8 @@ export function ImageFieldEditor({
     <fieldset className="min-w-0">
       <legend className="mb-3 text-sm font-semibold text-navy dark:text-slate-100">{label}</legend>
 
-      <div className="flex flex-col gap-4 pt-1 sm:flex-row">
-        <div className="w-full sm:w-56">
+      <div className="flex flex-col gap-4 pt-1">
+        <div className="w-full">
           <Dropzone
             id={caminhoArquivo}
             imageUrl={valor.url}
@@ -116,26 +116,24 @@ export function ImageFieldEditor({
           )}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <FormField
-            id={caminhoAlt}
-            label={
-              <>
-                Texto alternativo (alt) <span className="text-red-600 dark:text-red-400">*</span>
-              </>
-            }
-            ajuda="Descreve a imagem para leitores de tela e buscadores — obrigatório."
-            erro={erroAlt}
-          >
-            <input
-              {...atributosDeCampo(caminhoAlt, { temAjuda: true, erro: erroAlt })}
-              type="text"
-              value={valor.alt}
-              onChange={(evento) => onChange({ ...valor, alt: evento.target.value })}
-              className={classeDeCampo(Boolean(erroAlt))}
-            />
-          </FormField>
-        </div>
+        <FormField
+          id={caminhoAlt}
+          label={
+            <>
+              Texto alternativo (alt) <span className="text-red-600 dark:text-red-400">*</span>
+            </>
+          }
+          ajuda="Descreve a imagem para leitores de tela e buscadores — obrigatório."
+          erro={erroAlt}
+        >
+          <input
+            {...atributosDeCampo(caminhoAlt, { temAjuda: true, erro: erroAlt })}
+            type="text"
+            value={valor.alt}
+            onChange={(evento) => onChange({ ...valor, alt: evento.target.value })}
+            className={classeDeCampo(Boolean(erroAlt))}
+          />
+        </FormField>
       </div>
     </fieldset>
   )

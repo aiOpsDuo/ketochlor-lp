@@ -1,4 +1,5 @@
 import {
+  Inbox,
   LayoutList,
   LogOut,
   Menu,
@@ -7,11 +8,10 @@ import {
   PanelLeftOpen,
   Sun,
   Tags,
-  Users,
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/auth-context'
 import { supabase } from '../lib/supabase-client'
@@ -25,9 +25,9 @@ import { useTheme } from '../theme/theme-context'
  * link novo passa a existir só em uma das duas.
  */
 const LINKS_DE_NAVEGACAO: { rota: string; rotulo: string; icone: LucideIcon }[] = [
-  { rota: '/', rotulo: 'Seções', icone: LayoutList },
-  { rota: '/metadata', rotulo: 'Metadados', icone: Tags },
-  { rota: '/leads', rotulo: 'Leads', icone: Users },
+  { rota: '/', rotulo: 'Seções da página', icone: LayoutList },
+  { rota: '/metadata', rotulo: 'Metadados da página', icone: Tags },
+  { rota: '/leads', rotulo: 'Leads recebidos', icone: Inbox },
 ]
 
 const CHAVE_SIDEBAR_RECOLHIDA = 'ketochlor.painel.sidebar-recolhida'
@@ -153,7 +153,18 @@ export function AdminLayout() {
         </div>
       )}
 
-      <div className={recuoDoConteudo}>
+      <div
+        className={recuoDoConteudo}
+        // `--admin-sidebar-largura`: mesma largura usada por `recuoDoConteudo`
+        // acima, exposta como variável CSS para `ActionBar` (achado de QA
+        // visual da tarefa `ajustes/corrige-layout-formularios-menu-e-nomenclaturas`).
+        // `ActionBar` é `fixed`, então ocupa a largura da VIEWPORT inteira,
+        // não a deste `<div>` — sem isso, o conteúdo `start` (à esquerda,
+        // recém-adicionado) renderiza atrás da barra lateral fixa em vez de
+        // alinhado com o restante do conteúdo. Antes só existia conteúdo
+        // `end` (alinhado à direita), por isso o problema nunca apareceu.
+        style={{ '--admin-sidebar-largura': recolhida ? '4.75rem' : '16rem' } as CSSProperties}
+      >
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-cardborder bg-white/85 px-4 backdrop-blur sm:px-6 dark:border-slate-800 dark:bg-slate-900/85">
           <button
             type="button"
@@ -163,13 +174,7 @@ export function AdminLayout() {
           >
             <Menu aria-hidden="true" className="h-5 w-5" />
           </button>
-          <span className="font-semibold text-navy dark:text-slate-100">Painel Ketochlor</span>
           <div className="ml-auto flex items-center gap-3">
-            {session?.user.email && (
-              <span className="hidden text-sm text-graytxt sm:inline dark:text-slate-400">
-                {session.user.email}
-              </span>
-            )}
             <button
               type="button"
               onClick={toggleTheme}
@@ -182,6 +187,11 @@ export function AdminLayout() {
                 <Moon aria-hidden="true" className="h-4 w-4" />
               )}
             </button>
+            {session?.user.email && (
+              <span className="hidden text-sm text-graytxt sm:inline dark:text-slate-400">
+                {session.user.email}
+              </span>
+            )}
             <button
               type="button"
               onClick={handleLogout}
@@ -221,30 +231,39 @@ export function AdminLayout() {
  */
 function MarcaDoPainel({ recolhida }: { recolhida: boolean }) {
   return (
-    <div className="flex h-16 items-center border-b border-cardborder px-4 dark:border-slate-800">
+    <div
+      className={`flex h-16 items-center justify-center border-b border-cardborder dark:border-slate-800 ${recolhida ? 'px-2' : 'px-4'}`}
+    >
       <LogoDoPainel recolhida={recolhida} />
     </div>
   )
 }
 
 /**
- * Só o logo + nome, sem a borda/altura fixa de `MarcaDoPainel` — extraído
- * porque a gaveta mobile precisa do MESMO logo ao lado do próprio botão de
- * fechar, na mesma linha, e não pode reusar `MarcaDoPainel` inteiro sem
- * herdar uma segunda borda/padding que não fazem sentido ali (mesmo
- * raciocínio de `NavegacaoDoPainel`: nenhum markup de logo duplicado entre
- * os dois lugares que o mostram).
+ * Só o logo, sem a borda/altura fixa de `MarcaDoPainel` — extraído porque a
+ * gaveta mobile precisa do MESMO logo ao lado do próprio botão de fechar, na
+ * mesma linha, e não pode reusar `MarcaDoPainel` inteiro sem herdar uma
+ * segunda borda/padding que não fazem sentido ali (mesmo raciocínio de
+ * `NavegacaoDoPainel`: nenhum markup de logo duplicado entre os dois lugares
+ * que o mostram).
+ *
+ * **Correção da tarefa `ajustes/corrige-layout-formularios-menu-e-nomenclaturas`
+ * (achado de QA visual comparado ao painel de referência):** o texto
+ * "Ketochlor" ao lado do logo foi removido — o `alt` da imagem já dá o nome
+ * acessível, um segundo texto visível era redundante. O logo ficou maior
+ * (`h-8` → `h-12`) e centralizado no espaço da marca. Na barra RECOLHIDA
+ * (`lg:w-[4.75rem]`, 76px, ver `AdminLayout`) o espaço útil é de só ~44px de
+ * largura — o logo em `h-12` (proporção 500×283 do PNG) ficaria mais largo
+ * que isso e cortaria; por isso `recolhida` mantém o tamanho original
+ * (`h-8`), que cabe com folga, e só o estado expandido cresce.
  */
 function LogoDoPainel({ recolhida }: { recolhida: boolean }) {
   return (
-    <span className="flex min-w-0 items-center gap-2">
-      <img
-        src="/assets/logo-ketochlor-transp.png"
-        alt="Ketochlor"
-        className="h-8 w-auto shrink-0"
-      />
-      {!recolhida && <span className="truncate font-semibold text-navy dark:text-slate-100">Ketochlor</span>}
-    </span>
+    <img
+      src="/assets/logo-ketochlor-transp.png"
+      alt="Ketochlor"
+      className={`w-auto shrink-0 ${recolhida ? 'h-8' : 'h-12'}`}
+    />
   )
 }
 

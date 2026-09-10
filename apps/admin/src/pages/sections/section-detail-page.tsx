@@ -1,5 +1,5 @@
 import { CONTENT_SECTIONS, type SectionKey } from '@ketochlor/content-schema'
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Save } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/auth-context'
@@ -286,22 +286,23 @@ export function SectionDetailPage() {
 
   const porCampo = erroSalvar?.porCampo ?? {}
 
+  // Dois grupos, na MESMA ordem relativa em que os descritores já aparecem
+  // (correção da tarefa `ajustes/corrige-layout-formularios-menu-e-nomenclaturas`,
+  // achado de QA visual comparado ao painel de referência): campos simples
+  // (texto, imagem, lista de textos soltos, estrutura fixa) juntos num único
+  // `Card`, e cada `lista-item` (FAQ, dosagem, ...) com o próprio destaque
+  // visual — um `fieldset` com borda própria (`ItemListFieldEditor` já traz
+  // essa moldura, ver o componente), não mais um `Card` por campo.
+  const camposSimples = descritores.filter((descritor) => descritor.tipo !== 'lista-item')
+  const camposDeLista = descritores.filter((descritor) => descritor.tipo === 'lista-item')
+
   return (
     // `pb-24` reserva a altura da `ActionBar` fixa no rodapé — sem isso o
     // último campo do formulário fica coberto por ela.
     <div className="flex flex-col gap-5 pb-24">
-      <div>
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 text-sm text-graytxt transition hover:text-blue-institutional dark:text-slate-400 dark:hover:text-blue-300"
-        >
-          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-          Voltar para as seções
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-navy dark:text-slate-100">
-          {SECTION_LABELS[chaveDaRota]}
-        </h1>
-      </div>
+      <h1 className="text-2xl font-semibold text-navy dark:text-slate-100">
+        {SECTION_LABELS[chaveDaRota]}
+      </h1>
 
       <Card>
         <div className="flex flex-wrap items-center gap-3">
@@ -337,38 +338,80 @@ export function SectionDetailPage() {
       </Card>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-        {/* Um cartão por campo de topo de seção: é o `Card` que dá a moldura
-            branca, então os editores compostos (imagem, listas, subestrutura)
-            trazem só o próprio `fieldset`/`legend`, sem borda própria. */}
-        {descritores.map((descritor) => (
-          <Card key={descritor.chave}>
-            <CampoDaSecao
-              descritor={descritor}
-              formData={formData}
-              visibilidade={visibilidade}
-              onAtualizarCampo={atualizarCampo}
-              onAtualizarListaDeItens={atualizarListaDeItens}
-              errosPorCaminho={porCampo}
-              accessToken={session?.access_token ?? ''}
-            />
+        {/* Um único `Card` para todos os campos simples da seção (texto,
+            imagem, lista de textos soltos, estrutura fixa) — é o `Card` que
+            dá a moldura branca, então esses editores trazem só o próprio
+            `fieldset`/`legend`, sem borda própria. */}
+        {camposSimples.length > 0 && (
+          <Card>
+            <div className="flex flex-col gap-4">
+              {camposSimples.map((descritor) => (
+                <CampoDaSecao
+                  key={descritor.chave}
+                  descritor={descritor}
+                  formData={formData}
+                  visibilidade={visibilidade}
+                  onAtualizarCampo={atualizarCampo}
+                  onAtualizarListaDeItens={atualizarListaDeItens}
+                  errosPorCaminho={porCampo}
+                  accessToken={session?.access_token ?? ''}
+                />
+              ))}
+            </div>
           </Card>
+        )}
+
+        {/* Cada lista de itens estruturados (FAQ, dosagem, ...) fora do
+            `Card` acima, com o próprio destaque visual — `ItemListFieldEditor`
+            já traz a borda/fundo/padding própria, ver o componente. */}
+        {camposDeLista.map((descritor) => (
+          <CampoDaSecao
+            key={descritor.chave}
+            descritor={descritor}
+            formData={formData}
+            visibilidade={visibilidade}
+            onAtualizarCampo={atualizarCampo}
+            onAtualizarListaDeItens={atualizarListaDeItens}
+            errosPorCaminho={porCampo}
+            accessToken={session?.access_token ?? ''}
+          />
         ))}
 
-        <ActionBar>
-          {erroSalvar && (
-            <Notice tipo="erro" className="mr-auto">
-              {erroSalvar.mensagem}
-            </Notice>
-          )}
-          {salvoComSucesso && (
-            <Notice tipo="sucesso" className="mr-auto">
-              Seção salva com sucesso.
-            </Notice>
-          )}
-          <button type="submit" disabled={salvando} className={classeDeBotao('primario')}>
-            {salvando ? 'Salvando…' : 'Salvar'}
-          </button>
-        </ActionBar>
+        <ActionBar
+          start={
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-sm text-graytxt transition hover:text-blue-institutional dark:text-slate-400 dark:hover:text-blue-300"
+            >
+              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+              Voltar para a lista de seções
+            </Link>
+          }
+          end={
+            <>
+              {erroSalvar && (
+                <Notice tipo="erro" className="mr-auto">
+                  {erroSalvar.mensagem}
+                </Notice>
+              )}
+              {salvoComSucesso && (
+                <Notice tipo="sucesso" className="mr-auto">
+                  Seção salva com sucesso.
+                </Notice>
+              )}
+              <button type="submit" disabled={salvando} className={classeDeBotao('primario')}>
+                {salvando ? (
+                  'Salvando…'
+                ) : (
+                  <>
+                    <Save aria-hidden="true" className="h-4 w-4" />
+                    Salvar e publicar
+                  </>
+                )}
+              </button>
+            </>
+          }
+        />
       </form>
     </div>
   )

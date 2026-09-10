@@ -64,7 +64,7 @@ export function ItemListFieldEditor({
   }
 
   return (
-    <fieldset className="min-w-0">
+    <fieldset className="min-w-0 space-y-3 rounded-lg border border-cardborder bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
       <legend className="mb-3 text-sm font-semibold text-navy dark:text-slate-100">{label}</legend>
 
       <div className="flex flex-col gap-3 pt-1">
