@@ -31,12 +31,12 @@ export const diferenciaisInitialContent: Diferenciais = {
     {
       titulo: 'Tecnologia exclusiva SIS',
       corpo:
-        'Estimula as defesas naturais da pele  essencial para o paciente atópico⁴',
+        'Estimula as defesas naturais da pele – essencial para o paciente atópico⁴',
     },
     {
       titulo: 'Estabilidade incomparável',
       corpo:
-        'Único com 12 meses de validade em uso  tratamento completo, sem desperdício',
+        'Único com 12 meses de validade em uso – tratamento completo, sem desperdício',
     },
   ],
 };

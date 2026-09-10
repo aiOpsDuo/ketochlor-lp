@@ -35,11 +35,11 @@ export const provaAutoridadeInitialContent: ProvaAutoridade = {
     },
     {
       value: '100%',
-      label: 'de satisfação dos tutores que testaram o produto',
+      label: 'de satisfação dos tutores que testaram o produto*',
       pct: 100,
     },
   ],
-  note: 'Dados internos Virbac ("data on file")⁵, estudo com 41 cães. Racional científico apoiado em literatura publicada e revisada — ISCAID (2025)¹, Pershing et al. (1994)², Gupta et al. (2025)³.',
+  note: 'Dados internos Virbac ("data on file")*, estudo com 41 cães. Racional científico apoiado em literatura publicada e revisada — ISCAID (2025)¹, Pershing et al. (1994)², Gupta et al. (2025)³.',
   selo: {
     url: '/assets/padrao-ouro.png',
     alt: 'Selo Padrão Ouro Virbac',
