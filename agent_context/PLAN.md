@@ -431,7 +431,7 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Dependências: ajustes/estiliza-painel-admin
 - Execução: sequencial
 - Toca documentação: sim — `agent_context/SDD.md` (Modelo de dados) + `agent_context/CHANGELOG.md`, `docs/API.md`, `docs/BANCO-DE-DADOS.md`, `docs/PAINEL.md`
-- Status: pendente
+- Status: concluída — PR #65 (squash-merge em `main`, `9d31387`). Migration `20260910120000_rename_site_metadata_og_image_to_url.sql` (`og_image_media_id` uuid → `og_image_url` text); `validar-site-metadata.ts` ganhou `ehUrlHttpValida()` (aceita `http(s)://...`, vazio/só-espaço vira `null`, formato inválido não vazio → 422); tela de Metadados agora reusa `enviarImagemParaStorage` (mesma função já usada nas imagens de seção) com preview real, sem campo de texto de id nem de `alt` (og:image não tem `alt` no schema). Reverificado pelo orquestrador contra Supabase LOCAL: `\d site_metadata` confirma o novo schema após `supabase db reset`; 91/91 testes da API e 63/63 da LP; build de todos os workspaces; três cenários manuais via curl (URL inválida → 422, URL válida → 200 salvo, vazio → limpa o campo) todos corretos; `docker compose build` (sem `up`) concluído sem afetar os containers do usuário, que seguiram `healthy`/`Up` durante toda a tarefa. Migration aplicada em produção (Supabase do Ketochlor) separadamente pelo orquestrador na sequência, conforme já registrado neste critério de "pronto" — detalhes em agent_context/CHANGELOG.md.
 
 ## Ordem de execução
 
