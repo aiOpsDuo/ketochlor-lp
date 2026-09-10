@@ -445,7 +445,8 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Dependências: ajustes/estiliza-painel-admin, ajustes/corrige-imagem-metadados
 - Execução: sequencial
 - Toca documentação: sim — `docs/PAINEL.md` (reverte a nota "sem tema escuro" e a nota "sem logo, só selo")
-- Status: pendente
+- Status: concluída
+- Resumo da verificação: `ThemeProvider`/`useTheme` (`apps/admin/src/theme/theme-context.tsx`) + `darkMode: 'class'` — variante `dark:` adicionada em toda tela e componente compartilhado do painel, sem exceção. Logo real (`apps/lp/public/assets/logo-ketochlor-transp.png`, copiado para `apps/admin/public/assets/`) no lugar do selo "K", na barra de desktop e na gaveta mobile. Campo de imagem virou dropzone compartilhado (`apps/admin/src/shared/Dropzone.tsx`) sem nenhuma caixa de "URL da imagem", nas duas telas que a tinham (seções e metadados). Verificado em navegador real (Playwright/Chromium) contra Supabase local: tema respeita `prefers-color-scheme` sem escolha salva (checado nos dois sentidos), alternância manual persiste em `localStorage` e sobrevive a reload, todas as telas percorridas nos dois temas, upload real de imagem de teste + prévia (URL pública real do Storage) + exclusão confirmados no campo de seção e no de metadados, logo real carrega e é visível tanto na barra quanto na gaveta mobile — 18/18 verificações do script passaram. `npm run test --workspaces` (91+63+23 = 177 testes, `apps/admin` sem script de teste) e `npm run build --workspaces` (ordem documentada em `docker/Dockerfile`: `content-schema` antes de `lp`/`admin`/`api`) passam sem erro. `docker compose build` (sem `up`) concluiu sem erro; containers de produção do usuário (`ketochlor-lp-api-1`/`ketochlor-lp-proxy-1`) permaneceram saudáveis e intocados. Ver `agent_context/CHANGELOG.md` (entrada 2026-09-10) para o detalhamento completo.
 
 ## Ordem de execução
 

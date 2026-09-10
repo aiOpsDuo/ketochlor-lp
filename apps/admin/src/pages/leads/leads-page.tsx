@@ -175,8 +175,8 @@ export function LeadsPage() {
   return (
     <div className="flex flex-col gap-5">
       <header>
-        <h1 className="text-2xl font-semibold text-navy">Leads</h1>
-        <p className="mt-1 text-sm text-graytxt">
+        <h1 className="text-2xl font-semibold text-navy dark:text-slate-100">Leads</h1>
+        <p className="mt-1 text-sm text-graytxt dark:text-slate-400">
           Cadastros recebidos pelo formulário da página, do mais recente para o mais antigo.
         </p>
       </header>
@@ -222,10 +222,10 @@ export function LeadsPage() {
       {erro && <Notice tipo="erro">{erro}</Notice>}
 
       {!leads ? (
-        <p className="text-sm text-graytxt">Carregando leads…</p>
+        <p className="text-sm text-graytxt dark:text-slate-400">Carregando leads…</p>
       ) : leads.length === 0 ? (
         <Card>
-          <p className="text-sm text-graytxt">
+          <p className="text-sm text-graytxt dark:text-slate-400">
             Nenhum lead encontrado para o período selecionado.
           </p>
         </Card>
@@ -234,7 +234,7 @@ export function LeadsPage() {
         <Card className="!p-0">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-graytxt">
+              <thead className="bg-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-graytxt dark:bg-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-2.5">Nome</th>
                   <th className="px-4 py-2.5">E-mail</th>
@@ -252,27 +252,38 @@ export function LeadsPage() {
               {/* `divide-y` no corpo em vez de borda por célula: uma linha só
                   precisa de um separador horizontal, e a grade completa
                   competiria com o próprio dado. */}
-              <tbody className="divide-y divide-cardborder">
+              <tbody className="divide-y divide-cardborder dark:divide-slate-800">
                 {leads.map((lead) => (
-                  <tr key={lead.id} className="align-top transition hover:bg-lighttint">
-                    <td className="whitespace-nowrap px-4 py-2.5 font-medium text-navy">
+                  <tr
+                    key={lead.id}
+                    className="align-top transition hover:bg-lighttint dark:hover:bg-slate-800/60"
+                  >
+                    <td className="whitespace-nowrap px-4 py-2.5 font-medium text-navy dark:text-slate-100">
                       {lead.nome}
                     </td>
-                    <td className="px-4 py-2.5 text-graytxt">{lead.email}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-graytxt">
+                    <td className="px-4 py-2.5 text-graytxt dark:text-slate-400">{lead.email}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-graytxt dark:text-slate-400">
                       {lead.telefone ?? '—'}
                     </td>
-                    <td className="px-4 py-2.5 text-graytxt">{lead.crmv ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-graytxt">{lead.estadoCidade ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-graytxt">{lead.especialidade ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-graytxt">
+                    <td className="px-4 py-2.5 text-graytxt dark:text-slate-400">
+                      {lead.crmv ?? '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-graytxt dark:text-slate-400">
+                      {lead.estadoCidade ?? '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-graytxt dark:text-slate-400">
+                      {lead.especialidade ?? '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-graytxt dark:text-slate-400">
                       {lead.jaClienteVirbac ? 'Sim' : 'Não'}
                     </td>
-                    <td className="px-4 py-2.5 text-graytxt">
+                    <td className="px-4 py-2.5 text-graytxt dark:text-slate-400">
                       {lead.desejaContatoComercial ? 'Sim' : 'Não'}
                     </td>
-                    <td className="px-4 py-2.5 text-graytxt">{lead.origem ?? '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-graytxt">
+                    <td className="px-4 py-2.5 text-graytxt dark:text-slate-400">
+                      {lead.origem ?? '—'}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-graytxt dark:text-slate-400">
                       {formatadorDeData.format(new Date(lead.createdAt))}
                     </td>
                     <td className="px-4 py-2.5 text-right">

@@ -281,7 +281,7 @@ export function SectionDetailPage() {
   }
 
   if (!formData || !secao) {
-    return <p className="text-sm text-graytxt">Carregando seção…</p>
+    return <p className="text-sm text-graytxt dark:text-slate-400">Carregando seção…</p>
   }
 
   const porCampo = erroSalvar?.porCampo ?? {}
@@ -293,12 +293,14 @@ export function SectionDetailPage() {
       <div>
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 text-sm text-graytxt transition hover:text-blue-institutional"
+          className="inline-flex items-center gap-1.5 text-sm text-graytxt transition hover:text-blue-institutional dark:text-slate-400 dark:hover:text-blue-300"
         >
           <ArrowLeft aria-hidden="true" className="h-4 w-4" />
           Voltar para as seções
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-navy">{SECTION_LABELS[chaveDaRota]}</h1>
+        <h1 className="mt-2 text-2xl font-semibold text-navy dark:text-slate-100">
+          {SECTION_LABELS[chaveDaRota]}
+        </h1>
       </div>
 
       <Card>
@@ -323,7 +325,7 @@ export function SectionDetailPage() {
                 ? 'Ocultar seção'
                 : 'Publicar seção'}
           </button>
-          <p className="text-xs text-graytxt">
+          <p className="text-xs text-graytxt dark:text-slate-400">
             Uma seção oculta continua editável aqui, mas não aparece na página publicada.
           </p>
         </div>

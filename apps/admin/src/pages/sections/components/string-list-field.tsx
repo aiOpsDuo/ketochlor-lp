@@ -51,11 +51,11 @@ export function StringListFieldEditor({
 
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-3 text-sm font-semibold text-navy">{label}</legend>
+      <legend className="mb-3 text-sm font-semibold text-navy dark:text-slate-100">{label}</legend>
 
       <div className="flex flex-col gap-3 pt-1">
         {itens.length === 0 && (
-          <p className="rounded-lg border border-dashed border-cardborder px-3 py-6 text-center text-sm text-graytxt">
+          <p className="rounded-lg border border-dashed border-cardborder px-3 py-6 text-center text-sm text-graytxt dark:border-slate-700 dark:text-slate-400">
             Nenhum {rotuloItemMinusculo} ainda.
           </p>
         )}
@@ -65,9 +65,12 @@ export function StringListFieldEditor({
           const erro = errosPorCaminho[caminho]
           const nomeDoItem = `${rotuloItem} ${indice + 1}`
           return (
-            <div key={indice} className="rounded-lg border border-cardborder bg-lighttint p-3">
+            <div
+              key={indice}
+              className="rounded-lg border border-cardborder bg-lighttint p-3 dark:border-slate-700 dark:bg-slate-800/60"
+            >
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-graytxt">
+                <span className="text-xs font-semibold uppercase tracking-wide text-graytxt dark:text-slate-400">
                   {nomeDoItem}
                 </span>
                 <div className="flex items-center gap-1.5">

@@ -29,7 +29,7 @@ export function FixedStructFieldEditor({
 }: FixedStructFieldEditorProps) {
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-3 text-sm font-semibold text-navy">{label}</legend>
+      <legend className="mb-3 text-sm font-semibold text-navy dark:text-slate-100">{label}</legend>
       <div className="flex flex-col gap-4 pt-1">
         {campos.map((campo) => {
           const caminho = `${caminhoBase}.${campo.chave}`

@@ -31,7 +31,7 @@ export function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-lighttint p-4">
+    <main className="flex min-h-screen items-center justify-center bg-lighttint p-4 dark:bg-slate-950">
       {/* Cartão estreito e centralizado sobre fundo neutro, sem imagem nem
           split-screen: a tela de entrada de uma ferramenta interna não
           precisa vender nada a quem já tem a credencial. */}
@@ -39,13 +39,15 @@ export function LoginPage() {
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <span
             aria-hidden="true"
-            className="flex h-11 w-11 items-center justify-center rounded-xl bg-navy text-lg font-bold text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-xl bg-navy text-lg font-bold text-white dark:bg-slate-700"
           >
             K
           </span>
           <div>
-            <h1 className="text-xl font-semibold text-navy">Painel Ketochlor</h1>
-            <p className="mt-1 text-sm text-graytxt">Entre para editar o conteúdo da página.</p>
+            <h1 className="text-xl font-semibold text-navy dark:text-slate-100">Painel Ketochlor</h1>
+            <p className="mt-1 text-sm text-graytxt dark:text-slate-400">
+              Entre para editar o conteúdo da página.
+            </p>
           </div>
         </div>
 
