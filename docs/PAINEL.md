@@ -209,6 +209,20 @@ Formulário controlado com três campos — `title`, `description` e `ogImageUrl
 
 Colunas da tabela: nome, e-mail, telefone, CRMV, cidade/UF, especialidade, "já é cliente Virbac" e "deseja contato comercial" (Sim/Não), origem, data de recebimento (`Intl.DateTimeFormat('pt-BR')`) e a ação de excluir — todos os campos de `LeadPersistido` (`docs/API.md` § Leads), na mesma ordem do CSV.
 
+## Gestão de operadores (`ajustes/modulo-operadores`)
+
+`apps/admin/src/pages/operators/operators-page.tsx` é a rota `/operators` (URL real `/admin/operators`): busca `GET /api/admin/operators` (`docs/API.md` § Operadores) com `apiFetch`, mesmo padrão de `LeadsPage`. Quem pode logar no painel — **sem tabela própria no banco**, cada linha da tabela é, integralmente, um usuário do Supabase Auth.
+
+**Formulário de criação** (nome, e-mail, senha inicial) no topo da tela, dentro de um `Card`, inline com a tabela — três campos com `FormField`/`atributosDeCampo` (mesmo padrão de `LoginPage`), o de senha com `autoComplete="new-password"`. O botão "Criar operador" fica desabilitado enquanto algum dos três campos está vazio ou durante o envio ("Criando…"). Erro de validação (`422`, `docs/API.md`) aparece por campo (`FormField` → `erro`) e também como `Notice` com a mensagem geral; sucesso mostra `Notice` de confirmação e limpa o formulário.
+
+**Tabela**: Nome, E-mail, Criado em, Último login ("Nunca acessou" quando `null`) e Ações — datas formatadas com o mesmo `Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })` já usado por `LeadsPage`.
+
+**Remoção — duas recusas antecipadas no cliente**, sem esperar a API responder `409` (`RemoverOperadorUseCase`, `docs/API.md` § Operadores) para o operador descobrir que não pode: o botão "Remover" é substituído por um texto simples com o motivo (sem tooltip) quando
+1. só resta 1 operador na lista (`operators.length === 1` → "Único operador restante"), ou
+2. a linha é a própria conta logada (`operator.id === session.user.id`, o id do Supabase Auth client-side — `useAuth().session.user.id` → "Sua própria conta").
+
+A checagem de "único operador restante" tem prioridade sobre a de "própria conta": quando só resta 1 operador, ele é necessariamente quem está logado (não há como estar autenticado sendo um operador que não existe mais na listagem), então a informação mais específica das duas é mostrada. Quando nenhuma das duas recusas se aplica, a remoção segue o mesmo padrão de dois cliques de confirmação na própria linha já usado por `LeadsPage`.
+
 ## Como testar localmente com um usuário de operador
 
 ```bash

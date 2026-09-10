@@ -6,6 +6,7 @@ import { AdminLayout } from './layout/admin-layout'
 import { LeadsPage } from './pages/leads/leads-page'
 import { LoginPage } from './pages/login-page'
 import { MetadataPage } from './pages/metadata/metadata-page'
+import { OperatorsPage } from './pages/operators/operators-page'
 import { SectionDetailPage } from './pages/sections/section-detail-page'
 import { SectionListPage } from './pages/sections/section-list-page'
 import { ThemeProvider } from './theme/theme-context'
@@ -37,6 +38,7 @@ export default function App() {
                 <Route path="sections/:key" element={<SectionDetailPage />} />
                 <Route path="metadata" element={<MetadataPage />} />
                 <Route path="leads" element={<LeadsPage />} />
+                <Route path="operators" element={<OperatorsPage />} />
               </Route>
             </Route>
           </Routes>

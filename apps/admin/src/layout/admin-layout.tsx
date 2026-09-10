@@ -8,6 +8,7 @@ import {
   PanelLeftOpen,
   Sun,
   Tags,
+  Users,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -28,6 +29,7 @@ const LINKS_DE_NAVEGACAO: { rota: string; rotulo: string; icone: LucideIcon }[] 
   { rota: '/', rotulo: 'Seções da página', icone: LayoutList },
   { rota: '/metadata', rotulo: 'Metadados da página', icone: Tags },
   { rota: '/leads', rotulo: 'Leads recebidos', icone: Inbox },
+  { rota: '/operators', rotulo: 'Operadores', icone: Users },
 ]
 
 const CHAVE_SIDEBAR_RECOLHIDA = 'ketochlor.painel.sidebar-recolhida'
