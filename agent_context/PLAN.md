@@ -423,6 +423,16 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Toca documentação: sim — `docs/PAINEL.md` (nota curta sobre a identidade visual compartilhada)
 - Status: concluída — PR #62 (squash-merge em `main`, `73aa3ab`). `packages/design-tokens` (sem build, TS puro) com as cores reais do Ketochlor, mesmos nomes já usados em `apps/lp`; `docker/Dockerfile` atualizado (só precisa do `package.json` do pacote, sem passo de build). Layout com sidebar recolhível (estado em localStorage) + gaveta mobile; componentes `Card`/`Notice`/`ActionBar`/`FormField` extraídos para `apps/admin/src/shared/`; cor de marca só como acento, botão primário em neutro (`slate-900`); dark mode deliberadamente não implementado (não pedido). **Bug real encontrado e corrigido pelo subagente**: variantes de erro/normal de borda de campo somadas em vez de mutuamente exclusivas — ordem alfabética das classes do Tailwind fazia a cor neutra vencer sobre a de erro, campo inválido aparecia sem destaque (só detectado em navegador real). Reverificado pelo orquestrador: build de todos os workspaces, 63/63 testes da LP, `docker compose build` (sem `up`, sem afetar os containers do usuário que seguiam rodando em produção durante a tarefa), nenhuma menção ao projeto irmão.
 
+#### corrige-imagem-metadados — Substitui og_image_media_id (uuid morto) por URL real de imagem
+- Origem: pedido do usuário (achado de QA)
+- Descrição: `site_metadata.og_image_media_id` (uuid, referência a `media_assets`) nunca teve como ser preenchido de verdade — nenhuma rota da API cria um registro em `media_assets` (o upload, tanto aqui quanto nas seções, só emite credencial de envio direto ao Storage e devolve a URL pública; o passo de confirmação que gravaria a linha em `media_assets` nunca foi implementado, gap já registrado em `painel/formulario-edicao-secao`). As imagens de SEÇÃO contornam isso guardando `{url, alt}` direto no conteúdo, sem depender de `media_assets` — só a tela de Metadados ficou presa ao modelo antigo. Corrigir alinhando `site_metadata` ao mesmo padrão: substituir a coluna por uma URL de texto, com upload real (mesmo componente/fluxo já usado nas seções) na tela de Metadados.
+- Rastreável a: achado de QA do usuário em 2026-09-10; agent_context/SDD.md § Modelo de dados (site_metadata) — decisão revisada, registrar em CHANGELOG.md
+- Critério de "pronto": migration renomeia/retipa `og_image_media_id` (uuid) → `og_image_url` (text); domínio/infraestrutura/aplicação/apresentação da API atualizados (`SiteMetadataRepository`, casos de uso, DTO); tela de Metadados do painel ganha upload real de imagem com preview (não mais caixa de texto de id); `apps/lp` (tipo `PublishedSiteMetadata`, `injetar-metadados.mjs`) atualizados para o novo nome de campo; tudo verificado contra Supabase LOCAL (o subagente não tem nem deve receber credenciais de produção — a migration em produção é aplicada separadamente pelo orquestrador, que já tem essas credenciais desta sessão).
+- Dependências: ajustes/estiliza-painel-admin
+- Execução: sequencial
+- Toca documentação: sim — `agent_context/SDD.md` (Modelo de dados) + `agent_context/CHANGELOG.md`, `docs/API.md`, `docs/BANCO-DE-DADOS.md`, `docs/PAINEL.md`
+- Status: pendente
+
 ## Ordem de execução
 
 ```
