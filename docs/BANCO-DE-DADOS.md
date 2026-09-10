@@ -1,6 +1,6 @@
 # Banco de dados
 
-Plataforma de dados local para desenvolvimento (ver [`agent_context/SDD.md` § "Visão de tiers (T5 — Plataforma de dados)"](../agent_context/SDD.md)): Postgres, Storage e Auth via [Supabase CLI](https://supabase.com/docs/guides/local-development), rodando em containers Docker na máquina de quem desenvolve — sem depender do projeto Supabase de produção, que só é provisionado na fase `integracao` do [`agent_context/PLAN.md`](../agent_context/PLAN.md).
+Plataforma de dados local para desenvolvimento (ver [`agent_context/SDD.md` § "Visão de tiers (T5 — Plataforma de dados)"](../agent_context/SDD.md)): Postgres, Storage e Auth via [Supabase CLI](https://supabase.com/docs/guides/local-development), rodando em containers Docker na máquina de quem desenvolve — sem depender de nenhum projeto Supabase remoto, provisionado só na fase `integracao` do [`agent_context/PLAN.md`](../agent_context/PLAN.md) para testes internos (ver § "Homologação" abaixo — não há projeto de produção do cliente).
 
 ## Instalação da CLI
 
@@ -85,15 +85,15 @@ Rode isso sempre que o conteúdo inicial de uma seção mudar em `packages/conte
 
 O Supabase CLI roda `supabase/seed.sql` automaticamente ao final de **todo** `npx supabase db reset` — comportamento observado, não presumido (rodar `npx supabase db reset` localmente imprime `Seeding data from supabase/seed.sql...` como um dos últimos passos, depois de aplicar as migrations). Isso significa que qualquer ambiente local — de qualquer pessoa do time, ou um CI futuro que suba o Supabase local para testes — já nasce com o conteúdo real do Ketochlor em `content_sections`, nunca com o placeholder vazio da migration.
 
-### Produção — manual, feita uma vez pelo orquestrador ao provisionar o projeto real
+### Homologação — manual, feita uma vez pelo orquestrador ao provisionar o projeto de teste interno
 
-O projeto Supabase de produção do Ketochlor **já existe** (provisionado e semeado em 2026-09-10, ver `agent_context/CHANGELOG.md` § "Projeto Supabase de produção do Ketochlor provisionado e semeado") — as migrations e o `supabase/seed.sql` gerado acima foram aplicados uma única vez, manualmente, por uma das duas rotas abaixo. Isso não é algo que `gerar-seed-conteudo-inicial.mjs` dispara sozinho contra um projeto remoto, nem algo que roda de novo a cada deploy — o conteúdo real, depois do seed inicial, é editado pelo time direto no painel (`/admin`), nunca reaplicando este arquivo.
+**Não existe projeto de produção do cliente.** O que existe é um projeto Supabase de **homologação** (provisionado e semeado em 2026-09-10, ver `agent_context/CHANGELOG.md` § "Projeto Supabase de homologação do Ketochlor provisionado e semeado") — um ambiente de teste interno da equipe, usado para validar o CMS de ponta a ponta antes de qualquer entrega ao cliente. As migrations e o `supabase/seed.sql` gerado acima foram aplicados uma única vez, manualmente, por uma das duas rotas abaixo. Isso não é algo que `gerar-seed-conteudo-inicial.mjs` dispara sozinho contra um projeto remoto — o conteúdo desse ambiente, depois do seed inicial, é editado pelo time direto no painel (`/admin`), nunca reaplicando este arquivo.
 
-1. **Via `psql`, apontando para o Postgres do projeto real**:
+1. **Via `psql`, apontando para o Postgres do projeto de homologação**:
    ```bash
    psql "postgresql://postgres:<senha>@db.<project-ref>.supabase.co:5432/postgres" -f supabase/seed.sql
    ```
-   (string de conexão disponível em Project Settings → Database, no painel do Supabase do projeto real). **Nota de conectividade observada nesta máquina:** `db.<project-ref>.supabase.co` só resolve endereço IPv6 — sem rota IPv6 de saída, a conexão direta falha, e o caminho que funcionou foi o **Session Pooler** (Supavisor, IPv4), `postgresql://postgres.<project-ref>@aws-0-<região>.pooler.supabase.com:5432/postgres` — a connection string exata (já com a região certa) está na aba "Connect" do dashboard do projeto, em vez de descobrir a região por tentativa.
-2. **Via SQL Editor do Supabase Studio** do projeto real: abrir `supabase/seed.sql`, colar o conteúdo no editor SQL e executar — sem o problema de conectividade do item acima, por rodar no navegador.
+   (string de conexão disponível em Project Settings → Database, no painel do Supabase do projeto). **Nota de conectividade observada nesta máquina:** `db.<project-ref>.supabase.co` só resolve endereço IPv6 — sem rota IPv6 de saída, a conexão direta falha, e o caminho que funcionou foi o **Session Pooler** (Supavisor, IPv4), `postgresql://postgres.<project-ref>@aws-0-<região>.pooler.supabase.com:5432/postgres` — a connection string exata (já com a região certa) está na aba "Connect" do dashboard do projeto, em vez de descobrir a região por tentativa.
+2. **Via SQL Editor do Supabase Studio** do projeto de homologação: abrir `supabase/seed.sql`, colar o conteúdo no editor SQL e executar — sem o problema de conectividade do item acima, por rodar no navegador.
 
-Qualquer uma das duas é segura para rodar mais de uma vez (o `ON CONFLICT DO UPDATE` já é idempotente) — mas continua sendo uma ação manual, de uso raro (reprovisionar um ambiente do zero), não o caminho normal de corrigir ou atualizar conteúdo já publicado.
+Qualquer uma das duas é segura para rodar mais de uma vez (o `ON CONFLICT DO UPDATE` já é idempotente) — mas continua sendo uma ação manual, de uso raro (reprovisionar um ambiente do zero), não o caminho normal de corrigir ou atualizar conteúdo já publicado nele. Quando o projeto de produção real do cliente existir, o mesmo processo se aplica a ele, separadamente.
