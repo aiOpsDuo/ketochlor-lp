@@ -263,7 +263,7 @@ function LogoDoPainel({ recolhida }: { recolhida: boolean }) {
   return (
     <img
       src="/assets/logo-ketochlor-transp.png"
-      alt="Ketochlor"
+      alt="Ketochlor®"
       className={`w-auto shrink-0 ${recolhida ? 'h-8' : 'h-12'}`}
     />
   )

@@ -48,7 +48,7 @@ describe('conteúdo migrado literalmente de apps/lp/src/data/content.ts', () => 
     expect(
       CONTENT_SECTIONS.faq.initialContent.perguntas.map((p) => p.question),
     ).toEqual([
-      'Ketochlor deve ser usado de forma contínua em cães com DAC?',
+      'Ketochlor® deve ser usado de forma contínua em cães com DAC?',
       'Ketochlor® substitui o tratamento sistêmico da DAC?',
       'Qual a diferença entre usar Ketochlor® e o Hexadene Spherulites®?',
       'Por que a estabilidade de 12 meses após aberto importa clinicamente?',

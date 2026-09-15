@@ -49,7 +49,7 @@ export default function Header() {
         <button
           onClick={() => handleNavClick('inicio')}
           className="flex items-center shrink-0"
-          aria-label="Ketochlor — voltar ao início"
+          aria-label="Ketochlor® — voltar ao início"
         >
           <img
             src="/assets/logo-ketochlor-transp.png"

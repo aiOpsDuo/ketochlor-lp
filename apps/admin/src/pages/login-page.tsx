@@ -44,7 +44,7 @@ export function LoginPage() {
             K
           </span>
           <div>
-            <h1 className="text-xl font-semibold text-navy dark:text-slate-100">Painel Ketochlor</h1>
+            <h1 className="text-xl font-semibold text-navy dark:text-slate-100">Painel Ketochlor®</h1>
             <p className="mt-1 text-sm text-graytxt dark:text-slate-400">
               Entre para editar o conteúdo da página.
             </p>
