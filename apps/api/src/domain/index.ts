@@ -20,6 +20,8 @@ export * from './operators/operador';
 export * from './operators/remocao-operador-recusada.error';
 export * from './operators/validar-criacao-operador';
 
+export * from './auth/validar-login';
+
 // Portas implementadas pela Infraestrutura (`api/infra-supabase-adapters`) —
 // interfaces puras, sem import de framework nem de Supabase (a Infraestrutura
 // depende do Domínio implementando-as, nunca o contrário).
@@ -28,4 +30,6 @@ export * from './portas/site-metadata.repository';
 export * from './portas/media-assets.repository';
 export * from './portas/leads.repository';
 export * from './portas/operadores.repository';
+export * from './portas/operador-credenciais.repository';
 export * from './portas/verificador-token';
+export * from './portas/emissor-token';
