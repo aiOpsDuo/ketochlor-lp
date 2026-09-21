@@ -116,6 +116,25 @@ services:
   # startup do compose (um serviço `mc` de inicialização, não um servidor de
   # vida longa). Não publica nada nem expõe porta; só fala com `minio` pela
   # rede interna do compose.
+  #
+  # `docker/minio/init-bucket.sh` cria o bucket e, na sequência, aplica uma
+  # policy anônima de leitura PÚBLICA só de objeto (`s3:GetObject`, sem
+  # `s3:ListBucket`) — equivalente à policy `images_public_read` que o
+  # Supabase Storage original tinha (`storage.buckets.public = true` +
+  # policy de `select` para todos os papéis — ver
+  # `supabase/migrations/20260908200805_enable_rls_and_storage.sql` e
+  # `docs/BANCO-DE-DADOS.md` § "Bucket MinIO"). Sem essa policy, o MinIO nega
+  # `GET` anônimo por padrão, e a `public_url` gravada em `media_assets`
+  # (`MinioMediaAssetsRepository`) teria a FORMA de uma URL pública sem
+  # funcionar de fato — LP/painel não conseguiriam exibir `<img src="...">`
+  # sem credencial (achado registrado em `agent_context/PLAN.md`, tarefa
+  # `ajustes/migracao-mysql-minio-bucket-leitura-publica`). O script usa uma
+  # policy JSON própria (`mc anonymous set-json`) em vez da policy canônica
+  # `mc anonymous set download`, porque esta última concede também
+  # `s3:ListBucket` (listagem pública do bucket inteiro) — confirmado
+  # empiricamente via `mc anonymous get-json` — o que exporia a lista
+  # completa de arquivos, indo além do que o critério de "pronto" da tarefa
+  # permite (ver comentário no próprio script para o detalhe).
   minio-init:
     image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
@@ -125,11 +144,9 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
       MINIO_BUCKET: ${MINIO_BUCKET:-images}
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set cms http://minio:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\" &&
-      mc mb --ignore-existing \"cms/$$MINIO_BUCKET\"
-      "
+    volumes:
+      - ./docker/minio/init-bucket.sh:/init-bucket.sh:ro
+    entrypoint: ["/bin/sh", "/init-bucket.sh"]
 
 volumes:
   mysql-data:
