@@ -516,6 +516,16 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Dependências: migracao-mysql-adapters-conteudo (mesmo `package.json`/lockfile de `apps/api`)
 - Execução: sequencial
 - Toca documentação: não
+- Status: concluída (com ressalva) — PR #80 (squash-merge em `main`). `MinioMediaAssetsRepository` (`@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner`, `forcePathStyle: true`, obrigatório para MinIO — confirmado via documentação/issues do MinIO e empiricamente). `token` da porta `CredencialUploadEmitida` virou `string | null` (decisão documentada em `domain/portas/media-assets.repository.ts`): uma URL pré-assinada S3 já embute a autenticação, não existe token separado a devolver — nenhum valor foi inventado para preencher o campo. Reverificado pelo orquestrador (não só relatado): 15/15 testes de integração (3 novos de mídia + 12 já existentes de MySQL, sem regressão) passam contra `mysql`+`minio` reais do compose — upload real via `PUT` HTTP puro (sem SDK, simulando o navegador) contra a `signedUrl`, confirmado via `HeadObjectCommand` que o objeto existe no bucket, e leitura direta da tabela `media_assets` confere todos os campos gravados; `npm run build --prefix apps/api` sem erro; nenhum `*.module.ts` tocado. **Ressalva que quebra a segunda metade do critério de "pronto" acima ("a URL pública resultante é acessível via GET")**: o bucket `images` criado por `minio-init` (`migracao-mysql-infra-compose`) não tem policy de leitura pública — por padrão o MinIO nega leitura anônima, então `public_url` tem a FORMA de uma URL pública mas não é de fato acessível sem credencial hoje. Isso bloqueia o requisito do usuário de "imagens funcionarem corretamente" (LP/painel precisam exibir `<img src>` sem autenticação) — nova tarefa `migracao-mysql-minio-bucket-leitura-publica` registrada logo abaixo para fechar essa lacuna antes de `migracao-mysql-verificacao-ponta-a-ponta`.
+
+#### migracao-mysql-minio-bucket-leitura-publica — Habilita leitura pública do bucket de imagens no MinIO
+- Origem: achado do orquestrador ao revisar `migracao-mysql-adapter-midia-minio` (ressalva registrada acima)
+- Descrição: o bucket `images`, criado no startup pelo serviço `minio-init` (`docker-compose.yml`, tarefa `migracao-mysql-infra-compose`), nasce sem nenhuma policy de leitura pública — o padrão do MinIO é negar leitura anônima. A `public_url` gravada em `media_assets` (`MinioMediaAssetsRepository.criar`) tem a forma de uma URL pública, mas hoje devolve `403`/`Access Denied` para um `GET` sem credencial. Corrigir o `entrypoint` do serviço `minio-init` em `docker-compose.yml` para, depois de criar o bucket (`mc mb --ignore-existing`), aplicar uma policy de leitura pública só de objetos (`mc anonymous set download "cms/$MINIO_BUCKET"` — leitura anônima de objetos, sem listagem do bucket nem escrita), equivalente à policy `images_public_read` que o Supabase Storage original tinha (SDD § Modelo de dados; `supabase/migrations/20260908200805_enable_rls_and_storage.sql`).
+- Rastreável a: ressalva registrada na tarefa `migracao-mysql-adapter-midia-minio` acima; SDD § "Migração de plataforma de dados" (Armazenamento)
+- Critério de "pronto": depois de `docker compose up --build` (mysql/minio/minio-init), um `GET` HTTP simples (sem nenhuma credencial — `curl`, não o SDK) contra a `public_url` de um objeto recém-enviado retorna `200` com o conteúdo do arquivo; um `GET` de listagem do bucket (`GET /images/` sem prefixo de objeto) continua recusado (a policy é só de leitura de objeto, não de listagem) — evita expor a lista completa de arquivos.
+- Dependências: migracao-mysql-adapter-midia-minio
+- Execução: sequencial (edita `docker-compose.yml`, mesmo arquivo tocado pela tarefa `migracao-mysql-infra-compose`)
+- Toca documentação: sim — nota em `docs/BANCO-DE-DADOS.md`/`docs/DOCKER.md` (consolidada de qualquer forma em `migracao-mysql-documentacao`, mas a policy em si precisa estar documentada como comportamento esperado do bucket)
 - Status: pendente
 
 #### migracao-mysql-modulo-auth-proprio — Login e operadores próprios, sem Supabase Auth
@@ -619,6 +629,7 @@ ajustes/migracao-mysql-infra-compose
   → ajustes/migracao-mysql-schema
   → ajustes/migracao-mysql-adapters-conteudo
   → ajustes/migracao-mysql-adapter-midia-minio
+  → ajustes/migracao-mysql-minio-bucket-leitura-publica
   → ajustes/migracao-mysql-modulo-auth-proprio
   → ajustes/migracao-mysql-cutover-wiring
   → ajustes/migracao-mysql-painel-auth-e-upload
