@@ -61,7 +61,7 @@ Permitir que a equipe responsável pela landing page do Ketochlor® altere qualq
 **Restrições tecnológicas definidas pelo usuário (obrigatórias):**
 
 - O backend do CMS será construído em **NestJS**.
-- O **Supabase** será usado como banco de dados e como armazenamento dos arquivos de imagem enviados pelo painel. É um **projeto Supabase novo e dedicado ao Ketochlor**, isolado de qualquer outro produto da Virbac — nenhuma credencial ou dado é compartilhado entre projetos.
+- O banco de dados é **MySQL auto-hospedado** (decisão de 2026-09-21 — ver `agent_context/CHANGELOG.md`; substitui a decisão original de usar o Supabase como plataforma de dados). O armazenamento dos arquivos de imagem enviados pelo painel é **MinIO auto-hospedado**, compatível com S3, mantendo o padrão de upload direto do navegador com URL pré-assinada já usado antes. A autenticação dos operadores passa a ser um módulo próprio da API (NestJS), com tabela de operadores no MySQL e senha guardada com hash — não depende mais de nenhum serviço de identidade externo. Todos os três componentes (MySQL, MinIO, módulo de auth) rodam sob o mesmo controle da equipe, sem credencial ou dado hospedado por terceiro.
 - A landing page busca o conteúdo em tempo de execução (runtime), consultando a API do CMS ao carregar. Não haverá reconstrução (rebuild) do site a cada publicação.
 - Todo o CMS é acessado sob a rota **`/admin`** do mesmo site da landing page, sempre atrás de login.
 - Os metadados de busca e compartilhamento são lidos do banco e inseridos no HTML do lado do servidor antes da resposta chegar ao navegador — a landing page continua sendo o SPA que é hoje, sem migração para um framework de renderização no servidor.
@@ -76,14 +76,14 @@ Permitir que a equipe responsável pela landing page do Ketochlor® altere qualq
 
 **Dependências:**
 
-- Conta e projeto Supabase novo para o Ketochlor, com as credenciais disponíveis para o ambiente do backend.
+- Instância MySQL auto-hospedada e instância MinIO auto-hospedada, disponíveis para o ambiente do backend (ver `agent_context/SDD.md` para como são empacotadas — mesmo `docker-compose.yml` já usado em homologação/produção).
 - Ambiente de hospedagem para o backend NestJS e para o painel de administração.
 - Não há integração com nenhuma plataforma externa de CRM ou marketing (Salesforce Marketing Cloud, RD Station ou similar) — o lead não tem destino externo: existe apenas no banco do CMS, e sai de lá pela exportação em CSV.
 
 **Pontos em aberto a resolver no SDD (não no PRD):**
 
 - Se o CMS (backend NestJS + painel) vive neste mesmo repositório ou em um repositório separado.
-- Qual mecanismo de autenticação será usado, dentro da restrição NestJS + Supabase já definida.
+- ~~Qual mecanismo de autenticação será usado, dentro da restrição NestJS + Supabase já definida.~~ Resolvido: módulo de autenticação próprio na API (ver acima).
 
 ## Fora de escopo
 
