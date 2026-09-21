@@ -1,0 +1,59 @@
+import { randomUUID } from 'node:crypto';
+import type { Pool } from 'mysql2/promise';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { criarMysqlPool } from './mysql-client.factory';
+import { MySqlSiteMetadataRepository } from './site-metadata.repository';
+import { carregarMysqlTestEnv } from '../test-support/mysql-test-env';
+
+describe('MySqlSiteMetadataRepository (infra)', () => {
+  let pool: Pool;
+  let repositorio: MySqlSiteMetadataRepository;
+
+  beforeAll(() => {
+    // Timeout maior que o default do vitest (5s) — teste de INTEGRAÇÃO real
+    // contra um MySQL de verdade, ver comentário equivalente em
+    // `content-sections.repository.test.ts`.
+    vi.setConfig({ testTimeout: 20_000 });
+    pool = criarMysqlPool(carregarMysqlTestEnv());
+    repositorio = new MySqlSiteMetadataRepository(pool);
+  });
+
+  afterAll(async () => {
+    await pool.end();
+  });
+
+  it('lê o registro único semeado pela migration', async () => {
+    const metadata = await repositorio.buscar();
+    expect(metadata).toMatchObject({ title: expect.any(String), description: expect.any(String) });
+  });
+
+  it('atualiza o registro único (id=1) e reflete na próxima leitura', async () => {
+    const operadorId = randomUUID();
+    const atualizado = await repositorio.atualizar({
+      title: 'Ketochlor® — título de teste de integração MySQL',
+      description: 'Descrição de teste de integração MySQL.',
+      ogImageUrl: null,
+      updatedBy: operadorId,
+    });
+
+    expect(atualizado.title).toBe('Ketochlor® — título de teste de integração MySQL');
+    expect(atualizado.updatedBy).toBe(operadorId);
+
+    const relido = await repositorio.buscar();
+    expect(relido.title).toBe('Ketochlor® — título de teste de integração MySQL');
+    expect(relido.description).toBe('Descrição de teste de integração MySQL.');
+  });
+
+  it('atualiza e lê de volta uma URL de imagem não nula', async () => {
+    const atualizado = await repositorio.atualizar({
+      title: 'Título',
+      description: 'Descrição',
+      ogImageUrl: 'https://exemplo.com/imagem.png',
+      updatedBy: null,
+    });
+    expect(atualizado.ogImageUrl).toBe('https://exemplo.com/imagem.png');
+
+    const relido = await repositorio.buscar();
+    expect(relido.ogImageUrl).toBe('https://exemplo.com/imagem.png');
+  });
+});
