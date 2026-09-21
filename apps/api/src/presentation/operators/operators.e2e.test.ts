@@ -1,22 +1,22 @@
 import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Pool } from 'mysql2/promise';
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module';
-import { criarSupabaseAdminClient } from '../../infrastructure/supabase/supabase-client.factory';
-import {
-  ANON_KEY_LOCAL,
-  carregarSupabaseTestEnv,
-} from '../../infrastructure/test-support/supabase-test-env';
+import { criarMysqlPool } from '../../infrastructure/mysql/mysql-client.factory';
+import { MySqlOperadoresRepository } from '../../infrastructure/mysql/operadores.repository';
+import { carregarMysqlTestEnv } from '../../infrastructure/test-support/mysql-test-env';
+import { criarOperadorAutenticadoDeTeste } from '../../infrastructure/test-support/operador-teste';
 import { API_GLOBAL_PREFIX } from '../auth/route-prefixes';
 
 /**
  * Teste e2e REAL da tarefa `ajustes/modulo-operadores`: sobe a aplicação Nest
- * completa (`AppModule`) via `@nestjs/testing` + `supertest`, mesmo padrão de
- * `presentation/metadata/metadata.e2e.test.ts`, contra o Supabase LOCAL de
- * verdade (`npx supabase start`) — usuário e login reais, sem mock do SDK.
+ * completa (`AppModule`) via `@nestjs/testing` + `supertest`, contra o
+ * `mysql` REAL do compose (tarefa `ajustes/migracao-mysql-cutover-wiring`,
+ * que substitui o Supabase local/Auth Admin API deste arquivo) — operador e
+ * login reais via `POST /api/auth/login`, sem mock.
  *
  * **Sobre o ramo `'ultimo-operador'` de `RemoverOperadorUseCase`:** não é
  * exercitado aqui de propósito. Como o comentário da classe explica, ele só é
@@ -33,8 +33,9 @@ describe('Operators (e2e) — GET/POST/DELETE /api/admin/operators', () => {
   const senha = 'senha-de-teste-123456';
 
   let app: INestApplication;
-  let adminClient: SupabaseClient;
-  let userId: string;
+  let pool: Pool;
+  let operadoresRepository: MySqlOperadoresRepository;
+  let operadorId: string;
   let accessToken: string;
   /** Operadores extras criados por um teste — removidos em `afterEach` para nenhum vazar entre execuções locais. */
   const idsCriadosNoTeste: string[] = [];
@@ -42,47 +43,35 @@ describe('Operators (e2e) — GET/POST/DELETE /api/admin/operators', () => {
   const authHeader = () => `Bearer ${accessToken}`;
 
   beforeAll(async () => {
-    const env = carregarSupabaseTestEnv();
-    adminClient = criarSupabaseAdminClient(env);
-    const anonClient = createClient(env.url, ANON_KEY_LOCAL);
-
-    const { data, error } = await adminClient.auth.admin.createUser({
-      email,
-      password: senha,
-      email_confirm: true,
-    });
-    if (error || !data.user) {
-      throw new Error(`Falha ao criar usuário de teste: ${error?.message}`);
-    }
-    userId = data.user.id;
-
-    const login = await anonClient.auth.signInWithPassword({ email, password: senha });
-    if (login.error || !login.data.session) {
-      throw new Error(`Falha ao autenticar usuário de teste: ${login.error?.message}`);
-    }
-    accessToken = login.data.session.access_token;
+    pool = criarMysqlPool(carregarMysqlTestEnv());
+    operadoresRepository = new MySqlOperadoresRepository(pool);
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix(API_GLOBAL_PREFIX);
     await app.init();
-  });
+
+    const auth = await criarOperadorAutenticadoDeTeste(app, operadoresRepository, { email, senha });
+    operadorId = auth.operadorId;
+    accessToken = auth.accessToken;
+  }, 20_000);
 
   afterEach(async () => {
     while (idsCriadosNoTeste.length > 0) {
       const id = idsCriadosNoTeste.pop();
       if (id) {
-        await adminClient.auth.admin.deleteUser(id).catch(() => undefined);
+        await operadoresRepository.remover(id).catch(() => undefined);
       }
     }
   });
 
   afterAll(async () => {
     await app.close();
-    if (userId) {
-      await adminClient.auth.admin.deleteUser(userId);
+    if (operadorId) {
+      await operadoresRepository.remover(operadorId);
     }
-  });
+    await pool.end();
+  }, 20_000);
 
   describe('autenticação das rotas administrativas', () => {
     it('rejeita GET /api/admin/operators sem token', async () => {
@@ -139,10 +128,11 @@ describe('Operators (e2e) — GET/POST/DELETE /api/admin/operators', () => {
   describe('POST /api/admin/operators → GET /api/admin/operators', () => {
     it('cria um operador com sucesso, já pronto para logar, e o lista mais recente primeiro', async () => {
       const emailNovo = `operador.criado.e2e.${randomUUID()}@example.com`;
+      const senhaNova = 'senha-nova-123456';
       const respostaCriacao = await request(app.getHttpServer())
         .post('/api/admin/operators')
         .set('Authorization', authHeader())
-        .send({ email: emailNovo, senha: 'senha-nova-123456', nome: 'Novo Operador' });
+        .send({ email: emailNovo, senha: senhaNova, nome: 'Novo Operador' });
 
       expect(respostaCriacao.status).toBe(201);
       expect(respostaCriacao.body.email).toBe(emailNovo);
@@ -151,16 +141,13 @@ describe('Operators (e2e) — GET/POST/DELETE /api/admin/operators', () => {
       expect(typeof respostaCriacao.body.id).toBe('string');
       idsCriadosNoTeste.push(respostaCriacao.body.id);
 
-      // "Já pronto para logar, sem confirmação de e-mail adicional"
-      // (`email_confirm: true`): login real com a senha recém-definida.
-      const env = carregarSupabaseTestEnv();
-      const anonClient = createClient(env.url, ANON_KEY_LOCAL);
-      const login = await anonClient.auth.signInWithPassword({
-        email: emailNovo,
-        password: 'senha-nova-123456',
-      });
-      expect(login.error).toBeNull();
-      expect(login.data.session).not.toBeNull();
+      // "Já pronto para logar, sem confirmação adicional": login real com a
+      // senha recém-definida via POST /api/auth/login.
+      const login = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ email: emailNovo, senha: senhaNova });
+      expect(login.status).toBe(200);
+      expect(typeof login.body.accessToken).toBe('string');
 
       const respostaListagem = await request(app.getHttpServer())
         .get('/api/admin/operators')
@@ -197,7 +184,7 @@ describe('Operators (e2e) — GET/POST/DELETE /api/admin/operators', () => {
 
     it('recusa remover a própria conta com 409', async () => {
       const resposta = await request(app.getHttpServer())
-        .delete(`/api/admin/operators/${userId}`)
+        .delete(`/api/admin/operators/${operadorId}`)
         .set('Authorization', authHeader());
 
       expect(resposta.status).toBe(409);

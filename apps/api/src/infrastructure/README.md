@@ -1,12 +1,16 @@
 # Infraestrutura
 
-Adaptadores que implementam as portas do Domínio: repositórios Supabase, armazenamento, verificador de token (ver SDD § Camadas e padrão arquitetural).
+Adaptadores que implementam as portas do Domínio: repositórios MySQL, armazenamento MinIO, autenticação própria (ver SDD § Camadas e padrão arquitetural).
 
-Populado pela tarefa `api/infra-supabase-adapters` (`agent_context/PLAN.md`):
+Migrado de Supabase (Postgres + Storage + Auth) para MySQL + MinIO + auth própria na tarefa `ajustes/migracao-mysql-cutover-wiring` (`agent_context/PLAN.md`; SDD § "Migração de plataforma de dados") — os adaptadores Supabase (`supabase/`, `config/supabase-env.ts`) foram removidos por completo, não substituídos por comentário morto.
 
-- **`config/supabase-env.ts`** — lê `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`/`SUPABASE_JWKS_URL` e `SUPABASE_STORAGE_BUCKET` de `process.env` (ver `apps/api/.env.example` e `docs/API.md`). Nenhum valor real é hardcoded.
-- **`supabase/supabase-client.factory.ts`** — único ponto que instancia `@supabase/supabase-js`, sempre com a chave `service_role` (ignora RLS).
-- **`supabase/content-sections.repository.ts`**, **`site-metadata.repository.ts`**, **`media-assets.repository.ts`**, **`leads.repository.ts`** — implementam as portas de mesmo nome em `apps/api/src/domain/portas/*.repository.ts`. O repositório de `content_sections` escreve `data` e `item_visibility` (o `ItemVisibilityMap` do Domínio, ver `domain/visibilidade/filtrar-conteudo-publicado.ts`) na mesma instrução `UPDATE`, nunca em duas queries separadas — contrato exigido pela porta.
-- **`auth/jwks-token-verificador.ts`** — implementa `VerificadorToken` (Domínio) com `jose`. Híbrido: verifica tokens `HS256` (segredo legado, o caso do Supabase CLI local) contra `SUPABASE_JWT_SECRET`, e tokens assimétricos contra o JWKS remoto (`SUPABASE_JWKS_URL`) — ver o comentário de decisão no topo do arquivo para o porquê de precisar dos dois caminhos.
+- **`config/mysql-env.ts`** — lê `MYSQL_HOST`/`MYSQL_PORT`/`MYSQL_DATABASE`/`MYSQL_APP_USER`/`MYSQL_APP_PASSWORD` de `process.env` (ver `apps/api/.env.example`). Nenhum valor real é hardcoded.
+- **`config/minio-env.ts`** — lê `MINIO_ENDPOINT` (ou `MINIO_HOST`/`MINIO_PORT`), `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD`, `MINIO_BUCKET`, `MINIO_REGION`.
+- **`config/auth-jwt-env.ts`** — lê `AUTH_JWT_SECRET`/`AUTH_JWT_EXPIRES_IN`, o segredo HS256 próprio da aplicação (nunca um segredo de terceiro).
+- **`mysql/mysql-client.factory.ts`** — único ponto que instancia o pool `mysql2`, sempre com o usuário de aplicação (sem privilégio de DDL em runtime).
+- **`mysql/content-sections.repository.ts`**, **`site-metadata.repository.ts`**, **`leads.repository.ts`**, **`operadores.repository.ts`** — implementam as portas de mesmo nome em `apps/api/src/domain/portas/*.repository.ts` (mais `OperadorCredenciaisRepository`, no caso de `MySqlOperadoresRepository`). O repositório de `content_sections` escreve `data` e `item_visibility` (o `ItemVisibilityMap` do Domínio, ver `domain/visibilidade/filtrar-conteudo-publicado.ts`) na mesma instrução `UPDATE`, nunca em duas queries separadas — contrato exigido pela porta.
+- **`minio/minio-client.factory.ts`** — único ponto que instancia o `S3Client` apontado para o MinIO (`forcePathStyle: true`, obrigatório para MinIO).
+- **`minio/media-assets.repository.ts`** — implementa `MediaAssetsRepository` sobre o protocolo S3 (upload/URL pré-assinada) + MySQL (linha em `media_assets`, gravada só após o upload confirmado).
+- **`auth/app-jwt.ts`**/**`auth/app-jwt-token-verificador.ts`** — emitem/verificam o JWT próprio da aplicação (`jose`, HS256, `AUTH_JWT_SECRET`), substituindo `JwksTokenVerificador` (Supabase Auth).
 
-Onde persistir `ItemVisibilityMap`: coluna própria `content_sections.item_visibility jsonb` (migration `supabase/migrations/20260908210000_add_item_visibility_to_content_sections.sql`), não uma chave dentro de `data` — ver o comentário de decisão em `domain/visibilidade/filtrar-conteudo-publicado.ts` (os schemas Zod de `content-schema` descartariam o campo em modo "strip").
+Onde persistir `ItemVisibilityMap`: coluna própria `content_sections.item_visibility JSON` (`apps/api/mysql/migrations/`), não uma chave dentro de `data` — ver o comentário de decisão em `domain/visibilidade/filtrar-conteudo-publicado.ts` (os schemas Zod de `content-schema` descartariam o campo em modo "strip").

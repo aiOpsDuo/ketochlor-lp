@@ -18,8 +18,9 @@ const PREFIXO_BEARER = 'Bearer ';
 
 /**
  * Protege toda rota sob `ADMIN_ROUTE_PREFIX` (/api/admin), verificando o JWT
- * do Supabase Auth via a porta `VerificadorToken` do Domínio (SDD § Contratos
- * de dados/API/interfaces → Autenticação; PRD § segurança de acesso).
+ * próprio da aplicação (emitido por `POST /api/auth/login`) via a porta
+ * `VerificadorToken` do Domínio (SDD § Contratos de dados/API/interfaces →
+ * Autenticação; PRD § segurança de acesso).
  *
  * Decisão de design (tarefa api/modulo-auth, confirmada via Context7/docs do
  * NestJS): o Nest não tem uma forma nativa de vincular um Guard (`CanActivate`)

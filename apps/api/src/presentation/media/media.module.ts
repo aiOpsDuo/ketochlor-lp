@@ -2,26 +2,32 @@ import { Module, type Provider } from '@nestjs/common';
 import { EmitirCredencialUploadUseCase } from '../../application/media/emitir-credencial-upload.use-case';
 import { MEDIA_ASSETS_REPOSITORY } from '../../application/media/media-assets-repository.token';
 import {
-  carregarSupabaseEnv,
-  criarSupabaseAdminClient,
-  SupabaseMediaAssetsRepository,
+  carregarMinioEnv,
+  carregarMysqlEnv,
+  criarMinioClient,
+  criarMysqlPool,
+  MinioMediaAssetsRepository,
 } from '../../infrastructure';
 import { MediaAdminController } from './media-admin.controller';
 
 /**
  * Liga a porta `MediaAssetsRepository` (Domínio) à implementação concreta
- * `SupabaseMediaAssetsRepository` (Infraestrutura, tarefa
- * `api/infra-supabase-adapters`) — mesmo padrão de
+ * `MinioMediaAssetsRepository` (Infraestrutura, protocolo S3 sobre MinIO +
+ * MySQL para a tabela `media_assets`) — mesmo padrão de
  * `presentation/metadata/metadata.module.ts` para `SITE_METADATA_REPOSITORY`.
- * O bucket vem de `SupabaseEnv.storageBucket` (`SUPABASE_STORAGE_BUCKET`,
- * default `images`) — a mesma variável já documentada em `docs/API.md`.
+ * Substitui `SupabaseMediaAssetsRepository` (tarefa
+ * `ajustes/migracao-mysql-cutover-wiring`, SDD § "Migração de plataforma de
+ * dados"). Precisa dos DOIS clientes: o S3 (upload/URL pré-assinada) e o
+ * pool MySQL (grava o registro em `media_assets` depois do upload confirmado
+ * — ver `MinioMediaAssetsRepository.criar`).
  */
 const mediaAssetsRepositoryProvider: Provider = {
   provide: MEDIA_ASSETS_REPOSITORY,
   useFactory: () => {
-    const env = carregarSupabaseEnv();
-    const client = criarSupabaseAdminClient(env);
-    return new SupabaseMediaAssetsRepository(client, env.storageBucket);
+    const minioEnv = carregarMinioEnv();
+    const client = criarMinioClient(minioEnv);
+    const pool = criarMysqlPool(carregarMysqlEnv());
+    return new MinioMediaAssetsRepository(client, pool, minioEnv.bucket, minioEnv.endpoint);
   },
 };
 

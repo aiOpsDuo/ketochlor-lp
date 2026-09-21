@@ -3,23 +3,27 @@ import { AtualizarMetadataUseCase } from '../../application/metadata/atualizar-m
 import { ConsultarMetadataUseCase } from '../../application/metadata/consultar-metadata.use-case';
 import { SITE_METADATA_REPOSITORY } from '../../application/metadata/site-metadata-repository.token';
 import {
-  carregarSupabaseEnv,
-  criarSupabaseAdminClient,
-  SupabaseSiteMetadataRepository,
+  carregarMysqlEnv,
+  criarMysqlPool,
+  MySqlSiteMetadataRepository,
 } from '../../infrastructure';
 import { MetadataAdminController } from './metadata-admin.controller';
 
 /**
  * Liga a porta `SiteMetadataRepository` (Domínio) à implementação concreta
- * `SupabaseSiteMetadataRepository` (Infraestrutura) — mesmo padrão de
- * `presentation/content/content.module.ts` para `CONTENT_SECTIONS_REPOSITORY`.
+ * `MySqlSiteMetadataRepository` (Infraestrutura, MySQL real, tabela
+ * `site_metadata`) — mesmo padrão de `presentation/content/content.module.ts`
+ * para `CONTENT_SECTIONS_REPOSITORY`. Substitui
+ * `SupabaseSiteMetadataRepository` (tarefa
+ * `ajustes/migracao-mysql-cutover-wiring`, SDD § "Migração de plataforma de
+ * dados").
  */
 const siteMetadataRepositoryProvider: Provider = {
   provide: SITE_METADATA_REPOSITORY,
   useFactory: () => {
-    const env = carregarSupabaseEnv();
-    const client = criarSupabaseAdminClient(env);
-    return new SupabaseSiteMetadataRepository(client);
+    const env = carregarMysqlEnv();
+    const pool = criarMysqlPool(env);
+    return new MySqlSiteMetadataRepository(pool);
   },
 };
 
