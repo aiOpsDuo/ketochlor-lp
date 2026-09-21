@@ -506,7 +506,7 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Dependências: migracao-mysql-schema
 - Execução: sequencial (edita `apps/api/package.json`/lockfile, tocado pelas próximas tarefas desta fase)
 - Toca documentação: não
-- Status: pendente
+- Status: concluída — PR #79 (squash-merge em `main`). `MySqlContentSectionsRepository`/`MySqlSiteMetadataRepository`/`MySqlLeadsRepository` (`apps/api/src/infrastructure/mysql/`) espelham o contrato exato dos adaptadores Supabase equivalentes; `mysql-env.ts`/`mysql-client.factory.ts` (pool, nunca conexão única, usuário de aplicação nunca `root`); `mysql-datas.ts` centraliza a conversão `DATETIME` MySQL ↔ ISO 8601 UTC (`dateStrings: true` no pool, para não depender do fuso horário do processo). Nenhum `*.module.ts` tocado — Supabase continua servindo. Reverificado pelo orquestrador (não só relatado): 12/12 testes de integração passam contra o `mysql` real do compose (`docker run` numa rede compartilhada, já que `mysql` não publica porta); `npm run build --prefix apps/api` sem erro. Context7 indisponível no ambiente do subagente (mesma limitação da tarefa anterior) — API do `mysql2` validada empiricamente.
 
 #### migracao-mysql-adapter-midia-minio — Adaptador de mídia sobre MinIO
 - Origem: pedido do usuário
