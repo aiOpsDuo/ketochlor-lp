@@ -478,6 +478,106 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Status: concluída
 - Resumo da verificação: módulo implementado de ponta a ponta seguindo exatamente a divisão em camadas de `modulo-metadata`/`modulo-leads` (domínio `apps/api/src/domain/operators/` — `Operador`, `RemocaoOperadorRecusadaError` com `motivo: 'proprio' | 'ultimo-operador'`, `validarCriacaoOperador`; porta `domain/portas/operadores.repository.ts`; aplicação `application/operators/` com os 3 casos de uso; infraestrutura `infrastructure/supabase/operadores.repository.ts` contra `auth.admin.listUsers/createUser/deleteUser`, `email_confirm: true`; apresentação `presentation/operators/` — `OperatorsAdminController`, `OperatorsModule`, registrado em `app.module.ts`). Painel: `pages/operators/operators-page.tsx`, entrada "Operadores" (ícone `Users`) em `LINKS_DE_NAVEGACAO`, rota `/operators` em `App.tsx`. **Testes automatizados**: 10 testes de domínio (`validar-criacao-operador.test.ts`) + 4 de unidade do caso de uso de remoção com repositório falso (`remover-operador.use-case.test.ts`, cobre isoladamente o ramo `'ultimo-operador'` — ver nota abaixo) + 9 e2e reais contra Supabase local (`operators.e2e.test.ts`: 401 sem token em GET/POST, 422 para e-mail/senha/nome inválidos, criação com sucesso + login real da conta recém-criada sem confirmação de e-mail, listagem, remoção com sucesso, remoção da própria conta → 409, remoção de id inexistente → 404) — 23 testes novos, todos passando. Suíte completa do workspace `apps/api`: 18 arquivos, 114 testes, sem falhas (nenhum teste pré-existente quebrado). `npm run test --workspaces`: 114 (api) + 63 (lp) + 23 (content-schema) = 200 testes, sem falhas; `apps/admin` continua sem script de teste automatizado (pré-existente). `npm run build --workspaces` e `nest build`/`tsc -b`/`vite build` de cada app sem erro. **Nota sobre o ramo `'ultimo-operador'`:** é estruturalmente inatingível via HTTP real neste modelo (operador = todo usuário do Supabase Auth) — quem chama só tem um JWT válido se é, ele mesmo, um operador existente, então uma lista de tamanho 1 nunca contém um alvo diferente de quem chama; o caso `'proprio'` sempre intercepta primeiro. Coberto isoladamente por teste de unidade com repositório falso, e a UI foi verificada com uma resposta de API fabricada via `page.route` do Playwright (ver abaixo), sem apagar operadores reais do Supabase local compartilhado. **Verificado em navegador real** (Playwright/Chromium contra Supabase LOCAL, `npm run dev`, único ponto de entrada `http://localhost:5173/admin`): login, tela `/operators` carregada com a tabela de operadores pré-existentes; criação de um operador pelo formulário (botão desabilitado até os 3 campos preenchidos, "Criando…" durante o envio) — apareceu na tabela imediatamente; login com a conta recém-criada em um segundo contexto de navegador confirmou que ela funciona sem nenhuma confirmação de e-mail adicional; célula de ações da própria conta logada mostrou o texto "Sua própria conta" (sem botão de remover); remoção do operador criado via fluxo de dois cliques (Remover → Confirmar) confirmada, linha desapareceu da tabela. Cenário "único operador restante" verificado via interceptação de `GET /api/admin/operators` (`page.route`) devolvendo uma lista fabricada de tamanho 1: a UI mostrou corretamente "Único operador restante" e ocultou o botão de remover. **Verificado direto na API via `curl`** (contornando o painel, com token real de login): `DELETE` da própria conta → `409` real (`{"message":"Você não pode remover a própria conta."}`); `POST` com e-mail inválido → `422` com `erros: [{campo: "email", ...}]`; `DELETE` de id inexistente → `404`; `GET` sem token → `401`. `docker compose build` (sem `up`, `.env` copiado do checkout principal para o worktree e removido depois) concluiu sem erro para as imagens `api` e `proxy`; containers de homologação do usuário (`ketochlor-lp-api-1`/`ketochlor-lp-proxy-1`) permaneceram com o mesmo tempo de atividade antes e depois (nunca reiniciados). `grep -iE` por nomes de produtos de referência conhecidos (Retool, Forest Admin, Directus, Strapi, AdminJS, react-admin, etc.) no diff inteiro: vazio. Limpeza: usuário de teste de login (`qa.operadores.principal@ketochlor.local`) removido do Supabase Auth local ao final (`DELETE /auth/v1/admin/users/:id` → 200); os 3 usuários pré-existentes de sessões de QA anteriores (`qa-teste-layout`, `operador.teste`, `verif-meta`) foram preservados intocados — o Supabase local é compartilhado entre todos os worktrees deste repositório (mesmo `project_id`), então nenhuma conta pré-existente foi apagada. `npx supabase stop` executado; processos de `npm run dev` (duas execuções, a segunda após criar `apps/admin/.env` que faltava) encerrados por PID específico (nunca `pkill` genérico) — incluindo um processo remanescente da primeira execução (porta 3000) identificado e encerrado à parte.
 
+#### migracao-mysql-infra-compose — Provisiona MySQL e MinIO no docker-compose
+- Origem: pedido do usuário (decisão de 2026-09-21, ver `agent_context/CHANGELOG.md`)
+- Descrição: adiciona os serviços `mysql` (MySQL 8, volume nomeado persistente, `healthcheck` via `mysqladmin ping`, usuário de aplicação dedicado sem privilégio de DDL em runtime) e `minio` (volume nomeado persistente, `healthcheck` via `/minio/health/live`, bucket de imagens criado no start via `mc` ou script de inicialização) ao `docker-compose.yml`. Nenhum dos dois publica `ports` para o host — só alcançáveis pela rede interna do compose, mesmo padrão já usado pelo serviço `api`. Adiciona as variáveis correspondentes (`MYSQL_*`, `MINIO_*`) ao `.env.example` da raiz, lado a lado com as `SUPABASE_*` existentes (ainda não removidas — a `api` continua rodando contra Supabase até `migracao-mysql-cutover-wiring`). Não altera nenhum código de `apps/`.
+- Rastreável a: SDD § "Migração de plataforma de dados" (nota após a tabela de tiers)
+- Critério de "pronto": `docker compose up mysql minio` (sem `api`/`proxy`) sobe os dois serviços com `healthcheck` `healthy`; conexão manual (`mysql -h ... -u ... -p`) confirma o usuário de aplicação consegue `SELECT`/`INSERT`/`UPDATE`/`DELETE` mas não `CREATE TABLE`; console/API do MinIO confirma o bucket criado.
+- Dependências: nenhuma (aditivo, não toca serviços existentes)
+- Execução: sequencial (edita `docker-compose.yml` e `.env.example` da raiz, tocados por praticamente toda tarefa desta fase)
+- Toca documentação: não (documentação consolidada em `migracao-mysql-documentacao`)
+- Status: pendente
+
+#### migracao-mysql-schema — Migrations SQL e runner para MySQL
+- Origem: pedido do usuário
+- Descrição: cria `apps/api/mysql/migrations/*.sql` com o schema completo (5 tabelas: `content_sections` com `item_visibility`, `site_metadata`, `media_assets`, `leads`, `operators` — ver SDD § Modelo de dados para tipos e colunas exatas) e um runner leve (`apps/api/scripts/migrar-mysql.mjs` ou equivalente) que aplica migrations pendentes em ordem e rastreia o que já rodou numa tabela `schema_migrations`, substituindo o fluxo da CLI do Supabase para este propósito. Sem ORM (`mysql2` puro, mesmo estilo direto já usado pelos adaptadores Supabase).
+- Rastreável a: SDD § Modelo de dados; § "Migração de plataforma de dados" (tabela de equivalência de tipos)
+- Critério de "pronto": rodar o runner contra o `mysql` do compose cria as 5 tabelas do zero sem erro; rodar de novo é idempotente (não tenta recriar o que já existe); `DESCRIBE` de cada tabela confere com os tipos do SDD.
+- Dependências: migracao-mysql-infra-compose
+- Execução: sequencial
+- Toca documentação: não
+- Status: pendente
+
+#### migracao-mysql-adapters-conteudo — Adaptadores MySQL de conteúdo, metadados e leads
+- Origem: pedido do usuário
+- Descrição: adiciona a dependência `mysql2` a `apps/api/package.json`; cria `apps/api/src/infrastructure/mysql/mysql-env.ts` (validação de env vars `MYSQL_*`) e `mysql-client.factory.ts` (pool de conexão); cria `MySqlContentSectionsRepository`, `MySqlSiteMetadataRepository` e `MySqlLeadsRepository` implementando as portas já existentes (`ContentSectionsRepository`, `SiteMetadataRepository`, `LeadsRepository`), preservando os contratos exatos já documentados (ex.: `data`+`item_visibility` gravados na MESMA instrução `UPDATE`). Reescreve os testes de infraestrutura correspondentes (hoje `*.repository.test.ts` contra Supabase local) para rodar contra o `mysql` do compose. Ainda NÃO troca o wiring dos módulos — os novos adaptadores existem e têm teste próprio, mas a API continua servindo através dos adaptadores Supabase até `migracao-mysql-cutover-wiring` (evita um corte parcial que deixe a API num estado inconsistente).
+- Rastreável a: SDD § Modelo de dados; § Decisões técnicas e trade-offs (mysql2 em vez de ORM)
+- Critério de "pronto": os 3 novos adaptadores passam em teste de integração real contra o `mysql` do compose (não mock); `npm run build --prefix apps/api` sem erro.
+- Dependências: migracao-mysql-schema
+- Execução: sequencial (edita `apps/api/package.json`/lockfile, tocado pelas próximas tarefas desta fase)
+- Toca documentação: não
+- Status: pendente
+
+#### migracao-mysql-adapter-midia-minio — Adaptador de mídia sobre MinIO
+- Origem: pedido do usuário
+- Descrição: adiciona `@aws-sdk/client-s3` e `@aws-sdk/s3-request-presigner` a `apps/api/package.json` (protocolo S3 padrão, que o MinIO implementa); cria `MinioMediaAssetsRepository` implementando a porta `MediaAssetsRepository` já existente — `emitirCredencialUpload` gera uma URL pré-assinada de `PUT` (em vez de `createSignedUploadUrl` do SDK Supabase) e `criar` grava o registro em `media_assets` (tabela MySQL) depois de confirmado o upload, preservando o contrato `{ mediaAssetId, storagePath, signedUrl, token }` já usado pelo restante do sistema. Reescreve `apps/api/src/infrastructure/supabase/media-assets.repository.test.ts` equivalente contra `mysql`+`minio` do compose (upload real de um arquivo de teste via `PUT` à URL pré-assinada, sem SDK cliente).
+- Rastreável a: SDD § "Migração de plataforma de dados" (Armazenamento); § Decisões técnicas e trade-offs (upload direto preservado)
+- Critério de "pronto": emitir uma credencial e fazer `PUT` real do arquivo contra ela funciona de ponta a ponta contra o `minio` do compose; a URL pública resultante é acessível via GET; teste de integração real passa.
+- Dependências: migracao-mysql-adapters-conteudo (mesmo `package.json`/lockfile de `apps/api`)
+- Execução: sequencial
+- Toca documentação: não
+- Status: pendente
+
+#### migracao-mysql-modulo-auth-proprio — Login e operadores próprios, sem Supabase Auth
+- Origem: pedido do usuário
+- Descrição: adiciona `bcryptjs` a `apps/api/package.json`. Cria `MySqlOperadoresRepository` (implementa a porta `OperadoresRepository` já existente: `listarTodos`, `criar` — grava `senha_hash` via `bcryptjs`, nunca a senha em texto plano —, `remover`; as duas invariantes de recusa (`RemocaoOperadorRecusadaError`, motivos `'proprio'`/`'ultimo-operador'`) continuam checadas na Aplicação, sem mudança). Cria `AppJwtTokenVerificador` (implementa a porta `VerificadorToken` já existente, reaproveitando `jose` — HS256 com `AUTH_JWT_SECRET` próprio da aplicação — no lugar de `JwksTokenVerificador`). Cria a rota nova `POST /api/auth/login` (`AuthModule`): valida `email`/`senha`, verifica hash, grava `ultimo_login_em`, emite JWT (`sub` = `operators.id`) — `401` genérico se e-mail não existe ou senha não confere. Reescreve `apps/api/src/infrastructure/auth/jwks-token-verificador.test.ts` (torna-se teste do `AppJwtTokenVerificador`: token válido, assinatura adulterada, expirado, segredo errado) e os testes e2e de `apps/api/src/presentation/auth/` e `apps/api/src/presentation/operators/` para rodar contra o novo módulo (sem depender de Supabase Auth local).
+- Rastreável a: SDD § "Migração de plataforma de dados" (Autenticação); § Contratos de dados/API/interfaces (`POST /api/auth/login`); § Modelo de dados (tabela `operators`)
+- Critério de "pronto": criar um operador, fazer login com a senha correta (200 + JWT válido) e com senha errada (401) funciona de ponta a ponta contra o `mysql` do compose; um JWT emitido por este módulo é aceito por `AuthGuard` nas rotas administrativas; as duas invariantes de remoção continuam recusando com `409`; testes de unidade e e2e passam.
+- Dependências: migracao-mysql-adapter-midia-minio (mesmo `package.json`/lockfile de `apps/api`)
+- Execução: sequencial
+- Toca documentação: não
+- Status: pendente
+
+#### migracao-mysql-cutover-wiring — Troca final dos providers e remoção do SDK do Supabase da API
+- Origem: pedido do usuário
+- Descrição: o corte de fato — troca os `useFactory` dos 5 módulos (`content`, `media`, `leads`, `metadata`, `operators`) para instanciar os adaptadores MySQL/MinIO/auth própria em vez dos adaptadores Supabase; remove `apps/api/src/infrastructure/supabase/` e `apps/api/src/infrastructure/config/supabase-env.ts` por completo; remove `@supabase/supabase-js` de `apps/api/package.json`; atualiza `docker-compose.yml` (serviço `api`: variáveis `SUPABASE_*` trocadas por `MYSQL_*`/`MINIO_*`/`AUTH_JWT_SECRET`) e `.env.example` (raiz e `apps/api/.env.example`) removendo as variáveis `SUPABASE_*` que não são mais lidas por nada. Reavalia se `docker/Dockerfile` ainda precisa de `node:22-alpine` (a exigência era de `@supabase/realtime-js`, dependência transitiva que sai junto do SDK) — reverte para a imagem mínima suficiente se o teste de build confirmar que não é mais necessária, documentando a verificação feita, não apenas assumindo.
+- Rastreável a: SDD § "Migração de plataforma de dados"; § Camadas e padrão arquitetural → Regra de dependência
+- Critério de "pronto": `grep -r "@supabase" apps/api/src apps/api/package.json` vazio; `npm run build --prefix apps/api` sem erro; suíte completa de `apps/api` (unit + integration + e2e, todas já reescritas nas tarefas anteriores) passa contra `mysql`+`minio` do compose, sem nenhuma dependência de Supabase local; `docker compose up --build api` (mysql/minio já no ar) sobe `healthy` sem nenhuma variável `SUPABASE_*` definida.
+- Dependências: migracao-mysql-modulo-auth-proprio
+- Execução: sequencial
+- Toca documentação: não (consolidado em `migracao-mysql-documentacao`)
+- Status: pendente
+
+#### migracao-mysql-painel-auth-e-upload — Painel autentica e faz upload sem o Supabase
+- Origem: pedido do usuário
+- Descrição: remove `apps/admin/src/lib/supabase-client.ts` e a dependência `@supabase/supabase-js` de `apps/admin/package.json`. `AuthProvider`/`useAuth()` (`apps/admin/src/auth/auth-context.tsx`) passam a gerenciar sessão própria: chamam `POST /api/auth/login`, guardam o `accessToken` (ex. `localStorage`), expõem esse token para `apiFetch` anexar como `Authorization: Bearer` em toda chamada a `/api/admin/*`. `login-page.tsx` chama a nova rota em vez de `signInWithPassword`. `admin-layout.tsx` (botão "Sair") apaga o token local em vez de chamar `supabase.auth.signOut()`; e-mail exibido no cabeçalho vem da resposta do login (guardada junto do token) em vez de `session.user.email`. `apps/admin/src/lib/media-upload.ts` (`enviarImagemParaStorage`) troca `supabase.storage.from(bucket).uploadToSignedUrl(...)` por um `PUT` HTTP direto à URL pré-assinada devolvida por `POST /api/admin/media/upload-url` (padrão S3 pré-assinado, sem SDK cliente), mantendo o mesmo contrato de retorno usado por `Dropzone`/`ImageFieldEditor`. Remove `VITE_SUPABASE_*` de `apps/admin/.env.example`/`vite-env.d.ts`.
+- Rastreável a: SDD § "Migração de plataforma de dados" (Painel)
+- Critério de "pronto": login, logout, edição de seção com upload de imagem e tela de Operadores funcionam de ponta a ponta em navegador real contra a API já migrada (`migracao-mysql-cutover-wiring` concluída); `grep -r "@supabase" apps/admin/src apps/admin/package.json` vazio.
+- Dependências: migracao-mysql-cutover-wiring
+- Execução: sequencial (mesma árvore de trabalho da tarefa anterior, para não haver um meio-termo em que a API já exige o novo formato de token mas o painel ainda envia o antigo)
+- Toca documentação: não
+- Status: pendente
+
+#### migracao-mysql-dados-homologacao — Migra os dados reais do Supabase de homologação para MySQL/MinIO
+- Origem: pedido do usuário
+- Descrição: este ambiente não é greenfield — o Supabase de homologação tem conteúdo real das 11 seções, leads reais e operadores reais (ver `agent_context/CHANGELOG.md`, 2026-09-09/10). Exporta `content_sections`/`site_metadata`/`leads` via `GET /api/admin/*` autenticado contra a API AINDA rodando sobre Supabase (antes do corte local ser promovido a homologação) e importa no MySQL de homologação; baixa cada arquivo referenciado em `media_assets`/imagens de seção do Storage do Supabase e reenvia ao MinIO de homologação, reescrevendo `public_url` no conteúdo importado para apontar ao novo host; recria cada operador existente na tabela `operators`, com senha temporária gerada nesta tarefa e comunicada fora de banda (nunca por e-mail — o módulo novo não envia e-mail) a cada pessoa, com pedido explícito de troca no primeiro login. **Não é uma tarefa de subagente**: envolve credenciais reais de homologação (mesma restrição já seguida em `dados/supabase-cli-init` e `ajustes/corrige-imagem-metadados` — o subagente nunca recebe essas credenciais), conduzida pelo orquestrador diretamente. Não apaga nada do Supabase de homologação nesta tarefa — a decisão de desligar aquele projeto só acontece depois da verificação de ponta a ponta seguinte, e exige confirmação explícita do usuário antes de qualquer ação destrutiva/irreversível sobre um serviço de terceiro.
+- Rastreável a: SDD § Riscos técnicos e mitigação ("Perda de dados já existentes...", "Senhas de operadores não são portáveis...")
+- Critério de "pronto": comparação campo a campo entre `GET /api/content` servido pela API ainda em Supabase e pela API já em MySQL/MinIO não mostra divergência (fora dos IDs internos, que mudam); toda imagem referenciada no conteúdo importado carrega a partir do MinIO; cada operador existente consegue logar com a senha temporária e é orientado a trocá-la.
+- Dependências: migracao-mysql-painel-auth-e-upload
+- Execução: sequencial
+- Toca documentação: não
+- Status: pendente
+
+#### migracao-mysql-verificacao-ponta-a-ponta — Verificação completa da pilha migrada
+- Origem: pedido do usuário
+- Descrição: `docker compose up --build` completo (proxy + api + mysql + minio, sem nenhum serviço Supabase envolvido) verificado de ponta a ponta: login, CRUD de cada seção, upload de imagem, controle de visibilidade, metadados no HTML inicial (`curl`, sem JS), envio de lead, listagem/exportação/exclusão de lead, CRUD de operador — o mesmo escopo que `integracao/verificacao-ponta-a-ponta` cobriu para o Supabase original, repetido aqui contra a pilha nova. Roda a suíte completa (`npm run test --workspaces`) e confirma que nada depende mais de `npx supabase start`. Remove `supabase/` (CLI local, migrations antigas) e a dependência `supabase` (devDependency da raiz) do repositório — só depois desta verificação passar, nunca antes.
+- Rastreável a: SDD § Critérios de aceitação por capacidade (todos, reverificados contra a nova plataforma)
+- Critério de "pronto": todos os fluxos acima confirmados manualmente (navegador real) e via suíte automatizada, sem nenhuma referência viva a Supabase no código, no `docker-compose.yml` ou no `.env.example`; `grep -ri supabase` no repositório (excluindo `agent_context/` e `docs/`, que preservam o histórico da decisão) retorna vazio.
+- Dependências: migracao-mysql-dados-homologacao
+- Execução: sequencial
+- Toca documentação: não
+- Status: pendente
+
+#### migracao-mysql-documentacao — Atualiza README e /docs para a plataforma MySQL/MinIO
+- Origem: pedido do usuário
+- Descrição: reescreve `README.md` § Stack e § "Saiba mais"; `docs/BANCO-DE-DADOS.md` (deixa de ser sobre a CLI/instância local do Supabase, passa a documentar MySQL + o runner de migrations + MinIO); `docs/API.md` (§ Configuração, § Autenticação, § Mídia, § Operadores, § Testes — todas citam hoje o Supabase); `docs/DOCKER.md` (variáveis `MYSQL_*`/`MINIO_*`/`AUTH_JWT_SECRET` no lugar de `SUPABASE_*`); `docs/PAINEL.md` (§ Configuração, § Autenticação, § Upload de imagem, § Operadores); `docs/RODAR-SEM-DOCKER.md` (menção pontual às variáveis do Supabase).
+- Rastreável a: `references/documentacao-tecnica.md` § Revisão final
+- Critério de "pronto": nenhum comando/variável/fluxo documentado menciona Supabase como algo em uso hoje (histórico da migração pode ficar registrado, mas marcado como decisão passada); todo comando novo listado foi executado e confirmado nesta revisão.
+- Dependências: migracao-mysql-verificacao-ponta-a-ponta
+- Execução: sequencial (é a própria tarefa)
+- Toca documentação: sim (é a própria tarefa)
+- Status: pendente
+
 ## Ordem de execução
 
 ```
@@ -514,4 +614,15 @@ seo/injetor-metadados (após api/modulo-metadata e fundacao/docker-single-entry)
 integracao/migracao-conteudo-inicial (após content-schema, dados/migration-content-sections, api/modulo-content)
 integracao/verificacao-ponta-a-ponta (após tudo acima)
 documentacao/readme-e-docs-finais (última)
+
+ajustes/migracao-mysql-infra-compose
+  → ajustes/migracao-mysql-schema
+  → ajustes/migracao-mysql-adapters-conteudo
+  → ajustes/migracao-mysql-adapter-midia-minio
+  → ajustes/migracao-mysql-modulo-auth-proprio
+  → ajustes/migracao-mysql-cutover-wiring
+  → ajustes/migracao-mysql-painel-auth-e-upload
+  → ajustes/migracao-mysql-dados-homologacao
+  → ajustes/migracao-mysql-verificacao-ponta-a-ponta
+  → ajustes/migracao-mysql-documentacao
 ```
