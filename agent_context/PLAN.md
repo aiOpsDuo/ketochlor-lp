@@ -496,7 +496,7 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Dependências: migracao-mysql-infra-compose
 - Execução: sequencial
 - Toca documentação: não
-- Status: pendente
+- Status: concluída — PR #78 (squash-merge em `main`). 5 migrations (`apps/api/mysql/migrations/0001..0005_*.sql`, uma por tabela, refletindo o estado final do schema Postgres — já com `item_visibility` e `og_image_url`) + runner sem ORM (`apps/api/scripts/migrar-mysql.mjs`, `mysql2/promise`, tabela `schema_migrations`, roda como `root` — usuário de aplicação nunca tem DDL, decisão documentada no próprio script). Reverificado pelo orquestrador do zero (banco vazio, não só relatado pelo subagente): 5 migrations aplicadas sem erro na primeira execução; segunda execução na sequência → `Nenhuma migration pendente` (idempotência real); `SHOW TABLES` confere as 6 tabelas (5 + `schema_migrations`); `content_sections` com 11 linhas seedadas; `DESCRIBE site_metadata` com os tipos exatos do SDD; `INSERT` com `id=2` em `site_metadata` falha de fato com `ERROR 3819` (`CHECK` real, não só declarado); `npm run build --prefix apps/api` sem erro. Context7 não estava disponível no ambiente do subagente (MCP desconectado) — API do `mysql2` validada empiricamente contra o MySQL real do compose em vez de documentação, registrado como desvio aceitável do guardrail de Context7 (fallback: verificação empírica direta, já que a lib não tinha doc a consultar na sessão).
 
 #### migracao-mysql-adapters-conteudo — Adaptadores MySQL de conteúdo, metadados e leads
 - Origem: pedido do usuário
