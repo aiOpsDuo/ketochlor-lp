@@ -1,84 +1,81 @@
 import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { DeleteObjectCommand, type S3Client } from '@aws-sdk/client-s3';
+import type { Pool, RowDataPacket } from 'mysql2/promise';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module';
-import { criarSupabaseAdminClient } from '../../infrastructure/supabase/supabase-client.factory';
-import {
-  ANON_KEY_LOCAL,
-  carregarSupabaseTestEnv,
-} from '../../infrastructure/test-support/supabase-test-env';
+import { criarMinioClient } from '../../infrastructure/minio/minio-client.factory';
+import { criarMysqlPool } from '../../infrastructure/mysql/mysql-client.factory';
+import { MySqlOperadoresRepository } from '../../infrastructure/mysql/operadores.repository';
+import { carregarMinioTestEnv } from '../../infrastructure/test-support/minio-test-env';
+import { carregarMysqlTestEnv } from '../../infrastructure/test-support/mysql-test-env';
+import { criarOperadorAutenticadoDeTeste } from '../../infrastructure/test-support/operador-teste';
 import { API_GLOBAL_PREFIX } from '../auth/route-prefixes';
 
 /**
  * Teste e2e REAL da tarefa `api/modulo-media`: sobe a aplicação Nest
- * completa (`AppModule`) via `@nestjs/testing` + `supertest`, mesmo padrão de
- * `presentation/metadata/metadata.e2e.test.ts`, contra o Supabase LOCAL de
- * verdade (`npx supabase start`), incluindo o Storage local — usuário e
- * login reais.
+ * completa (`AppModule`) via `@nestjs/testing` + `supertest`, contra o
+ * `minio`+`mysql` REAIS do compose (tarefa `ajustes/migracao-mysql-cutover-
+ * wiring`, que substitui o Supabase local/`SupabaseMediaAssetsRepository`
+ * deste arquivo) — operador e login reais via `POST /api/auth/login`.
  *
  * `POST /api/admin/media/upload-url` é a ÚNICA rota deste módulo (SDD
  * § Contratos de dados/API/interfaces): não cria linha em `media_assets`,
  * só reserva o `mediaAssetId`/`storagePath` e emite a credencial de upload
- * direto ao Storage — por isso não há nada para restaurar em `afterAll` no
- * banco (mesmo comportamento já coberto, ao nível de repositório, por
- * `infrastructure/supabase/media-assets.repository.test.ts`: nenhuma linha
- * nasce em `media_assets` antes da confirmação pós-upload, que este módulo
- * não expõe por rota própria — ver nota de decisão em
- * `media-admin.controller.ts`).
+ * direto ao Storage — por isso não há nada para restaurar no banco (mesmo
+ * comportamento já coberto, ao nível de repositório, por
+ * `infrastructure/minio/media-assets.repository.test.ts`). O `PUT` do
+ * arquivo de teste contra a `signedUrl` usa `fetch` nativo do Node, sem SDK
+ * cliente — simulando exatamente o que o navegador do painel fará (tarefa
+ * futura `migracao-mysql-painel-auth-e-upload`).
  */
 describe('Media (e2e) — POST /api/admin/media/upload-url', () => {
   const email = `operador.media.e2e.${randomUUID()}@example.com`;
   const senha = 'senha-de-teste-123456';
 
   let app: INestApplication;
-  let adminClient: SupabaseClient;
+  let pool: Pool;
+  let s3Client: S3Client;
   let bucket: string;
-  let userId: string;
+  let operadoresRepository: MySqlOperadoresRepository;
+  let operadorId: string;
   let accessToken: string;
   const caminhosParaLimpar: string[] = [];
 
   const authHeader = () => `Bearer ${accessToken}`;
 
   beforeAll(async () => {
-    const env = carregarSupabaseTestEnv();
-    adminClient = criarSupabaseAdminClient(env);
-    bucket = env.storageBucket;
-    const anonClient = createClient(env.url, ANON_KEY_LOCAL);
-
-    const { data, error } = await adminClient.auth.admin.createUser({
-      email,
-      password: senha,
-      email_confirm: true,
-    });
-    if (error || !data.user) {
-      throw new Error(`Falha ao criar usuário de teste: ${error?.message}`);
-    }
-    userId = data.user.id;
-
-    const login = await anonClient.auth.signInWithPassword({ email, password: senha });
-    if (login.error || !login.data.session) {
-      throw new Error(`Falha ao autenticar usuário de teste: ${login.error?.message}`);
-    }
-    accessToken = login.data.session.access_token;
+    pool = criarMysqlPool(carregarMysqlTestEnv());
+    operadoresRepository = new MySqlOperadoresRepository(pool);
+    const minioEnv = carregarMinioTestEnv();
+    s3Client = criarMinioClient(minioEnv);
+    bucket = minioEnv.bucket;
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix(API_GLOBAL_PREFIX);
     await app.init();
-  });
+
+    const auth = await criarOperadorAutenticadoDeTeste(app, operadoresRepository, { email, senha });
+    operadorId = auth.operadorId;
+    accessToken = auth.accessToken;
+  }, 20_000);
 
   afterAll(async () => {
-    if (caminhosParaLimpar.length > 0) {
-      await adminClient.storage.from(bucket).remove(caminhosParaLimpar);
-    }
+    await Promise.all(
+      caminhosParaLimpar.map((storagePath) =>
+        s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: storagePath })),
+      ),
+    );
     await app.close();
-    if (userId) {
-      await adminClient.auth.admin.deleteUser(userId);
+    if (operadorId) {
+      await operadoresRepository.remover(operadorId);
     }
-  });
+    s3Client.destroy();
+    await pool.end();
+  }, 20_000);
 
   it('rejeita POST /api/admin/media/upload-url sem token', async () => {
     await request(app.getHttpServer())
@@ -112,7 +109,7 @@ describe('Media (e2e) — POST /api/admin/media/upload-url', () => {
     ).toBe(true);
   });
 
-  it('com um corpo válido, devolve a credencial de upload + o id reservado, e a credencial funciona contra o Storage local', async () => {
+  it('com um corpo válido, devolve a credencial de upload + o id reservado, e a credencial funciona contra o MinIO real', async () => {
     const resposta = await request(app.getHttpServer())
       .post('/api/admin/media/upload-url')
       .set('Authorization', authHeader())
@@ -122,32 +119,33 @@ describe('Media (e2e) — POST /api/admin/media/upload-url', () => {
     expect(resposta.body.mediaAssetId).toBeTruthy();
     expect(resposta.body.storagePath).toBe(`${resposta.body.mediaAssetId}.png`);
     expect(resposta.body.signedUrl).toBeTruthy();
-    expect(resposta.body.token).toBeTruthy();
+    // Diferença deliberada do adaptador Supabase — uma URL pré-assinada S3 já
+    // embute a autenticação, não existe token separado a devolver (ver
+    // comentário de decisão em `domain/portas/media-assets.repository.ts`).
+    expect(resposta.body.token).toBeNull();
 
     // Nenhuma linha nasce em `media_assets` só por emitir a credencial (SDD
     // § Riscos técnicos — upload interrompido não pode deixar referência a
     // um arquivo inexistente): esta rota não confirma upload nenhum.
-    const { data: linhaAntesDoUpload } = await adminClient
-      .from('media_assets')
-      .select('id')
-      .eq('id', resposta.body.mediaAssetId)
-      .maybeSingle();
-    expect(linhaAntesDoUpload).toBeNull();
+    const [linhasAntesDoUpload] = await pool.execute<RowDataPacket[]>(
+      'SELECT id FROM media_assets WHERE id = ?',
+      [resposta.body.mediaAssetId],
+    );
+    expect(linhasAntesDoUpload).toHaveLength(0);
 
-    // Exercita a credencial contra o Storage local de verdade — prova que o
-    // que a rota devolve é utilizável pelo navegador, mesmo caminho que
-    // `infrastructure/supabase/media-assets.repository.test.ts` já exercita
-    // no nível do repositório.
+    // Exercita a credencial contra o MinIO real de verdade, via `fetch`
+    // nativo (sem SDK cliente) — prova que o que a rota devolve é utilizável
+    // pelo navegador.
     caminhosParaLimpar.push(resposta.body.storagePath);
     const bytesDePng = Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
       'base64',
     );
-    const { error: erroUpload } = await adminClient.storage
-      .from(bucket)
-      .uploadToSignedUrl(resposta.body.storagePath, resposta.body.token, bytesDePng, {
-        contentType: 'image/png',
-      });
-    expect(erroUpload).toBeNull();
+    const respostaUpload = await fetch(resposta.body.signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'image/png' },
+      body: bytesDePng,
+    });
+    expect(respostaUpload.ok).toBe(true);
   });
 });

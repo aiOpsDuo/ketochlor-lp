@@ -1,19 +1,17 @@
 # Empacotamento de produção do ponto único de entrada (SDD § "Camadas e
 # padrão arquitetural" → "Ponto único de entrada"; ver docs/DOCKER.md).
-# O serviço `api` exige as variáveis de ambiente do Supabase abaixo — ver
-# `.env.example` na raiz deste repositório (copie para `.env`, nunca
-# commitado, ver .gitignore) e `apps/api/src/infrastructure/config/
-# supabase-env.ts` para a validação exata. Compose lê o `.env` da raiz
-# automaticamente para resolver `${VAR:?...}`: sem ele, `docker compose up`
-# falha de imediato com uma mensagem clara, em vez de subir a `api` em
-# crash-loop.
+# O serviço `api` exige as variáveis de ambiente de MySQL/MinIO/auth própria
+# abaixo — ver `.env.example` na raiz deste repositório (copie para `.env`,
+# nunca commitado, ver .gitignore) e `apps/api/src/infrastructure/config/
+# {mysql,minio,auth-jwt}-env.ts` para a validação exata. Compose lê o `.env`
+# da raiz automaticamente para resolver `${VAR:?...}`: sem ele, `docker
+# compose up` falha de imediato com uma mensagem clara, em vez de subir a
+# `api` em crash-loop.
 #
 # `mysql`/`minio`: infraestrutura da migração para MySQL + MinIO
-# auto-hospedados (tarefa `ajustes/migracao-mysql-infra-compose` do
-# `agent_context/PLAN.md`). Puramente aditivo — o serviço `api` acima
-# continua servindo contra Supabase até a tarefa `migracao-mysql-cutover-
-# wiring` trocar o wiring dos adaptadores; até lá, `mysql`/`minio` só
-# existem para as tarefas seguintes da migração poderem se conectar a eles.
+# auto-hospedados (tarefa `ajustes/migracao-mysql-infra-compose`; corte de
+# fato — `api` servindo por eles no lugar do Supabase — na tarefa
+# `ajustes/migracao-mysql-cutover-wiring`, `agent_context/PLAN.md`).
 services:
   api:
     build:
@@ -21,11 +19,20 @@ services:
       dockerfile: docker/Dockerfile
       target: api
     environment:
-      SUPABASE_URL: ${SUPABASE_URL:?defina SUPABASE_URL no .env}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?defina SUPABASE_SERVICE_ROLE_KEY no .env}
-      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?defina SUPABASE_JWT_SECRET no .env}
-      SUPABASE_JWKS_URL: ${SUPABASE_JWKS_URL:?defina SUPABASE_JWKS_URL no .env}
-      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-images}
+      MYSQL_HOST: ${MYSQL_HOST:-mysql}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?defina MYSQL_DATABASE no .env}
+      MYSQL_APP_USER: ${MYSQL_APP_USER:?defina MYSQL_APP_USER no .env}
+      MYSQL_APP_PASSWORD: ${MYSQL_APP_PASSWORD:?defina MYSQL_APP_PASSWORD no .env}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
+      MINIO_BUCKET: ${MINIO_BUCKET:-images}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?defina AUTH_JWT_SECRET no .env}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     # Sem `ports`: a API só é alcançada pela rede interna do compose (pelo
     # serviço `proxy`, via nome de serviço `api`), nunca diretamente do host.
     healthcheck:

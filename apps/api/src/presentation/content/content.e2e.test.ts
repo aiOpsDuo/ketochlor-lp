@@ -2,77 +2,65 @@ import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { CONTENT_SECTIONS, type SectionKey } from '@ketochlor/content-schema';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Pool } from 'mysql2/promise';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module';
-import { criarSupabaseAdminClient } from '../../infrastructure/supabase/supabase-client.factory';
-import { SupabaseContentSectionsRepository } from '../../infrastructure/supabase/content-sections.repository';
-import {
-  ANON_KEY_LOCAL,
-  carregarSupabaseTestEnv,
-} from '../../infrastructure/test-support/supabase-test-env';
+import { criarMysqlPool } from '../../infrastructure/mysql/mysql-client.factory';
+import { MySqlContentSectionsRepository } from '../../infrastructure/mysql/content-sections.repository';
+import { MySqlOperadoresRepository } from '../../infrastructure/mysql/operadores.repository';
+import { carregarMysqlTestEnv } from '../../infrastructure/test-support/mysql-test-env';
+import { criarOperadorAutenticadoDeTeste } from '../../infrastructure/test-support/operador-teste';
 import { API_GLOBAL_PREFIX } from '../auth/route-prefixes';
 
 /**
  * Teste e2e REAL da tarefa `api/modulo-content`: sobe a aplicação Nest
- * completa (`AppModule`) via `@nestjs/testing` + `supertest`, mesmo padrão de
- * `presentation/auth/auth.e2e.test.ts`, contra o Supabase LOCAL de verdade
- * (`npx supabase start`) — usuário e login reais, nunca um token fabricado à
- * mão para o caminho feliz.
+ * completa (`AppModule`) via `@nestjs/testing` + `supertest`, contra o
+ * `mysql` REAL do compose (tarefa `ajustes/migracao-mysql-cutover-wiring`,
+ * que substitui o Supabase local/`SupabaseContentSectionsRepository` deste
+ * arquivo) — operador e login reais via `POST /api/auth/login`, nunca um
+ * token fabricado à mão para o caminho feliz.
  *
  * Usa as seções `problema`, `diferenciais` e `material_tecnico` (nunca
- * `faq`/`hero`, mexidas por `infrastructure/supabase/content-sections.repository.test.ts`,
- * para não colidir se os dois arquivos rodarem em paralelo no mesmo processo
- * do Vitest) e restaura o estado original delas em `afterAll`, para não
- * vazar dado mutado entre execuções da suíte.
+ * `faq`/`hero`, mexidas por
+ * `infrastructure/mysql/content-sections.repository.test.ts`, para não
+ * colidir se os dois arquivos rodarem em paralelo no mesmo processo do
+ * Vitest) e restaura o estado original delas em `afterAll`, para não vazar
+ * dado mutado entre execuções da suíte.
  */
 describe('Content (e2e) — GET /api/content + /api/admin/sections*', () => {
   const email = `operador.content.e2e.${randomUUID()}@example.com`;
   const senha = 'senha-de-teste-123456';
 
   let app: INestApplication;
-  let adminClient: SupabaseClient;
-  let repositorioDireto: SupabaseContentSectionsRepository;
-  let userId: string;
+  let pool: Pool;
+  let operadoresRepository: MySqlOperadoresRepository;
+  let repositorioDireto: MySqlContentSectionsRepository;
+  let operadorId: string;
   let accessToken: string;
 
   const authHeader = () => `Bearer ${accessToken}`;
 
   beforeAll(async () => {
-    const env = carregarSupabaseTestEnv();
-    adminClient = criarSupabaseAdminClient(env);
-    repositorioDireto = new SupabaseContentSectionsRepository(adminClient);
-    const anonClient = createClient(env.url, ANON_KEY_LOCAL);
-
-    const { data, error } = await adminClient.auth.admin.createUser({
-      email,
-      password: senha,
-      email_confirm: true,
-    });
-    if (error || !data.user) {
-      throw new Error(`Falha ao criar usuário de teste: ${error?.message}`);
-    }
-    userId = data.user.id;
-
-    const login = await anonClient.auth.signInWithPassword({ email, password: senha });
-    if (login.error || !login.data.session) {
-      throw new Error(`Falha ao autenticar usuário de teste: ${login.error?.message}`);
-    }
-    accessToken = login.data.session.access_token;
+    pool = criarMysqlPool(carregarMysqlTestEnv());
+    operadoresRepository = new MySqlOperadoresRepository(pool);
+    repositorioDireto = new MySqlContentSectionsRepository(pool);
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix(API_GLOBAL_PREFIX);
     await app.init();
-  });
+
+    const auth = await criarOperadorAutenticadoDeTeste(app, operadoresRepository, { email, senha });
+    operadorId = auth.operadorId;
+    accessToken = auth.accessToken;
+  }, 20_000);
 
   afterAll(async () => {
     // Restaura 'problema' e 'diferenciais' (mutadas pelos testes de PUT
     // abaixo) ao conteúdo inicial de @ketochlor/content-schema, publicadas,
     // sem itemVisibility — para não vazar estado entre execuções locais da
-    // suíte (o Supabase CLI local preserva o volume entre `supabase
-    // start`/`stop`).
+    // suíte.
     await repositorioDireto.atualizarConteudo(
       'problema',
       CONTENT_SECTIONS.problema.initialContent,
@@ -91,10 +79,9 @@ describe('Content (e2e) — GET /api/content + /api/admin/sections*', () => {
       null,
     );
 
-    // Restaura `material_tecnico` ao mesmo estado pristino de
-    // `20260908192455_create_content_sections.sql` (`data: {}`, publicada) —
-    // este arquivo escreve o conteúdo real nela só para o teste de
-    // visibilidade acima.
+    // Restaura `material_tecnico` ao mesmo estado pristino da migration de
+    // seed (`data: {}`, publicada) — este arquivo escreve o conteúdo real
+    // nela só para o teste de visibilidade abaixo.
     const materialTecnicoAtual = await repositorioDireto.buscarPorChave('material_tecnico');
     if (materialTecnicoAtual && !materialTecnicoAtual.isPublished) {
       await repositorioDireto.alternarPublicacao('material_tecnico', null);
@@ -102,10 +89,11 @@ describe('Content (e2e) — GET /api/content + /api/admin/sections*', () => {
     await repositorioDireto.atualizarConteudo('material_tecnico', {}, {}, null);
 
     await app.close();
-    if (userId) {
-      await adminClient.auth.admin.deleteUser(userId);
+    if (operadorId) {
+      await operadoresRepository.remover(operadorId);
     }
-  });
+    await pool.end();
+  }, 20_000);
 
   describe('GET /api/content (pública)', () => {
     it('responde 200 sem nenhum header de autenticação', async () => {
@@ -186,7 +174,7 @@ describe('Content (e2e) — GET /api/content + /api/admin/sections*', () => {
 
       expect(respostaPut.status).toBe(200);
       expect(respostaPut.body.data.heading).toBe(novoConteudo.heading);
-      expect(respostaPut.body.updatedBy).toBe(userId);
+      expect(respostaPut.body.updatedBy).toBe(operadorId);
 
       const respostaGetPublico = await request(app.getHttpServer()).get('/api/content');
       expect(respostaGetPublico.body.sections.problema.heading).toBe(novoConteudo.heading);
@@ -224,9 +212,8 @@ describe('Content (e2e) — GET /api/content + /api/admin/sections*', () => {
   describe('PATCH /api/admin/sections/:key/visibility → reflexo imediato em GET /api/content', () => {
     it('alterna is_published e o efeito aparece em GET /api/content', async () => {
       // Escreve o conteúdo inicial real de `material_tecnico` primeiro — a
-      // migration só semeia `data: {}` (a migração do conteúdo real do
-      // Ketochlor é a tarefa futura `integracao/migracao-conteudo-inicial`),
-      // então este teste não pode presumir que a seção já tem o conteúdo de
+      // migração do conteúdo real do Ketochlor é uma tarefa futura, então
+      // este teste não pode presumir que a seção já tem o conteúdo de
       // `@ketochlor/content-schema`; ele mesmo o estabelece, para poder
       // afirmar que ele "volta inalterado" ao reativar a seção.
       await request(app.getHttpServer())

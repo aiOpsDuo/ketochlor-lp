@@ -6,9 +6,9 @@ import { ConsultarConteudoPublicadoUseCase } from '../../application/content/con
 import { ConsultarSecaoUseCase } from '../../application/content/consultar-secao.use-case';
 import { ListarSecoesUseCase } from '../../application/content/listar-secoes.use-case';
 import {
-  carregarSupabaseEnv,
-  criarSupabaseAdminClient,
-  SupabaseContentSectionsRepository,
+  carregarMysqlEnv,
+  criarMysqlPool,
+  MySqlContentSectionsRepository,
 } from '../../infrastructure';
 import { MetadataModule } from '../metadata/metadata.module';
 import { ContentAdminController } from './content-admin.controller';
@@ -16,16 +16,20 @@ import { ContentPublicController } from './content-public.controller';
 
 /**
  * Liga a porta `ContentSectionsRepository` (Domínio) à implementação
- * concreta `SupabaseContentSectionsRepository` (Infraestrutura) — mesmo
- * padrão de `presentation/auth/auth.module.ts` para `VERIFICADOR_TOKEN`: este
- * é o único ponto do código que decide QUAL implementação satisfaz a porta.
+ * concreta `MySqlContentSectionsRepository` (Infraestrutura, MySQL real,
+ * tabela `content_sections`) — mesmo padrão de
+ * `presentation/auth/auth.module.ts` para `VERIFICADOR_TOKEN`: este é o único
+ * ponto do código que decide QUAL implementação satisfaz a porta. Substitui
+ * `SupabaseContentSectionsRepository` (tarefa
+ * `ajustes/migracao-mysql-cutover-wiring`, SDD § "Migração de plataforma de
+ * dados").
  */
 const contentSectionsRepositoryProvider: Provider = {
   provide: CONTENT_SECTIONS_REPOSITORY,
   useFactory: () => {
-    const env = carregarSupabaseEnv();
-    const client = criarSupabaseAdminClient(env);
-    return new SupabaseContentSectionsRepository(client);
+    const env = carregarMysqlEnv();
+    const pool = criarMysqlPool(env);
+    return new MySqlContentSectionsRepository(pool);
   },
 };
 

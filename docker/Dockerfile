@@ -7,14 +7,30 @@
 # `packages/*`) precisam ser instalados juntos via `npm ci` na raiz.
 
 # ---- deps: instala as dependências do monorepo inteiro uma única vez ----
-# `node:22-alpine` (não 20, apesar de `engines.node` do repo aceitar ">=20"):
-# `@supabase/realtime-js` (dependência transitiva de `@supabase/supabase-js`,
-# usado por `apps/api`) exige `WebSocket` global nativo, disponível por
-# padrão só a partir do Node 22 — em runtime real (não só imports de tipo),
-# o cliente Supabase falha ao instanciar em Node 20 mesmo com todas as
-# variáveis de ambiente corretas ("Node.js detected but native WebSocket not
-# found").
-FROM node:22-alpine AS deps
+# `node:20-alpine` (revertido de `node:22-alpine` na tarefa `ajustes/
+# migracao-mysql-cutover-wiring`, SDD § "Migração de plataforma de dados"):
+# a exigência de Node 22 vinha de `@supabase/realtime-js` (dependência
+# transitiva de `@supabase/supabase-js`, que `apps/api` usava e que esta
+# tarefa remove por completo) — o `WebSocket` global nativo que ele exige só
+# existe por padrão a partir do Node 22, e o cliente Supabase falhava ao
+# instanciar em Node 20 em runtime real ("Node.js detected but native
+# WebSocket not found"). Com `@supabase/supabase-js` fora de `apps/api`,
+# essa exigência deixou de existir para o estágio `api` — verificado de
+# verdade (não só suposto): `docker compose build api` e `docker compose
+# build proxy` (o outro consumidor deste estágio `deps`, que ainda builda
+# `apps/admin` — este SEGUE usando `@supabase/supabase-js` até a tarefa
+# futura `ajustes/migracao-mysql-painel-auth-e-upload`, mas só empacotado
+# para o NAVEGADOR via Vite/Rollup, nunca instanciado em runtime Node
+# durante o build) completam sem erro sob `node:20-alpine`, e `docker
+# compose up api` sobe `healthy` de verdade contra `mysql`+`minio` reais.
+# Ressalva observada (não bloqueia esta decisão): o AWS SDK v3
+# (`@aws-sdk/client-s3`/`@aws-sdk/s3-request-presigner`, usados pelo
+# adaptador MinIO) emite um aviso de depreciação em runtime avisando que
+# versões publicadas depois da primeira semana de janeiro de 2027 vão exigir
+# Node ≥22 — hoje (2026-09-21) isso é só um aviso, não um erro, mas é uma
+# migração previsível a repetir dentro de poucos meses; registrado aqui para
+# não pegar quem mantém o projeto de surpresa.
+FROM node:20-alpine AS deps
 WORKDIR /repo
 COPY package.json package-lock.json ./
 COPY apps/lp/package.json apps/lp/package.json
@@ -72,7 +88,7 @@ RUN npm run build --workspace=packages/content-schema \
  && npm run build --prefix apps/api
 
 # ---- api: instala só as dependências de produção da API, imagem enxuta ----
-FROM node:22-alpine AS api
+FROM node:20-alpine AS api
 WORKDIR /repo
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./

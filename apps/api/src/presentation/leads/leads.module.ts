@@ -4,25 +4,24 @@ import { ExportarLeadsCsvUseCase } from '../../application/leads/exportar-leads-
 import { LEADS_REPOSITORY } from '../../application/leads/leads-repository.token';
 import { ListarLeadsUseCase } from '../../application/leads/listar-leads.use-case';
 import { RegistrarLeadUseCase } from '../../application/leads/registrar-lead.use-case';
-import {
-  carregarSupabaseEnv,
-  criarSupabaseAdminClient,
-  SupabaseLeadsRepository,
-} from '../../infrastructure';
+import { carregarMysqlEnv, criarMysqlPool, MySqlLeadsRepository } from '../../infrastructure';
 import { LeadsAdminController } from './leads-admin.controller';
 import { LeadsPublicController } from './leads-public.controller';
 
 /**
  * Liga a porta `LeadsRepository` (Domínio) à implementação concreta
- * `SupabaseLeadsRepository` (Infraestrutura) — mesmo padrão de
- * `presentation/metadata/metadata.module.ts` para `SITE_METADATA_REPOSITORY`.
+ * `MySqlLeadsRepository` (Infraestrutura, MySQL real, tabela `leads`) —
+ * mesmo padrão de `presentation/metadata/metadata.module.ts` para
+ * `SITE_METADATA_REPOSITORY`. Substitui `SupabaseLeadsRepository` (tarefa
+ * `ajustes/migracao-mysql-cutover-wiring`, SDD § "Migração de plataforma de
+ * dados").
  */
 const leadsRepositoryProvider: Provider = {
   provide: LEADS_REPOSITORY,
   useFactory: () => {
-    const env = carregarSupabaseEnv();
-    const client = criarSupabaseAdminClient(env);
-    return new SupabaseLeadsRepository(client);
+    const env = carregarMysqlEnv();
+    const pool = criarMysqlPool(env);
+    return new MySqlLeadsRepository(pool);
   },
 };
 

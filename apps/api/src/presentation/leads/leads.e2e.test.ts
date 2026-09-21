@@ -1,29 +1,31 @@
 import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Pool } from 'mysql2/promise';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module';
-import { criarSupabaseAdminClient } from '../../infrastructure/supabase/supabase-client.factory';
-import { SupabaseLeadsRepository } from '../../infrastructure/supabase/leads.repository';
-import {
-  ANON_KEY_LOCAL,
-  carregarSupabaseTestEnv,
-} from '../../infrastructure/test-support/supabase-test-env';
+import { criarMysqlPool } from '../../infrastructure/mysql/mysql-client.factory';
+import { LeadsRepository } from '../../domain';
+import { MySqlLeadsRepository } from '../../infrastructure/mysql/leads.repository';
+import { paraMysqlDatetime } from '../../infrastructure/mysql/mysql-datas';
+import { MySqlOperadoresRepository } from '../../infrastructure/mysql/operadores.repository';
+import { carregarMysqlTestEnv } from '../../infrastructure/test-support/mysql-test-env';
+import { criarOperadorAutenticadoDeTeste } from '../../infrastructure/test-support/operador-teste';
 import { API_GLOBAL_PREFIX } from '../auth/route-prefixes';
 
 /**
  * Teste e2e REAL da tarefa `api/modulo-leads`: sobe a aplicação Nest completa
- * (`AppModule`) via `@nestjs/testing` + `supertest`, mesmo padrão de
- * `presentation/metadata/metadata.e2e.test.ts`, contra o Supabase LOCAL de
- * verdade (`npx supabase start`) — usuário e login reais para as rotas
- * administrativas; `POST /api/leads` é exercitado sem nenhum header de
- * autenticação, para provar (não presumir) que a rota é pública.
+ * (`AppModule`) via `@nestjs/testing` + `supertest`, contra o `mysql` REAL do
+ * compose (tarefa `ajustes/migracao-mysql-cutover-wiring`, que substitui o
+ * Supabase local/`SupabaseLeadsRepository` deste arquivo) — operador e login
+ * reais via `POST /api/auth/login` para as rotas administrativas;
+ * `POST /api/leads` é exercitado sem nenhum header de autenticação, para
+ * provar (não presumir) que a rota é pública.
  *
  * Todo lead criado por este arquivo é apagado em `afterAll` via o
  * repositório direto (Infraestrutura) — mesma precaução de
- * `infrastructure/supabase/leads.repository.test.ts` para não deixar dado de
+ * `infrastructure/mysql/leads.repository.test.ts` para não deixar dado de
  * teste na tabela `leads` entre execuções locais da suíte.
  */
 describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () => {
@@ -31,9 +33,10 @@ describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () =>
   const senha = 'senha-de-teste-123456';
 
   let app: INestApplication;
-  let adminClient: SupabaseClient;
-  let repositorioDireto: SupabaseLeadsRepository;
-  let userId: string;
+  let pool: Pool;
+  let operadoresRepository: MySqlOperadoresRepository;
+  let repositorioDireto: LeadsRepository;
+  let operadorId: string;
   let accessToken: string;
   const idsParaLimpar: string[] = [];
 
@@ -64,32 +67,19 @@ describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () =>
   }
 
   beforeAll(async () => {
-    const env = carregarSupabaseTestEnv();
-    adminClient = criarSupabaseAdminClient(env);
-    repositorioDireto = new SupabaseLeadsRepository(adminClient);
-    const anonClient = createClient(env.url, ANON_KEY_LOCAL);
-
-    const { data, error } = await adminClient.auth.admin.createUser({
-      email,
-      password: senha,
-      email_confirm: true,
-    });
-    if (error || !data.user) {
-      throw new Error(`Falha ao criar usuário de teste: ${error?.message}`);
-    }
-    userId = data.user.id;
-
-    const login = await anonClient.auth.signInWithPassword({ email, password: senha });
-    if (login.error || !login.data.session) {
-      throw new Error(`Falha ao autenticar usuário de teste: ${login.error?.message}`);
-    }
-    accessToken = login.data.session.access_token;
+    pool = criarMysqlPool(carregarMysqlTestEnv());
+    operadoresRepository = new MySqlOperadoresRepository(pool);
+    repositorioDireto = new MySqlLeadsRepository(pool);
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix(API_GLOBAL_PREFIX);
     await app.init();
-  });
+
+    const auth = await criarOperadorAutenticadoDeTeste(app, operadoresRepository, { email, senha });
+    operadorId = auth.operadorId;
+    accessToken = auth.accessToken;
+  }, 20_000);
 
   afterAll(async () => {
     for (const id of idsParaLimpar) {
@@ -98,10 +88,11 @@ describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () =>
       }
     }
     await app.close();
-    if (userId) {
-      await adminClient.auth.admin.deleteUser(userId);
+    if (operadorId) {
+      await operadoresRepository.remover(operadorId);
     }
-  });
+    await pool.end();
+  }, 20_000);
 
   describe('POST /api/leads (pública)', () => {
     it('cria um lead com 201 SEM nenhum header de autenticação, e a resposta nunca tem consentimentoAceito', async () => {
@@ -178,13 +169,13 @@ describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () =>
       const antigo = await criarLeadDireto({ nome: 'Lead Antigo E2E', origem: 'periodo-antigo' });
       const recente = await criarLeadDireto({ nome: 'Lead Recente E2E', origem: 'periodo-recente' });
 
-      // Mesma técnica de `infrastructure/supabase/leads.repository.test.ts`:
-      // fixa `created_at` via cliente Supabase direto, para o filtro de
-      // período não depender de timing de execução do teste.
-      const umDiaAtras = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const agora = new Date().toISOString();
-      await adminClient.from('leads').update({ created_at: umDiaAtras }).eq('id', antigo.id);
-      await adminClient.from('leads').update({ created_at: agora }).eq('id', recente.id);
+      // Mesma técnica de `infrastructure/mysql/leads.repository.test.ts`:
+      // fixa `created_at` via query direta no pool, para o filtro de período
+      // não depender de timing de execução do teste.
+      const umDiaAtras = paraMysqlDatetime(new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      const agora = paraMysqlDatetime(new Date().toISOString());
+      await pool.execute('UPDATE leads SET created_at = ? WHERE id = ?', [umDiaAtras, antigo.id]);
+      await pool.execute('UPDATE leads SET created_at = ? WHERE id = ?', [agora, recente.id]);
 
       const listagemCompleta = await request(app.getHttpServer())
         .get('/api/admin/leads')
