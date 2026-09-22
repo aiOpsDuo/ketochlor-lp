@@ -10,9 +10,12 @@ não oferece.
 
 ```bash
 npm install
-cp apps/api/.env.example apps/api/.env      # e preencha os valores obrigatórios
-cp apps/admin/.env.example apps/admin/.env  # e preencha as duas variáveis do Supabase
+cp apps/api/.env.example apps/api/.env      # e preencha os valores obrigatórios (MySQL, MinIO, AUTH_JWT_SECRET)
+docker compose up -d mysql minio minio-init # plataforma de dados (ver DOCKER.md/BANCO-DE-DADOS.md)
+npm run migrate:mysql --prefix apps/api     # aplica o schema
 ```
+
+`apps/admin` não precisa de `.env` próprio nesta versão — o painel não lê nenhuma variável de ambiente sua (login e upload falam com a API pelo caminho relativo `/api/*`, ver [PAINEL.md § Configuração](PAINEL.md)); `apps/admin/.env.example` existe vazio só por convenção.
 
 `apps/lp` não tem `.env` próprio: sua única variável (`CONTENT_SNAPSHOT_API_URL`,
 usada só pelo script de `prebuild` que gera o instantâneo de conteúdo, nunca em

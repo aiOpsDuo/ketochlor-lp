@@ -4,29 +4,21 @@ React 18 + Vite 5 + TypeScript 5, servido sob `/admin` no mesmo domínio da LP (
 
 ## Configuração
 
-Variáveis de ambiente lidas de `import.meta.env` pelo Vite em build time (`apps/admin/src/lib/supabase-client.ts`), nunca hardcoded. Copie `apps/admin/.env.example` para `apps/admin/.env` (arquivo local, ignorado pelo Git) e ajuste:
+Desde a migração de plataforma de dados (`ajustes/migracao-mysql-painel-auth-e-upload`), o painel **não lê nenhuma variável de ambiente própria**. `apps/admin/.env.example` existe, mas está deliberadamente vazio: login (`POST /api/auth/login`), upload de imagem (`POST /api/admin/media/upload-url` + `PUT` direto à URL pré-assinada do MinIO) e toda chamada administrativa (`/api/admin/*`) falam com a API pelo mesmo caminho relativo `/api/*` — tanto o dev server (proxy de `apps/lp/vite.config.ts`) quanto o nginx de produção (`docker/nginx.conf`) servem painel e API sob o mesmo domínio, então não há URL nem chave própria a configurar aqui. Não existe mais `@supabase/supabase-js` nem `apps/admin/src/lib/supabase-client.ts` no workspace.
 
-| Variável | Obrigatória | Descrição |
-|---|---|---|
-| `VITE_SUPABASE_URL` | sim | URL da API do projeto Supabase — a mesma usada por `apps/api` (local: `http://127.0.0.1:54321`, ver [`docs/BANCO-DE-DADOS.md`](./BANCO-DE-DADOS.md)). |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | sim | Chave `anon`/publicável do projeto Supabase. **Nunca** a `service_role` — essa é exclusiva de `apps/api` (ver [`docs/API.md`](./API.md)) e nunca deve chegar a código que roda no navegador (SDD § "Isolamento das credenciais e da superfície pública"). |
-| `VITE_SUPABASE_STORAGE_BUCKET` | não (default `images`) | Bucket de Storage das imagens do CMS (`lib/media-upload.ts`, upload de imagem do formulário de edição de seção) — o mesmo bucket configurado em `SUPABASE_STORAGE_BUCKET` de `apps/api/.env.example`. |
+## Autenticação (`ajustes/migracao-mysql-painel-auth-e-upload`)
 
-Os valores em `apps/admin/.env.example` já vêm preenchidos com os defaults **públicos e conhecidos** de qualquer instância local do Supabase CLI (mesma chave `anon` documentada em [`docs/BANCO-DE-DADOS.md`](./BANCO-DE-DADOS.md) e usada pelos testes de `apps/api`) — não são segredo real, servem só para desenvolvimento contra `npx supabase start` local. Um ambiente real (o Supabase de homologação hoje, ver [`docs/BANCO-DE-DADOS.md` § Homologação](./BANCO-DE-DADOS.md)) usa a chave publicável do projeto Supabase dedicado ao Ketochlor.
+O painel gerencia a própria sessão, sem nenhum serviço de identidade de terceiro. `apps/admin/src/auth/auth-context.tsx` (`AuthProvider`/`useAuth()`) chama `POST /api/auth/login` diretamente via `fetch` (sem SDK cliente), guarda o `accessToken` devolvido em `localStorage` e o envia como `Authorization: Bearer <jwt>` em toda chamada a `/api/admin/*` (ver [`docs/API.md` § Autenticação](./API.md)).
 
-Qualquer prefixo diferente de `VITE_` é ignorado pelo Vite em build time — por isso as duas variáveis acima usam esse prefixo, ao contrário das variáveis de `apps/api` (lidas em runtime de `process.env`, sem prefixo).
+### Sessão local (`SessaoOperador`)
 
-## Autenticação (`painel/tela-login`)
+`{ accessToken, operatorId, email }` — `operatorId`/`email` são decodificados do próprio payload do JWT (`decodificarPayload`, Base64URL, **sem verificar assinatura no cliente**: decisão deliberada, documentada no próprio arquivo — o único uso desses dois campos no painel é exibição na UI (cabeçalho de `AdminLayout`, tela de Operadores); a validação de verdade de todo token continua sendo feita pela API a cada requisição a `/api/admin/*`, então verificar a assinatura no navegador não agregaria segurança, só complexidade).
 
-O painel **não fala com a API para autenticar** — ele usa o SDK cliente do Supabase (`@supabase/supabase-js`, com a chave publicável) diretamente contra o Supabase Auth, o mesmo projeto que a API verifica via JWKS (SDD § Contratos de dados/API/interfaces → Autenticação). A API nunca implementa um endpoint de login; ela só recebe o token que o painel já obteve, no header `Authorization: Bearer <jwt>` de cada chamada a `/api/admin/*` (ver [`docs/API.md` § Autenticação](./API.md)).
-
-### Cliente Supabase
-
-Instância única em `apps/admin/src/lib/supabase-client.ts` (`createClient`), construída a partir de `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY`. `persistSession` e `autoRefreshToken` são `true` por padrão no SDK — a sessão já é guardada em `localStorage` e renovada automaticamente sem nenhuma configuração extra; nenhum código do painel implementa storage ou refresh de sessão por conta própria.
+Não há refresh token nem renovação automática nesta versão (SDD § Autenticação — painel de uso interno ocasional): o token persiste em `localStorage` até expirar (`AUTH_JWT_EXPIRES_IN`, default 30 dias — ver [`docs/API.md` § Configuração](./API.md)) ou até logout manual. `login`/`logout` (expostos por `useAuth()`) só gravam/apagam o token local — `logout` não invalida nada do lado do servidor, limitação inerente a um JWT stateless.
 
 ### Estado de sessão
 
-`apps/admin/src/auth/auth-context.tsx` é a fonte única de verdade da sessão para o painel inteiro: lê a sessão persistida ao montar (`supabase.auth.getSession()`) e escuta login/logout/renovação de token em tempo real (`supabase.auth.onAuthStateChange`) — os dois mecanismos recomendados pelo próprio SDK, em vez de qualquer polling ou storage próprio. O `AuthProvider` expõe `useAuth()` (`{ session, isLoading }`) para o resto da árvore de componentes.
+`AuthProvider` é a fonte única de verdade da sessão para o painel inteiro: ao montar, tenta restaurar a sessão a partir do token persistido em `localStorage` (token corrompido/ilegível é descartado, não mantém o painel preso a um estado que nunca autenticaria de verdade). Expõe `useAuth()` (`{ session, isLoading, login, logout }`) para o resto da árvore de componentes.
 
 ### Roteamento e proteção de rota
 
@@ -53,7 +45,7 @@ Dentro de `<Route element={<ProtectedRoute />}>`, `App.tsx` aninha um segundo n�
 
 ### Tela de login
 
-`apps/admin/src/pages/login-page.tsx`: formulário de e-mail/senha, chama `supabase.auth.signInWithPassword`. Uma credencial inválida (e-mail ou senha errados) mostra "E-mail ou senha inválidos." em um elemento `role="alert"`, sem navegar — a mesma mensagem genérica para os dois casos, para não revelar se um e-mail existe ou não na base.
+`apps/admin/src/pages/login-page.tsx`: formulário de e-mail/senha, chama `useAuth().login(email, senha)` (que por sua vez chama `POST /api/auth/login`). Uma credencial inválida (e-mail ou senha errados) mostra "E-mail ou senha inválidos." em um elemento `role="alert"`, sem navegar — a mesma mensagem genérica para os dois casos (a própria API já colapsa os dois casos numa só resposta `401`, ver [`docs/API.md` § Autenticação](./API.md)), para não revelar se um e-mail existe ou não na base.
 
 ## Identidade visual: cor compartilhada com a LP, tipografia própria
 
@@ -97,7 +89,7 @@ Componentes pequenos e próprios, não uma biblioteca de terceiros (sem shadcn/R
 - **Barra lateral** fixa à esquerda em desktop, com a navegação para as quatro áreas: "Seções da página" (`/`), "Metadados da página" (`/metadata`), "Leads recebidos" (`/leads`) e "Operadores" (`/operators`, `ajustes/modulo-operadores`) — as quatro rotas registradas em `App.tsx` (ver "Rotas hoje" acima). É recolhível (vira uma coluna só de ícones) e o estado fica lembrado em `localStorage`, na chave `ketochlor.painel.sidebar-recolhida`; leitura e escrita são protegidas por `try/catch`, porque o acessador pode lançar em janela privada ou com dados de site bloqueados — nesse caso o painel simplesmente abre expandido. Ícones: `LayoutList` (Seções), `Tags` (Metadados), `Inbox` (Leads — correção da tarefa `ajustes/corrige-layout-formularios-menu-e-nomenclaturas`, comparada ao painel de referência; era `Users`, liberado nessa mesma correção para o módulo de Operadores, que passou a usá-lo), `Users` (Operadores).
 - **Logo real no topo** (`MarcaDoPainel`, correção da tarefa `ajustes/tema-escuro-logo-e-campo-de-imagem`: a tarefa anterior usava deliberadamente um selo decorativo com a letra "K" "no lugar de um logo que o painel não precisa" — decisão revertida a pedido do usuário). O logo é o MESMO PNG que `apps/lp/src/components/Header.tsx`/`Footer.tsx` já servem (`apps/lp/public/assets/logo-ketochlor-transp.png`), copiado para `apps/admin/public/assets/logo-ketochlor-transp.png` — duplicação de arquivo deliberada e aceita, não um descuido: `apps/admin` é um app Vite próprio (não importa de dentro de `apps/lp`) e este logo é um asset estático local, não uma URL de Storage compartilhável entre os dois apps (diferente do painel de referência). Aparece tanto na barra lateral de desktop quanto no topo da gaveta mobile. **Correção da tarefa `ajustes/corrige-layout-formularios-menu-e-nomenclaturas`:** o texto "Ketochlor" que ficava ao lado da imagem foi removido (o `alt` já dá o nome acessível), o logo ficou maior (`h-8` → `h-12` com a barra expandida; a barra RECOLHIDA mantém `h-8`, que é o que cabe nos ~44px úteis daquele estado) e centralizado horizontalmente no espaço da marca.
 - Abaixo de `lg`, a barra vira uma **gaveta** sobre o conteúdo, aberta pelo botão de menu do cabeçalho e fechada ao navegar. Os dois — barra e gaveta — renderizam o MESMO componente de navegação (`NavegacaoDoPainel`, a partir da mesma lista `LINKS_DE_NAVEGACAO`), nunca markup duplicado: é assim que um link novo não passa a existir só em um dos dois lugares.
-- **Cabeçalho** separado da barra lateral e sempre visível (`sticky`): botão de abrir menu (só em mobile) e, à direita, alternador de tema → e-mail do operador logado → botão "Sair", que chama `supabase.auth.signOut()`. O próprio `onAuthStateChange` do `AuthProvider` limpa a sessão em memória e `ProtectedRoute` redireciona ao login — nenhuma navegação manual é feita pelo botão. **Correção da tarefa `ajustes/corrige-layout-formularios-menu-e-nomenclaturas`** (comparada ao painel de referência): o texto fixo "Painel Ketochlor" que ficava à esquerda do cabeçalho foi removido por completo (o cabeçalho não tem mais título próprio, só o botão de menu em mobile), e a ordem dos itens à direita mudou de e-mail→tema→sair para tema→e-mail→sair.
+- **Cabeçalho** separado da barra lateral e sempre visível (`sticky`): botão de abrir menu (só em mobile) e, à direita, alternador de tema → e-mail do operador logado → botão "Sair", que chama `useAuth().logout()` — apaga o token local (não há sessão de servidor a invalidar); `ProtectedRoute` redireciona ao login assim que `session` fica `null`, sem nenhuma navegação manual feita pelo botão. **Correção da tarefa `ajustes/corrige-layout-formularios-menu-e-nomenclaturas`** (comparada ao painel de referência): o texto fixo "Painel Ketochlor" que ficava à esquerda do cabeçalho foi removido por completo (o cabeçalho não tem mais título próprio, só o botão de menu em mobile), e a ordem dos itens à direita mudou de e-mail→tema→sair para tema→e-mail→sair.
 - **Conteúdo** da rota filha centralizado com largura máxima de leitura (`max-w-5xl mx-auto`), nunca esticado na largura toda da tela.
 
 ## Listagem de seções (`painel/listagem-secoes`)
@@ -158,9 +150,9 @@ Rótulos em português amigável por CHAVE de campo (`apps/admin/src/pages/secti
 
 ### Upload de imagem — dropzone real, sem caixa de URL crua
 
-`ImageFieldEditor` (`apps/admin/src/pages/sections/components/image-field.tsx`) implementa o upload de arquivo **real**, direto do navegador ao Supabase Storage, seguindo o fluxo já documentado em `docs/API.md` § Mídia: `POST /api/admin/media/upload-url` (credencial temporária) → `supabase.storage.from(bucket).uploadToSignedUrl(...)` (SDK do Supabase, `apps/admin/src/lib/media-upload.ts`) → `getPublicUrl(...)` para obter a URL pública, que vira o valor de `imagem.url`. Esta é a mesma instância de cliente Supabase já usada para Auth (`lib/supabase-client.ts`) — a credencial temporária, não a chave publicável, é quem autoriza a escrita no bucket.
+`ImageFieldEditor` (`apps/admin/src/pages/sections/components/image-field.tsx`) implementa o upload de arquivo **real**, direto do navegador ao MinIO, seguindo o fluxo já documentado em [`docs/API.md` § Mídia](./API.md): `POST /api/admin/media/upload-url` (credencial temporária, autenticada com o `accessToken` da sessão) → `enviarImagemParaStorage` (`apps/admin/src/lib/media-upload.ts`) faz um `PUT` HTTP simples direto contra a `signedUrl` devolvida, com o arquivo como corpo — sem nenhum SDK cliente, a própria URL pré-assinada já contém toda a autenticação necessária (`token` do contrato é sempre `null`, ver `docs/API.md`). A URL pública é derivada da própria `signedUrl` (removendo a query string de assinatura), que vira o valor de `imagem.url`.
 
-**Correção da tarefa `ajustes/tema-escuro-logo-e-campo-de-imagem`:** a tarefa anterior (`ajustes/estiliza-painel-admin`) mantinha uma caixa de texto "URL da imagem" editável ABAIXO do upload — o usuário considerou isso "ridículo" e pediu a remoção completa: o operador nunca deve ver nem editar uma URL crua. A caixa foi removida por completo, das duas telas que a tinham (seções e, antes da correção de QA abaixo, também metadados). O campo de imagem agora é só `apps/admin/src/shared/Dropzone.tsx` — um retângulo de borda tracejada com ícone quando vazio, prévia da imagem preenchendo a área (`object-contain`) quando enviada, spinner + texto "Enviando…" durante o envio (sem percentual real: o SDK do Supabase Storage não expõe progresso de upload, e fabricar um número sem dado real por trás enganaria mais do que ajudaria) e um botão circular de excluir sobreposto no canto inferior direito — deliberadamente FORA do `<label>` que envolve o `<input type="file">` (um clique nele, se estivesse dentro, borbulharia até o input e abriria o seletor de arquivo por engano). Compartilhado entre `ImageFieldEditor` e `MetadataPage`.
+**Correção da tarefa `ajustes/tema-escuro-logo-e-campo-de-imagem`:** a tarefa anterior (`ajustes/estiliza-painel-admin`) mantinha uma caixa de texto "URL da imagem" editável ABAIXO do upload — o usuário considerou isso "ridículo" e pediu a remoção completa: o operador nunca deve ver nem editar uma URL crua. A caixa foi removida por completo, das duas telas que a tinham (seções e, antes da correção de QA abaixo, também metadados). O campo de imagem agora é só `apps/admin/src/shared/Dropzone.tsx` — um retângulo de borda tracejada com ícone quando vazio, prévia da imagem preenchendo a área (`object-contain`) quando enviada, spinner + texto "Enviando…" durante o envio (sem percentual real: o `fetch`/`PUT` simples usado por `enviarImagemParaStorage` não expõe progresso de upload, e fabricar um número sem dado real por trás enganaria mais do que ajudaria) e um botão circular de excluir sobreposto no canto inferior direito — deliberadamente FORA do `<label>` que envolve o `<input type="file">` (um clique nele, se estivesse dentro, borbulharia até o input e abriria o seletor de arquivo por engano). Compartilhado entre `ImageFieldEditor` e `MetadataPage`.
 
 **Correção da tarefa `ajustes/corrige-layout-formularios-menu-e-nomenclaturas`:** o `Dropzone` estava encaixado numa coluna estreita (`w-full sm:w-56`) ao lado do campo `alt`, nas duas telas. Agora cobre a LARGURA TOTAL do formulário (`w-full`, sem limite de largura), com o campo `alt` (quando existe) empilhado ABAIXO dele, não mais ao lado.
 
@@ -212,7 +204,7 @@ Colunas da tabela: nome, e-mail, telefone, CRMV, cidade/UF, especialidade, "já 
 
 ## Gestão de operadores (`ajustes/modulo-operadores`)
 
-`apps/admin/src/pages/operators/operators-page.tsx` é a rota `/operators` (URL real `/admin/operators`): busca `GET /api/admin/operators` (`docs/API.md` § Operadores) com `apiFetch`, mesmo padrão de `LeadsPage`. Quem pode logar no painel — **sem tabela própria no banco**, cada linha da tabela é, integralmente, um usuário do Supabase Auth.
+`apps/admin/src/pages/operators/operators-page.tsx` é a rota `/operators` (URL real `/admin/operators`): busca `GET /api/admin/operators` (`docs/API.md` § Operadores) com `apiFetch`, mesmo padrão de `LeadsPage`. Quem pode logar no painel — cada linha da tabela é um registro real da tabela `operators` no MySQL (ver [`docs/BANCO-DE-DADOS.md` § Modelo de dados](./BANCO-DE-DADOS.md)), desde a migração de plataforma de dados.
 
 **Formulário de criação** (nome, e-mail, senha inicial) no topo da tela, dentro de um `Card`, inline com a tabela — três campos com `FormField`/`atributosDeCampo` (mesmo padrão de `LoginPage`), o de senha com `autoComplete="new-password"`. O botão "Criar operador" fica desabilitado enquanto algum dos três campos está vazio ou durante o envio ("Criando…"). Erro de validação (`422`, `docs/API.md`) aparece por campo (`FormField` → `erro`) e também como `Notice` com a mensagem geral; sucesso mostra `Notice` de confirmação e limpa o formulário.
 
@@ -220,26 +212,30 @@ Colunas da tabela: nome, e-mail, telefone, CRMV, cidade/UF, especialidade, "já 
 
 **Remoção — duas recusas antecipadas no cliente**, sem esperar a API responder `409` (`RemoverOperadorUseCase`, `docs/API.md` § Operadores) para o operador descobrir que não pode: o botão "Remover" é substituído por um texto simples com o motivo (sem tooltip) quando
 1. só resta 1 operador na lista (`operators.length === 1` → "Único operador restante"), ou
-2. a linha é a própria conta logada (`operator.id === session.user.id`, o id do Supabase Auth client-side — `useAuth().session.user.id` → "Sua própria conta").
+2. a linha é a própria conta logada (`operator.id === session.operatorId`, o id decodificado do próprio JWT — `useAuth().session.operatorId` → "Sua própria conta").
 
 A checagem de "único operador restante" tem prioridade sobre a de "própria conta": quando só resta 1 operador, ele é necessariamente quem está logado (não há como estar autenticado sendo um operador que não existe mais na listagem), então a informação mais específica das duas é mostrada. Quando nenhuma das duas recusas se aplica, a remoção segue o mesmo padrão de dois cliques de confirmação na própria linha já usado por `LeadsPage`.
 
 ## Como testar localmente com um usuário de operador
 
+Sem tabela semeada com nenhum operador de propósito (credencial é sempre um dado sensível — ver [`docs/BANCO-DE-DADOS.md` § "Primeiro operador do painel"](./BANCO-DE-DADOS.md)), criar o primeiro operador local é um `INSERT` direto, com o hash gerado pela mesma biblioteca (`bcryptjs`, custo 12) que `MySqlOperadoresRepository` usa em produção:
+
 ```bash
-npx supabase start   # sobe Auth local (ver docs/BANCO-DE-DADOS.md)
+docker compose up -d mysql minio minio-init
+npm run migrate:mysql --prefix apps/api
 
-# cria um usuário de teste via API REST do GoTrue, com a chave service_role
-# (a mesma de apps/api/.env.example — nunca em apps/admin/.env)
-curl -X POST 'http://127.0.0.1:54321/auth/v1/admin/users' \
-  -H "apikey: <SUPABASE_SERVICE_ROLE_KEY>" \
-  -H "Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"operador.teste@ketochlor.local","password":"<senha>","email_confirm":true}'
+# gera o hash bcrypt da senha do operador de teste — mesma função/custo de
+# MySqlOperadoresRepository.criar (apps/api/src/infrastructure/mysql/operadores.repository.ts)
+HASH=$(node -e "require('bcryptjs').hash(process.argv[1], 12).then(h => console.log(h))" 'senha-de-teste')
 
-npm run dev --prefix apps/admin   # ou `npm run dev` na raiz, para o ponto único de entrada completo
+docker compose exec -T mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" -e "
+  INSERT INTO operators (id, email, nome, senha_hash, criado_em)
+  VALUES (UUID(), 'operador.teste@ketochlor.local', 'Operador de teste', '$HASH', NOW());
+"
+
+npm run dev   # ponto único de entrada completo — http://localhost:5173
 ```
 
-Alternativa sem `curl`: criar o usuário pelo Supabase Studio local (`http://127.0.0.1:54323` → Authentication → Add user).
+Depois disso, `/admin/login` com `operador.teste@ketochlor.local`/`senha-de-teste` autentica de verdade contra `POST /api/auth/login`. Uma vez logado, operadores adicionais podem ser criados normalmente pela própria tela "Operadores" (`POST /api/admin/operators`, autenticado) — o `INSERT` direto acima só é necessário para o primeiro.
 
-`npx supabase stop` ao final da sessão de trabalho, para não deixar os containers ativos (mesma recomendação de [`docs/BANCO-DE-DADOS.md`](./BANCO-DE-DADOS.md)).
+`docker compose down` (ou `down -v` para também apagar os dados) ao final da sessão de trabalho, para não deixar os containers ativos.
