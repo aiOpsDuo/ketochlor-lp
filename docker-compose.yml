@@ -23,7 +23,31 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:?defina MYSQL_DATABASE no .env}
       MYSQL_APP_USER: ${MYSQL_APP_USER:?defina MYSQL_APP_USER no .env}
       MYSQL_APP_PASSWORD: ${MYSQL_APP_PASSWORD:?defina MYSQL_APP_PASSWORD no .env}
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      # Endpoint que o `S3Client` do servidor (`criarMinioClient`) usa tanto
+      # para ASSINAR a URL de upload (`getSignedUrl`, SigV4 — o header
+      # `Host` entra na assinatura, `X-Amz-SignedHeaders=host`) quanto para
+      # montar `public_url` em `media_assets`. Por isso precisa já ser o
+      # MESMO endpoint que um cliente de fora do compose (o navegador) vai
+      # de fato usar no `PUT` — nunca o hostname interno `minio` (resolvível
+      # só dentro da rede do compose; reescrever a URL depois de assinada
+      # invalidaria a assinatura). Achado e correção registrados em
+      # `agent_context/PLAN.md`, tarefa
+      # `ajustes/migracao-mysql-minio-endpoint-publico`.
+      #
+      # Default `http://localhost:9000`: em desenvolvimento local, a mesma
+      # máquina que roda `docker compose up` também publica a porta do
+      # `minio` (ver serviço abaixo) e abre o navegador, então `localhost`
+      # já resolve corretamente PARA O NAVEGADOR — `getSignedUrl` nunca abre
+      # uma conexão de rede de verdade a este endpoint, só assina
+      # localmente, então o valor funciona mesmo sendo lido de DENTRO do
+      # container da `api` (que não conseguiria abrir essa conexão se
+      # tentasse). Em homologação/produção, quem publicar PRECISA
+      # sobrescrever esta variável no `.env` com o domínio/IP público real
+      # na porta exposta do MinIO — mesmo padrão histórico deste projeto
+      # para `SUPABASE_URL` (dev usava `host.docker.internal`, homologação
+      # usava a URL pública do projeto Supabase; ver
+      # `agent_context/CHANGELOG.md`, entradas de 2026-09-09).
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://localhost:9000}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
       MINIO_BUCKET: ${MINIO_BUCKET:-images}
@@ -106,8 +130,23 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
     volumes:
       - minio-data:/data
-    # Sem `ports`: só alcançável pela rede interna do compose (pelo nome de
-    # serviço `minio`) — mesmo padrão já usado pelo serviço `api`.
+    # Diferente de `mysql`/`api` (só rede interna do compose): a porta da
+    # API S3 (9000) É publicada para o host — o padrão de upload direto do
+    # navegador (SDD § Decisões técnicas e trade-offs — "Upload direto do
+    # navegador para o Storage") exige, por natureza, que o Storage seja
+    # alcançável por um cliente fora do compose, exatamente como o Supabase
+    # Storage original já era um endpoint HTTPS público, não interno (ver
+    # `MINIO_ENDPOINT` do serviço `api` acima, e
+    # `agent_context/PLAN.md`, tarefa
+    # `ajustes/migracao-mysql-minio-endpoint-publico`). Isso não reabre o
+    # bucket para escrita anônima nem para listagem: o controle de acesso
+    # real continua sendo a policy de leitura pública só de objeto
+    # (`docker/minio/init-bucket.sh`) e a exigência de credencial
+    # pré-assinada para qualquer `PUT`. O console de administração (9001)
+    # continua NÃO publicado — só a API S3 (9000), a única porta que o
+    # navegador precisa alcançar.
+    ports:
+      - "9000:9000"
     healthcheck:
       # A imagem oficial não inclui mais curl/wget (só o binário `mc`, já
       # embarcado) — `mc ready local` é o healthcheck recomendado pelo

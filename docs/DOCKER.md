@@ -16,8 +16,11 @@ Aguarde o serviço `api` ficar `healthy` antes de testar (`docker compose ps` mo
 |---|---|---|---|
 | `api` | estágio `api` — builda `apps/api` e roda `node apps/api/dist/src/main.js` em `node:22-alpine` | nenhuma — só acessível pela rede interna do compose, pelo nome de serviço `api` | API NestJS; expõe `GET /api/health`, verificado pelo `healthcheck` do serviço |
 | `proxy` | estágio `web` — builda `apps/lp` e `apps/admin` e serve os dois via nginx | `8080` (`http://localhost:8080`) | Ponto único de entrada: serve a LP em `/`, o painel em `/admin` e faz proxy reverso de `/api/` para o serviço `api` |
+| `minio` | imagem oficial `quay.io/minio/minio` | `9000` (`http://localhost:9000`) — só a API S3, nunca o console de administração (9001) | Storage compatível com S3 usado por `media_assets`; publicada por precisar ser alcançável diretamente pelo navegador no upload direto de imagem (URL pré-assinada) — ver nota sobre `MINIO_ENDPOINT` abaixo |
 
-`proxy` só inicia depois que `api` reporta `healthy` (`depends_on: condition: service_healthy` em `docker-compose.yml`).
+`proxy` só inicia depois que `api` reporta `healthy` (`depends_on: condition: service_healthy` em `docker-compose.yml`). `mysql`, assim como `api`, não publica porta nenhuma para o host — só `minio` precisa, pelo motivo acima.
+
+**`MINIO_ENDPOINT` precisa ser o endpoint que o navegador de fato alcança.** O serviço `api` assina a URL de upload (SigV4, com o header `Host` como parte assinada) e monta `public_url` a partir de `MINIO_ENDPOINT` — nunca o hostname interno `minio:9000` (resolvível só dentro da rede do compose). Default em `docker-compose.yml`: `http://localhost:9000`, correto para desenvolvimento local (a mesma máquina roda o compose e abre o navegador). Em homologação/produção, quem publicar precisa sobrescrever essa variável no `.env` com o domínio/IP público real na porta exposta do MinIO — mesmo padrão já usado historicamente por `SUPABASE_URL` neste projeto (ver `agent_context/CHANGELOG.md`, entradas de 2026-09-09, e `agent_context/PLAN.md`, tarefa `ajustes/migracao-mysql-minio-endpoint-publico`).
 
 ## Verificação manual
 
