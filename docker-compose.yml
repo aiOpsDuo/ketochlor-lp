@@ -8,9 +8,8 @@
 # compose up` falha de imediato com uma mensagem clara, em vez de subir a
 # `api` em crash-loop.
 #
-# `mysql`/`minio`: infraestrutura da migração para MySQL + MinIO
-# auto-hospedados (tarefa `ajustes/migracao-mysql-infra-compose`; corte de
-# fato — `api` servindo por eles no lugar do Supabase — na tarefa
+# `mysql`/`minio`: infraestrutura de dados/armazenamento auto-hospedada
+# (tarefas `ajustes/migracao-mysql-infra-compose` e
 # `ajustes/migracao-mysql-cutover-wiring`, `agent_context/PLAN.md`).
 services:
   api:
@@ -43,10 +42,8 @@ services:
       # container da `api` (que não conseguiria abrir essa conexão se
       # tentasse). Em homologação/produção, quem publicar PRECISA
       # sobrescrever esta variável no `.env` com o domínio/IP público real
-      # na porta exposta do MinIO — mesmo padrão histórico deste projeto
-      # para `SUPABASE_URL` (dev usava `host.docker.internal`, homologação
-      # usava a URL pública do projeto Supabase; ver
-      # `agent_context/CHANGELOG.md`, entradas de 2026-09-09).
+      # na porta exposta do MinIO (ver `agent_context/CHANGELOG.md` para o
+      # histórico completo desta decisão).
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://localhost:9000}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
@@ -134,9 +131,8 @@ services:
     # API S3 (9000) É publicada para o host — o padrão de upload direto do
     # navegador (SDD § Decisões técnicas e trade-offs — "Upload direto do
     # navegador para o Storage") exige, por natureza, que o Storage seja
-    # alcançável por um cliente fora do compose, exatamente como o Supabase
-    # Storage original já era um endpoint HTTPS público, não interno (ver
-    # `MINIO_ENDPOINT` do serviço `api` acima, e
+    # alcançável por um cliente fora do compose — um endpoint HTTPS público,
+    # não interno (ver `MINIO_ENDPOINT` do serviço `api` acima, e
     # `agent_context/PLAN.md`, tarefa
     # `ajustes/migracao-mysql-minio-endpoint-publico`). Isso não reabre o
     # bucket para escrita anônima nem para listagem: o controle de acesso
@@ -165,11 +161,8 @@ services:
   #
   # `docker/minio/init-bucket.sh` cria o bucket e, na sequência, aplica uma
   # policy anônima de leitura PÚBLICA só de objeto (`s3:GetObject`, sem
-  # `s3:ListBucket`) — equivalente à policy `images_public_read` que o
-  # Supabase Storage original tinha (`storage.buckets.public = true` +
-  # policy de `select` para todos os papéis — ver
-  # `supabase/migrations/20260908200805_enable_rls_and_storage.sql` e
-  # `docs/BANCO-DE-DADOS.md` § "Bucket MinIO"). Sem essa policy, o MinIO nega
+  # `s3:ListBucket`) — ver `docs/BANCO-DE-DADOS.md` § "Bucket MinIO". Sem
+  # essa policy, o MinIO nega
   # `GET` anônimo por padrão, e a `public_url` gravada em `media_assets`
   # (`MinioMediaAssetsRepository`) teria a FORMA de uma URL pública sem
   # funcionar de fato — LP/painel não conseguiriam exibir `<img src="...">`

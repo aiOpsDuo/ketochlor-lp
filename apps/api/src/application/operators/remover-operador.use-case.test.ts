@@ -6,7 +6,7 @@ import { RemoverOperadorUseCase } from './remover-operador.use-case';
 /**
  * Repositório falso (em memória), só para este teste de unidade — os testes
  * e2e reais de `OperatorsAdminController` (`operators.e2e.test.ts`) cobrem o
- * caminho de ponta a ponta contra o Supabase local de verdade. Este teste
+ * caminho de ponta a ponta contra o MySQL real do compose. Este teste
  * existe para exercitar isoladamente o ramo `'ultimo-operador'` de
  * `RemoverOperadorUseCase`, que — como o comentário da classe explica — não é
  * alcançável via HTTP real: quem chama a API só tem um JWT válido se é, ele

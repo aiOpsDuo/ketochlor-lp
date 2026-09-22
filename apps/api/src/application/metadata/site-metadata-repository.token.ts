@@ -11,6 +11,6 @@
  * /api/content` devolve `{ sections, metadata }`, SDD § Contratos de
  * dados/API/interfaces) — quem declara a dependência da porta via
  * `@Inject`; a Apresentação (`metadata.module.ts`) só liga a implementação
- * concreta (`SupabaseSiteMetadataRepository`, Infraestrutura) a este token.
+ * concreta (`MySqlSiteMetadataRepository`, Infraestrutura) a este token.
  */
 export const SITE_METADATA_REPOSITORY = Symbol('SiteMetadataRepository');

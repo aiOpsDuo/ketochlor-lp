@@ -10,19 +10,12 @@ export interface OperadorComCredenciais {
 /**
  * Porta do Domínio dedicada ao fluxo de login (PLAN.md, tarefa
  * `ajustes/migracao-mysql-modulo-auth-proprio`), SEPARADA de
- * `OperadoresRepository` (ISP — Interface Segregation): as duas invariantes
- * de negócio de `RemoverOperadorUseCase` e o CRUD de
- * `CriarOperadorUseCase`/`ListarOperadoresUseCase` nunca precisam de hash de
- * senha nem de "gravar último login", e o adaptador Supabase existente
- * (`SupabaseOperadoresRepository`, ainda em uso pelos casos de uso acima até
- * a tarefa `migracao-mysql-cutover-wiring`) não tem como fornecer nenhum dos
- * dois — a Auth Admin API do Supabase nunca expõe o hash de senha de um
- * usuário. Estender `OperadoresRepository` com estes dois métodos forçaria
- * `SupabaseOperadoresRepository` a implementar algo que não pode cumprir
- * (exatamente o sinal de violação de ISP documentado em
- * `padroes-codigo.md`) — por isso esta é uma porta nova, pequena, implementada
- * SÓ por `MySqlOperadoresRepository` (que implementa as duas portas, cada
- * uma ligada a um token de injeção próprio — ver
+ * `OperadoresRepository` (ISP — Interface Segregation): o CRUD de
+ * `CriarOperadorUseCase`/`ListarOperadoresUseCase`/`RemoverOperadorUseCase`
+ * nunca precisa de hash de senha nem de "gravar último login" — só o fluxo
+ * de login precisa. Por isso esta é uma porta separada, implementada por
+ * `MySqlOperadoresRepository` (que implementa as duas portas, cada uma
+ * ligada a um token de injeção próprio — ver
  * `application/auth/operador-credenciais-repository.token.ts`).
  */
 export interface OperadorCredenciaisRepository {

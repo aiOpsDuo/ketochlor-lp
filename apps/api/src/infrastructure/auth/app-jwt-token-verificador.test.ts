@@ -7,10 +7,8 @@ import type { AuthJwtEnv } from '../config/auth-jwt-env';
 /**
  * Testes REAIS de round-trip: assina com `AppJwtEmissorToken` (o emissor
  * desta mesma tarefa) e verifica com `AppJwtTokenVerificador` — nunca um
- * token fabricado à mão para o caminho feliz, mesmo padrão de
- * `jwks-token-verificador.test.ts` (que usava login real do Supabase; aqui o
- * "real" é a própria emissão da aplicação, já que não há mais um serviço de
- * terceiro envolvido).
+ * token fabricado à mão para o caminho feliz, já que não há nenhum serviço de
+ * terceiro envolvido.
  */
 describe('AppJwtTokenVerificador (infra)', () => {
   const env: AuthJwtEnv = {

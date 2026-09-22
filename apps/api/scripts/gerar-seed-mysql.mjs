@@ -1,27 +1,12 @@
 #!/usr/bin/env node
 // Gera `apps/api/mysql/seed.sql` a partir de `CONTENT_SECTIONS`
-// (`@ketochlor/content-schema`) — equivalente MySQL de
-// `apps/api/scripts/gerar-seed-conteudo-inicial.mjs` (que gera
-// `supabase/seed.sql`, hoje só usado pelo Supabase CLI local).
-//
-// Por que um script próprio em vez de adaptar o gerador do Supabase para
-// aceitar um "dialeto" de saída: os dois SQLs divergem em mais do que um
-// parâmetro de formatação — Postgres usa `'...'::jsonb` + `insert ... on
-// conflict (key) do update`, MySQL usa um literal de string simples (o
-// próprio driver valida contra a coluna `JSON`) + `update ... where` (a
-// tabela já nasce com as 11 linhas via
-// `apps/api/mysql/migrations/0001_create_content_sections.sql`, então não
-// há upsert a fazer aqui, só atualizar `data`). Parametrizar um único
-// gerador para as duas gramáticas exigiria mais ramificação condicional do
-// que duplicar as ~20 linhas que de fato diferem — a mesma régua de
-// proporcionalidade de SOLID (OCP): dois scripts pequenos e diretos, cada
-// um só de um dialeto, são mais fáceis de ler e manter do que um script
-// genérico com `if (dialeto === 'postgres')` espalhado.
+// (`@ketochlor/content-schema`) — a fonte única do conteúdo inicial real das
+// 11 seções da LP (ver `packages/content-schema/src/index.ts`).
 //
 // Pré-requisito: `packages/content-schema` precisa estar compilado
 // (`npm run build --workspace=@ketochlor/content-schema`, ou
 // `npm run build --workspaces --if-present`) — este script importa o pacote
-// pelo `dist/` publicado, igual ao gerador do Supabase.
+// pelo `dist/` publicado, igual a qualquer outro consumidor dele.
 //
 // Ref.: agent_context/PLAN.md, tarefa `ajustes/migracao-mysql-dados-homologacao`.
 
@@ -34,17 +19,14 @@ const REPO_ROOT = resolve(SCRIPT_DIR, '../../..');
 const SEED_PATH = resolve(REPO_ROOT, 'apps/api/mysql/seed.sql');
 
 /**
- * `site_metadata.title`/`.description` real do Ketochlor. Nem a migration
- * `apps/api/mysql/migrations/0002_create_site_metadata.sql` nem seu
- * equivalente Postgres original (`supabase/migrations/
- * 20260908193650_create_site_metadata.sql`) nunca gravaram esses campos com
- * conteúdo real — as duas só criam o registro único com `title`/
- * `description` vazios (`''`), e `supabase/seed.sql` nunca tocou
- * `site_metadata` (só semeia `content_sections`). O conteúdo real de SEO do
- * Ketochlor nunca foi "portado" para o CMS depois da migração da LP
- * estática — continua, inalterado desde o primeiro commit do projeto
- * (`d2bc47b`, "Primeira versão da Landing Page Ketochlor"), no `<title>`/
- * `<meta name="description">` de `apps/lp/index.html`. Copiado aqui ao pé
+ * `site_metadata.title`/`.description` real do Ketochlor. A migration
+ * `apps/api/mysql/migrations/0002_create_site_metadata.sql` nunca gravou
+ * esses campos com conteúdo real — só cria o registro único com `title`/
+ * `description` vazios (`''`). O conteúdo real de SEO do Ketochlor nunca foi
+ * "portado" para o CMS depois da migração da LP estática — continua,
+ * inalterado desde o primeiro commit do projeto (`d2bc47b`, "Primeira versão
+ * da Landing Page Ketochlor"), no `<title>`/`<meta name="description">` de
+ * `apps/lp/index.html`. Copiado aqui ao pé
  * da letra como a fonte de verdade real, não um placeholder novo.
  */
 const SITE_METADATA_TITLE = 'Ketochlor® | Virbac — Material técnico para médicos-veterinários';
@@ -95,8 +77,7 @@ function montarSeedSql(secoes) {
 --
 -- Diferente das migrations em \`apps/api/mysql/migrations/\` (aplicadas uma
 -- vez, em ordem, pelo runner \`scripts/migrar-mysql.mjs\`), este arquivo é
--- uma carga de dados pontual — mesmo papel que \`supabase/seed.sql\` tinha
--- para o Postgres/Supabase CLI local. Rode manualmente contra o \`mysql\` do
+-- uma carga de dados pontual. Rode manualmente contra o \`mysql\` do
 -- \`docker-compose.yml\` depois que as migrations já tiverem criado o
 -- schema, por exemplo:
 --
@@ -118,8 +99,7 @@ function montarSeedSql(secoes) {
 -- \`0001_create_content_sections.sql\` as cria com \`data = '{}'\`) — por
 -- isso cada seção usa um \`UPDATE ... WHERE \`key\` = ...\` simples, não um
 -- \`INSERT\`. Só a coluna \`data\` é tocada — \`item_visibility\` e
--- \`is_published\` (edições feitas pelo painel) não são sobrescritas, mesmo
--- contrato do gerador Postgres original (\`gerar-seed-conteudo-inicial.mjs\`).
+-- \`is_published\` (edições feitas pelo painel) não são sobrescritas.
 -- Rodar este arquivo de novo é seguro (idempotente): cada \`UPDATE\` grava o
 -- mesmo valor, não duplica nem falha.
 

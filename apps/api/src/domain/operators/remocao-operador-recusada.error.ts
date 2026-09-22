@@ -12,7 +12,7 @@ export type MotivoRecusaRemocaoOperador = 'proprio' | 'ultimo-operador';
  * - `'proprio'`: o operador está tentando remover a própria conta — a sessão
  *   de quem chama ficaria autenticada com um usuário que acabou de deixar de
  *   existir.
- * - `'ultimo-operador'`: só resta um operador no Supabase Auth — removê-lo
+ * - `'ultimo-operador'`: só resta um operador cadastrado — removê-lo
  *   deixaria o painel sem nenhuma conta capaz de logar.
  *
  * Traduzido pela Apresentação (`OperatorsAdminController`) para `409

@@ -12,10 +12,8 @@
 # `ajustes/migracao-mysql-minio-bucket-leitura-publica` proíbe
 # explicitamente. Em vez disso, aplicamos uma policy JSON própria com só
 # `s3:GetObject` sobre `arn:aws:s3:::$MINIO_BUCKET/*` (via
-# `mc anonymous set-json`) — equivalente exato à policy `images_public_read`
-# que o Supabase Storage original tinha (leitura pública de objeto já
-# publicado, sem listagem — ver
-# supabase/migrations/20260908200805_enable_rls_and_storage.sql).
+# `mc anonymous set-json`) — leitura pública de objeto já publicado, sem
+# listagem.
 set -eu
 
 mc alias set cms "http://minio:9000" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"

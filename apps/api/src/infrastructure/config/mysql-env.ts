@@ -4,8 +4,7 @@
  * Nenhum valor real é hardcoded aqui — tudo vem de `process.env`, documentado
  * em `apps/api/.env.example`.
  *
- * Espelha o mesmo estilo de `supabase-env.ts` (leitura + validação
- * descritiva) — troca de adaptador, não de padrão. O pool sempre autentica
+ * Leitura + validação descritiva, sem valor hardcoded. O pool sempre autentica
  * como o usuário de aplicação (`MYSQL_APP_USER`/`MYSQL_APP_PASSWORD`, sem
  * privilégio de DDL em runtime — ver `docker/mysql/initdb/`), nunca como
  * `root` (reservado ao runner de migrations, `scripts/migrar-mysql.mjs`).

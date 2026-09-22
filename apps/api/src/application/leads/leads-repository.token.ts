@@ -9,7 +9,7 @@
  * tokens: é a Aplicação — os casos de uso deste módulo (`RegistrarLeadUseCase`,
  * `ListarLeadsUseCase`, `ExcluirLeadUseCase`) — quem declara a dependência da
  * porta via `@Inject`; a Apresentação (`leads.module.ts`) só liga a
- * implementação concreta (`SupabaseLeadsRepository`, Infraestrutura) a este
+ * implementação concreta (`MySqlLeadsRepository`, Infraestrutura) a este
  * token.
  */
 export const LEADS_REPOSITORY = Symbol('LeadsRepository');

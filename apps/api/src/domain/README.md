@@ -1,6 +1,6 @@
 # Domínio
 
-Esquemas de seção, regras de validação de conteúdo, regras de visibilidade, invariantes do lead. Sem nenhum import de framework ou de Supabase (ver SDD § Camadas e padrão arquitetural).
+Esquemas de seção, regras de validação de conteúdo, regras de visibilidade, invariantes do lead. Sem nenhum import de framework (ver SDD § Camadas e padrão arquitetural).
 
 Populado pela tarefa `api/dominio-esquemas-e-regras` (`agent_context/PLAN.md`), em três módulos independentes (Single Responsibility — cada um seu próprio motivo de mudar):
 

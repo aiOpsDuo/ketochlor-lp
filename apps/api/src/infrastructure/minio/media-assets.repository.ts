@@ -44,7 +44,7 @@ function paraMediaAssetPersistido(row: MediaAssetRow): MediaAssetPersistido {
   };
 }
 
-/** Extensão do arquivo original (com o ponto), ou string vazia se não houver. Mesma regra do adaptador Supabase — preserva o formato de `storagePath` já em uso. */
+/** Extensão do arquivo original (com o ponto), ou string vazia se não houver. */
 function extrairExtensao(nomeArquivo: string): string {
   const indice = nomeArquivo.lastIndexOf('.');
   return indice === -1 ? '' : nomeArquivo.slice(indice);
@@ -53,31 +53,23 @@ function extrairExtensao(nomeArquivo: string): string {
 /**
  * Implementa `MediaAssetsRepository` (Domínio) sobre MinIO (protocolo S3,
  * SDD § "Migração de plataforma de dados" → Armazenamento) + MySQL
- * (`media_assets`). Espelha o comportamento observável de
- * `SupabaseMediaAssetsRepository`: `emitirCredencialUpload` reserva id e
- * caminho e devolve uma credencial de upload direto ao bucket, sem gravar
- * nada; `criar` só grava a linha em `media_assets` depois que o Storage já
- * confirmou o upload (SDD § Riscos técnicos — "Upload de imagem interrompido
- * no meio do envio").
+ * (`media_assets`): `emitirCredencialUpload` reserva id e caminho e devolve
+ * uma credencial de upload direto ao bucket, sem gravar nada; `criar` só
+ * grava a linha em `media_assets` depois que o Storage já confirmou o
+ * upload (SDD § Riscos técnicos — "Upload de imagem interrompido no meio do
+ * envio").
  *
  * Recebe `client` (S3) e `pool` (MySQL) por injeção — nunca instancia os
- * seus próprios, mesmo padrão de `mysql-client.factory.ts`/
- * `supabase-client.factory.ts`.
+ * seus próprios, mesmo padrão de `mysql-client.factory.ts`.
  *
- * **`public_url` sem garantia de leitura pública.** A URL devolvida por
+ * **`public_url` é de fato acessível sem credencial.** A URL devolvida por
  * `criar` é montada a partir do endpoint do MinIO + bucket + `storagePath`
  * (formato de path-style, coerente com `forcePathStyle: true` do cliente,
- * ver `minio-client.factory.ts`) — mas isso é só a FORMA da URL que um
- * objeto público teria, não uma garantia de que o bucket permite leitura
- * anônima. O bucket criado por `minio-init` (`docker-compose.yml`,
- * tarefa `ajustes/migracao-mysql-infra-compose`) não configura nenhuma
- * policy de leitura pública — por padrão, um bucket novo do MinIO nega
- * leitura anônima, então esta `public_url`, hoje, NÃO é de fato acessível
- * sem credencial. Isso é relevante para a LP/painel exibirem a imagem
- * depois (`<img src>` sem auth não funcionaria), mas ajustar a policy do
- * bucket é decisão de infraestrutura — fora do escopo desta tarefa, que só
- * adiciona o adaptador de código. Registrado aqui para não ficar perdido
- * até a tarefa de infraestrutura que decidir a policy (ver nota do PR).
+ * ver `minio-client.factory.ts`). O bucket criado por `minio-init`
+ * (`docker/minio/init-bucket.sh`) aplica uma policy de leitura pública só de
+ * objeto (`s3:GetObject`, sem listagem — tarefa
+ * `ajustes/migracao-mysql-minio-bucket-leitura-publica`), então esta
+ * `public_url` responde `GET` anônimo sem exigir credencial.
  */
 export class MinioMediaAssetsRepository implements MediaAssetsRepository {
   constructor(

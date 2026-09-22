@@ -16,9 +16,8 @@ import { API_GLOBAL_PREFIX } from '../auth/route-prefixes';
 /**
  * Teste e2e REAL da tarefa `api/modulo-metadata`: sobe a aplicação Nest
  * completa (`AppModule`) via `@nestjs/testing` + `supertest`, contra o
- * `mysql` REAL do compose (tarefa `ajustes/migracao-mysql-cutover-wiring`,
- * que substitui o Supabase local/`SupabaseSiteMetadataRepository` deste
- * arquivo) — operador e login reais via `POST /api/auth/login`.
+ * `mysql` REAL do compose — operador e login reais via
+ * `POST /api/auth/login`.
  *
  * Restaura o registro único de `site_metadata` ao estado lido no início da
  * suíte, em `afterAll` — mesma precaução de `content.e2e.test.ts` para não

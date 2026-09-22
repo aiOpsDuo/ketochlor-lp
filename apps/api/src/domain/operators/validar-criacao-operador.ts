@@ -24,11 +24,9 @@ const CAMPO_OBRIGATORIO = (campo: string): ErroValidacaoCampo => ({
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Mínimo de caracteres da senha — o mínimo do próprio Supabase Auth
- * (`auth.admin.createUser` rejeita senhas mais curtas com erro da própria
- * API), replicado aqui para a API devolver `422` com a lista de erros de
- * campo ANTES de gastar uma chamada à Admin API, em vez de deixar o Supabase
- * rejeitar e a Infraestrutura precisar traduzir um erro de terceiro.
+ * Mínimo de caracteres da senha — validado aqui, no Domínio, para a API
+ * devolver `422` com a lista de erros de campo ANTES de gastar qualquer
+ * escrita na Infraestrutura.
  */
 const TAMANHO_MINIMO_SENHA = 6;
 

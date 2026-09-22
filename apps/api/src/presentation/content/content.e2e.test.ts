@@ -16,10 +16,9 @@ import { API_GLOBAL_PREFIX } from '../auth/route-prefixes';
 /**
  * Teste e2e REAL da tarefa `api/modulo-content`: sobe a aplicação Nest
  * completa (`AppModule`) via `@nestjs/testing` + `supertest`, contra o
- * `mysql` REAL do compose (tarefa `ajustes/migracao-mysql-cutover-wiring`,
- * que substitui o Supabase local/`SupabaseContentSectionsRepository` deste
- * arquivo) — operador e login reais via `POST /api/auth/login`, nunca um
- * token fabricado à mão para o caminho feliz.
+ * `mysql` REAL do compose — operador e login reais via
+ * `POST /api/auth/login`, nunca um token fabricado à mão para o caminho
+ * feliz.
  *
  * Usa as seções `problema`, `diferenciais` e `material_tecnico` (nunca
  * `faq`/`hero`, mexidas por
@@ -79,14 +78,24 @@ describe('Content (e2e) — GET /api/content + /api/admin/sections*', () => {
       null,
     );
 
-    // Restaura `material_tecnico` ao mesmo estado pristino da migration de
-    // seed (`data: {}`, publicada) — este arquivo escreve o conteúdo real
-    // nela só para o teste de visibilidade abaixo.
+    // Restaura `material_tecnico` (mutada pelo teste de visibilidade abaixo)
+    // ao conteúdo inicial de @ketochlor/content-schema, publicada, sem
+    // itemVisibility — mesmo critério de 'problema'/'diferenciais' acima.
+    // (Achado da tarefa `ajustes/migracao-mysql-verificacao-ponta-a-ponta`:
+    // antes desta correção, este `afterAll` restaurava para `data: {}`, o
+    // estado pristino de ANTES do seed real de conteúdo existir — rodar esta
+    // suíte contra o MySQL já semeado com conteúdo real apagava
+    // permanentemente o conteúdo real de `material_tecnico`.)
     const materialTecnicoAtual = await repositorioDireto.buscarPorChave('material_tecnico');
     if (materialTecnicoAtual && !materialTecnicoAtual.isPublished) {
       await repositorioDireto.alternarPublicacao('material_tecnico', null);
     }
-    await repositorioDireto.atualizarConteudo('material_tecnico', {}, {}, null);
+    await repositorioDireto.atualizarConteudo(
+      'material_tecnico',
+      CONTENT_SECTIONS.material_tecnico.initialContent,
+      {},
+      null,
+    );
 
     await app.close();
     if (operadorId) {

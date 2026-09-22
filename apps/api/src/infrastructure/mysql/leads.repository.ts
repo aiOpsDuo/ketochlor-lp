@@ -40,7 +40,7 @@ function paraLeadPersistido(row: LeadRow): LeadPersistido {
   };
 }
 
-/** Implementa `LeadsRepository` (Domínio) contra a tabela `leads`. Espelha o contrato exato de `SupabaseLeadsRepository`. */
+/** Implementa `LeadsRepository` (Domínio) contra a tabela `leads`. */
 export class MySqlLeadsRepository implements LeadsRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -93,9 +93,8 @@ export class MySqlLeadsRepository implements LeadsRepository {
 
   async excluir(id: string): Promise<boolean> {
     // `affectedRows` do resultado do próprio DELETE informa se uma linha foi
-    // de fato removida — mesmo sinal que a versão Supabase obtém de
-    // `.select('id')` após o delete, sem uma consulta extra de leitura antes
-    // (contrato da porta: `excluir` devolve `boolean`, não `void`).
+    // de fato removida, sem uma consulta extra de leitura antes (contrato da
+    // porta: `excluir` devolve `boolean`, não `void`).
     const [resultado] = await this.pool.execute<ResultSetHeader>(`DELETE FROM ${TABELA} WHERE id = ?`, [
       id,
     ]);

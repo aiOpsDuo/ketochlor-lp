@@ -30,7 +30,7 @@ function paraSiteMetadataPersistido(row: SiteMetadataRow): SiteMetadataPersistid
 
 /**
  * Implementa `SiteMetadataRepository` (Domínio) contra o registro único de
- * `site_metadata`. Espelha o contrato exato de `SupabaseSiteMetadataRepository`.
+ * `site_metadata`.
  */
 export class MySqlSiteMetadataRepository implements SiteMetadataRepository {
   constructor(private readonly pool: Pool) {}

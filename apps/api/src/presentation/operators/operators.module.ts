@@ -11,9 +11,7 @@ import { OperatorsAdminController } from './operators-admin.controller';
  * Liga a porta `OperadoresRepository` (Domínio) à implementação concreta
  * `MySqlOperadoresRepository` (Infraestrutura, MySQL real, tabela
  * `operators`) — mesmo padrão de `presentation/metadata/metadata.module.ts`
- * para `SITE_METADATA_REPOSITORY`. Substitui `SupabaseOperadoresRepository`
- * (tarefa `ajustes/migracao-mysql-cutover-wiring`, SDD § "Migração de
- * plataforma de dados").
+ * para `SITE_METADATA_REPOSITORY` (SDD § "Migração de plataforma de dados").
  */
 const operadoresRepositoryProvider: Provider = {
   provide: OPERADORES_REPOSITORY,

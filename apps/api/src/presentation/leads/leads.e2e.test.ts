@@ -17,11 +17,9 @@ import { API_GLOBAL_PREFIX } from '../auth/route-prefixes';
 /**
  * Teste e2e REAL da tarefa `api/modulo-leads`: sobe a aplicação Nest completa
  * (`AppModule`) via `@nestjs/testing` + `supertest`, contra o `mysql` REAL do
- * compose (tarefa `ajustes/migracao-mysql-cutover-wiring`, que substitui o
- * Supabase local/`SupabaseLeadsRepository` deste arquivo) — operador e login
- * reais via `POST /api/auth/login` para as rotas administrativas;
- * `POST /api/leads` é exercitado sem nenhum header de autenticação, para
- * provar (não presumir) que a rota é pública.
+ * compose — operador e login reais via `POST /api/auth/login` para as rotas
+ * administrativas; `POST /api/leads` é exercitado sem nenhum header de
+ * autenticação, para provar (não presumir) que a rota é pública.
  *
  * Todo lead criado por este arquivo é apagado em `afterAll` via o
  * repositório direto (Infraestrutura) — mesma precaução de

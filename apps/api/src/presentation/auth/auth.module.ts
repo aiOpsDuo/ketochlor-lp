@@ -9,11 +9,8 @@ import { VERIFICADOR_TOKEN } from './verificador-token.token';
  * `AppJwtTokenVerificador` (Infraestrutura), configurada a partir de
  * `carregarAuthJwtEnv()` (`AUTH_JWT_SECRET`, segredo simétrico próprio da
  * aplicação) — este é o único ponto do código que decide QUAL implementação
- * satisfaz a porta (Injeção de Dependência via Nest). Substitui
- * `JwksTokenVerificador`/`carregarSupabaseEnv()` (tarefa
- * `ajustes/migracao-mysql-cutover-wiring`, SDD § "Migração de plataforma de
- * dados" → Autenticação) — o `sub` do token continua sendo o id do operador,
- * então nada além desta troca de implementação muda no restante do sistema.
+ * satisfaz a porta (Injeção de Dependência via Nest), ver SDD § "Migração de
+ * plataforma de dados" → Autenticação. O `sub` do token é o id do operador.
  */
 const verificadorTokenProvider: Provider = {
   provide: VERIFICADOR_TOKEN,

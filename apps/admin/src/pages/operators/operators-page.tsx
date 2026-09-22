@@ -22,10 +22,8 @@ function erroDoCampo(erros: { campo: string; mensagem: string }[] | null, campo:
  * Tela de gestão de operadores (`/operators`, URL real `/admin/operators` —
  * PLAN.md, tarefa `ajustes/modulo-operadores`): quem pode logar no painel.
  * Tabela própria `operators` no MySQL (`GET`/`POST /api/admin/operators`,
- * `DELETE /api/admin/operators/:id`, `docs/API.md`) — antes da migração de
- * plataforma de dados (SDD § "Migração de plataforma de dados"), cada
- * "operador" era integralmente um usuário do Supabase Auth, sem tabela
- * própria.
+ * `DELETE /api/admin/operators/:id`, `docs/API.md` — SDD § "Migração de
+ * plataforma de dados").
  *
  * Mesmo padrão de tela autenticada de `LeadsPage`: `apiFetch` com
  * `session.accessToken`, estado de carregamento/erro explícito, exclusão

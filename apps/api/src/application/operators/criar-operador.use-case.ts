@@ -10,8 +10,8 @@ export type ResultadoCriacaoOperador =
 /**
  * Caso de uso de `POST /api/admin/operators` (autenticado). Nenhuma regra de
  * negócio aqui além de orquestrar: valida o corpo via `validarCriacaoOperador`
- * (Domínio) ANTES de criar a conta no Supabase Auth — o controller nunca
- * chama o repositório diretamente, mesmo padrão de `AtualizarMetadataUseCase`.
+ * (Domínio) ANTES de criar o registro — o controller nunca chama o
+ * repositório diretamente, mesmo padrão de `AtualizarMetadataUseCase`.
  */
 @Injectable()
 export class CriarOperadorUseCase {
@@ -23,8 +23,7 @@ export class CriarOperadorUseCase {
   /**
    * @returns `{ sucesso: false, erros }` se `nome`/`email`/`senha` forem
    * inválidos (a Apresentação traduz para `422`); caso contrário, o operador
-   * recém-criado, já pronto para logar (`email_confirm: true` na
-   * Infraestrutura).
+   * recém-criado, já pronto para logar imediatamente com a senha informada.
    */
   async executar(input: CriarOperadorPayloadBruto): Promise<ResultadoCriacaoOperador> {
     const validacao = validarCriacaoOperador(input);

@@ -2,9 +2,8 @@
  * Porta do Domínio para EMISSÃO de sessão (complementar a `VerificadorToken`,
  * que só VERIFICA — ver comentário daquela porta). Nasce com
  * `POST /api/auth/login` (PLAN.md, tarefa
- * `ajustes/migracao-mysql-modulo-auth-proprio`): antes desta tarefa, a API
- * nunca emitia token nenhum — sessão era inteiramente responsabilidade do
- * Supabase Auth (`signInWithPassword`, fora da API).
+ * `ajustes/migracao-mysql-modulo-auth-proprio`) — a API emite e verifica seu
+ * próprio JWT (HS256), sem depender de nenhum serviço de terceiro.
  *
  * Interface separada de `VerificadorToken` (ISP): `AuthGuard` só verifica,
  * nunca emite; `LoginUseCase` só emite, nunca verifica. Implementada pela

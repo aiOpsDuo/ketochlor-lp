@@ -13,9 +13,7 @@ import { MetadataAdminController } from './metadata-admin.controller';
  * Liga a porta `SiteMetadataRepository` (Domínio) à implementação concreta
  * `MySqlSiteMetadataRepository` (Infraestrutura, MySQL real, tabela
  * `site_metadata`) — mesmo padrão de `presentation/content/content.module.ts`
- * para `CONTENT_SECTIONS_REPOSITORY`. Substitui
- * `SupabaseSiteMetadataRepository` (tarefa
- * `ajustes/migracao-mysql-cutover-wiring`, SDD § "Migração de plataforma de
+ * para `CONTENT_SECTIONS_REPOSITORY` (SDD § "Migração de plataforma de
  * dados").
  */
 const siteMetadataRepositoryProvider: Provider = {
@@ -39,8 +37,8 @@ const siteMetadataRepositoryProvider: Provider = {
  * /api/content`) passou a depender desta porta para compor `{ sections,
  * metadata }` (SDD § Contratos de dados/API/interfaces), e a porta não deve
  * ser instanciada duas vezes (uma por módulo) só para evitar um `import`
- * entre módulos — isso duplicaria a fábrica do cliente Supabase sem
- * necessidade real (viola G5/DRY de `references/clean-code.md`).
+ * entre módulos — isso duplicaria a fábrica do pool MySQL sem necessidade
+ * real (viola G5/DRY de `references/clean-code.md`).
  */
 @Module({
   controllers: [MetadataAdminController],

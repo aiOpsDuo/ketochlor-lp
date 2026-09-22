@@ -44,11 +44,9 @@ function paraOperador(row: OperadorRow): Operador {
 
 /**
  * Implementa DUAS portas do Domínio contra a tabela própria `operators`
- * (SDD § Modelo de dados): `OperadoresRepository` (CRUD administrativo —
- * mesmo contrato de `SupabaseOperadoresRepository`, que esta classe substitui
- * na tarefa `migracao-mysql-cutover-wiring`, ainda não feita) e
- * `OperadorCredenciaisRepository` (login — porta nova, sem equivalente
- * Supabase possível, ver comentário de decisão naquela porta).
+ * (SDD § Modelo de dados): `OperadoresRepository` (CRUD administrativo) e
+ * `OperadorCredenciaisRepository` (login — ver comentário de decisão naquela
+ * porta).
  */
 export class MySqlOperadoresRepository implements OperadoresRepository, OperadorCredenciaisRepository {
   constructor(private readonly pool: Pool) {}

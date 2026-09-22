@@ -12,9 +12,7 @@ import { LeadsPublicController } from './leads-public.controller';
  * Liga a porta `LeadsRepository` (Domínio) à implementação concreta
  * `MySqlLeadsRepository` (Infraestrutura, MySQL real, tabela `leads`) —
  * mesmo padrão de `presentation/metadata/metadata.module.ts` para
- * `SITE_METADATA_REPOSITORY`. Substitui `SupabaseLeadsRepository` (tarefa
- * `ajustes/migracao-mysql-cutover-wiring`, SDD § "Migração de plataforma de
- * dados").
+ * `SITE_METADATA_REPOSITORY` (SDD § "Migração de plataforma de dados").
  */
 const leadsRepositoryProvider: Provider = {
   provide: LEADS_REPOSITORY,

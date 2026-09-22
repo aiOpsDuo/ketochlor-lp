@@ -8,18 +8,14 @@ import type { AuthJwtEnv } from '../config/auth-jwt-env';
 
 /**
  * Verifica um JWT emitido pela própria aplicação (`AppJwtEmissorToken`,
- * `app-jwt.ts`, mesma pasta) — substitui `JwksTokenVerificador` (que verifica
- * tokens do Supabase Auth) na tarefa `migracao-mysql-cutover-wiring`, ainda
- * não feita (SDD § "Migração de plataforma de dados" → Autenticação).
+ * `app-jwt.ts`, mesma pasta) — SDD § "Migração de plataforma de dados" →
+ * Autenticação.
  *
- * Bem mais simples que `JwksTokenVerificador`: sempre HS256, sempre o mesmo
- * segredo simétrico próprio (`AUTH_JWT_SECRET`) — sem a bifurcação
- * segredo-compartilhado-ou-JWKS-remoto que o Supabase exigia (o Supabase
- * podia emitir HS256 ou ES256 dependendo da versão/projeto; esta aplicação
- * só emite do jeito que ela mesma decide, então não há "outro algoritmo" a
- * suportar). `algorithms: ['HS256']` fixado explicitamente na verificação —
- * nunca aceita um token que alegue outro algoritmo no header (mitigação
- * padrão contra ataque de confusão de algoritmo, ex. `alg: none`).
+ * Sempre HS256, sempre o mesmo segredo simétrico próprio (`AUTH_JWT_SECRET`)
+ * — a aplicação só emite do jeito que ela mesma decide, então não há "outro
+ * algoritmo" a suportar. `algorithms: ['HS256']` fixado explicitamente na
+ * verificação — nunca aceita um token que alegue outro algoritmo no header
+ * (mitigação padrão contra ataque de confusão de algoritmo, ex. `alg: none`).
  */
 export class AppJwtTokenVerificador implements VerificadorToken {
   private readonly segredo: Uint8Array;

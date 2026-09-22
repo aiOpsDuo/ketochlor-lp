@@ -45,9 +45,7 @@ interface CredencialUpload {
  * (`infrastructure/minio/media-assets.repository.ts`). Como o bucket
  * permite `GET` anônimo, essa URL sem query string já é publicamente
  * acessível, sem precisar de nenhuma variável de ambiente própria do painel
- * para o endpoint do MinIO (diferente da versão anterior, que precisava do
- * SDK do Supabase Storage + `VITE_SUPABASE_STORAGE_BUCKET` para montar a
- * URL pública).
+ * para o endpoint do MinIO.
  *
  * @returns a URL pública do arquivo já enviado — o valor a gravar em
  * `imagem.url` (ou equivalente) da seção.

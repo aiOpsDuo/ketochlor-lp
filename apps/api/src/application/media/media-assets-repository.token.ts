@@ -8,7 +8,7 @@
  * Definido na Aplicação (não na Apresentação) pelo mesmo motivo dos outros
  * tokens: é a Aplicação — `EmitirCredencialUploadUseCase` — quem declara a
  * dependência da porta via `@Inject`; a Apresentação (`media.module.ts`) só
- * liga a implementação concreta (`SupabaseMediaAssetsRepository`,
+ * liga a implementação concreta (`MinioMediaAssetsRepository`,
  * Infraestrutura) a este token.
  */
 export const MEDIA_ASSETS_REPOSITORY = Symbol('MediaAssetsRepository');
