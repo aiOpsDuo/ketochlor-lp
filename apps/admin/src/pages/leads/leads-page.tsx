@@ -99,7 +99,7 @@ export function LeadsPage() {
     try {
       const resultado = await apiFetch<LeadResumo[]>(
         `/api/admin/leads${construirQueryDePeriodo(from, to)}`,
-        session.access_token,
+        session.accessToken,
       )
       setLeads(resultado)
       setErro(null)
@@ -135,7 +135,7 @@ export function LeadsPage() {
 
     setExcluindoId(lead.id)
     try {
-      await apiFetch<void>(`/api/admin/leads/${lead.id}`, session.access_token, {
+      await apiFetch<void>(`/api/admin/leads/${lead.id}`, session.accessToken, {
         method: 'DELETE',
       })
       await buscarLeads()
@@ -157,7 +157,7 @@ export function LeadsPage() {
     try {
       const conteudoCsv = await apiFetchTexto(
         `/api/admin/leads/export.csv${construirQueryDePeriodo(from, to)}`,
-        session.access_token,
+        session.accessToken,
       )
       baixarCsv(conteudoCsv, nomeDoArquivoCsv(from, to))
       setErro(null)

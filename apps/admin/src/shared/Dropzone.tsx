@@ -59,12 +59,13 @@ function nomeDoArquivoDaUrl(url: string): string | null {
  * de `imageUrl` ser uma string não vazia, de forma síncrona — sem nenhuma
  * chamada de rede para "buscar" a mídia antes de decidir o que mostrar.
  *
- * **Sem percentual de progresso real:** o SDK do Supabase Storage
- * (`@supabase/storage-js`, usado por `enviarImagemParaStorage`) não expõe
- * eventos de progresso de upload — só uma Promise que resolve ao final.
- * Fabricar uma porcentagem sem dado real por trás enganaria mais do que
- * ajudaria, então o estado de envio aqui é só o spinner indeterminado + o
- * texto "Enviando…".
+ * **Sem percentual de progresso real:** `enviarImagemParaStorage` usa
+ * `fetch` simples para o `PUT` contra a URL pré-assinada do MinIO — a
+ * `Fetch API` não expõe eventos de progresso de upload (só uma Promise que
+ * resolve ao final; `XMLHttpRequest` teria `upload.onprogress`, mas trocar
+ * de API só para isso seria desproporcional aqui). Fabricar uma porcentagem
+ * sem dado real por trás enganaria mais do que ajudaria, então o estado de
+ * envio aqui é só o spinner indeterminado + o texto "Enviando…".
  */
 export function Dropzone({
   id,

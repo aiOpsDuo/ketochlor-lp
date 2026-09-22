@@ -21,17 +21,19 @@ function erroDoCampo(erros: { campo: string; mensagem: string }[] | null, campo:
 /**
  * Tela de gestão de operadores (`/operators`, URL real `/admin/operators` —
  * PLAN.md, tarefa `ajustes/modulo-operadores`): quem pode logar no painel.
- * **Sem tabela própria no banco** — cada "operador" é, integralmente, um
- * usuário do Supabase Auth (`GET`/`POST /api/admin/operators`, `DELETE
- * /api/admin/operators/:id`, `docs/API.md`).
+ * Tabela própria `operators` no MySQL (`GET`/`POST /api/admin/operators`,
+ * `DELETE /api/admin/operators/:id`, `docs/API.md`) — antes da migração de
+ * plataforma de dados (SDD § "Migração de plataforma de dados"), cada
+ * "operador" era integralmente um usuário do Supabase Auth, sem tabela
+ * própria.
  *
  * Mesmo padrão de tela autenticada de `LeadsPage`: `apiFetch` com
- * `session.access_token`, estado de carregamento/erro explícito, exclusão
+ * `session.accessToken`, estado de carregamento/erro explícito, exclusão
  * com confirmação em dois passos na própria linha da tabela.
  *
  * **As duas recusas de remoção são antecipadas aqui** (botão desabilitado com
  * o motivo visível, sem exigir uma tentativa que a API recusaria com `409`):
- * a própria conta logada (`operator.id === session.user.id`) e o único
+ * a própria conta logada (`operator.id === session.operatorId`) e o único
  * operador restante (`operators.length === 1` — quando só resta 1 operador,
  * ele é necessariamente a própria conta logada, então esta checagem tem
  * prioridade de exibição sobre a de "própria conta", por ser a informação
@@ -60,7 +62,7 @@ export function OperatorsPage() {
       return
     }
     try {
-      const resultado = await apiFetch<OperatorResumo[]>('/api/admin/operators', session.access_token)
+      const resultado = await apiFetch<OperatorResumo[]>('/api/admin/operators', session.accessToken)
       setOperators(resultado)
       setErroCarregamento(null)
     } catch (erroRequisicao: unknown) {
@@ -88,7 +90,7 @@ export function OperatorsPage() {
     setSucessoCriacao(null)
 
     try {
-      const operadorCriado = await apiFetch<OperatorResumo>('/api/admin/operators', session.access_token, {
+      const operadorCriado = await apiFetch<OperatorResumo>('/api/admin/operators', session.accessToken, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nome, email, senha }),
@@ -118,7 +120,7 @@ export function OperatorsPage() {
     setExcluindoId(operator.id)
     setErroExclusao(null)
     try {
-      await apiFetch<void>(`/api/admin/operators/${operator.id}`, session.access_token, {
+      await apiFetch<void>(`/api/admin/operators/${operator.id}`, session.accessToken, {
         method: 'DELETE',
       })
       await buscarOperators()
@@ -137,7 +139,7 @@ export function OperatorsPage() {
     if (operators && operators.length === 1) {
       return 'Único operador restante'
     }
-    if (session && operator.id === session.user.id) {
+    if (session && operator.id === session.operatorId) {
       return 'Sua própria conta'
     }
     return null

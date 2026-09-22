@@ -1,11 +1,17 @@
 import { useState, type FormEvent } from 'react'
-import { supabase } from '../lib/supabase-client'
+import { useAuth } from '../auth/auth-context'
+import { ApiError } from '../lib/api-client'
 import { Card } from '../shared/Card'
 import { Notice } from '../shared/Notice'
 import { atributosDeCampo, FormField } from '../shared/FormField'
 import { classeDeBotao, classeDeCampo } from '../shared/classes'
 
+/** HTTP status devolvidos por `POST /api/auth/login` (`docs/API.md` § Autenticação) que esta tela trata com mensagem específica. */
+const HTTP_STATUS_CREDENCIAIS_INVALIDAS = 401
+const HTTP_STATUS_CORPO_INVALIDO = 422
+
 export function LoginPage() {
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState<string | null>(null)
@@ -16,18 +22,25 @@ export function LoginPage() {
     setErro(null)
     setEnviando(true)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
-
-    setEnviando(false)
-
-    if (error) {
-      setErro('E-mail ou senha inválidos.')
-      return
+    try {
+      await login(email, senha)
+      // Sucesso: assim que `login` atualiza a sessão (auth-context),
+      // `PublicOnlyRoute` redireciona ao dashboard — nenhuma navegação
+      // manual é necessária aqui.
+    } catch (erroRequisicao: unknown) {
+      if (erroRequisicao instanceof ApiError && erroRequisicao.status === HTTP_STATUS_CREDENCIAIS_INVALIDAS) {
+        setErro('E-mail ou senha inválidos.')
+      } else if (
+        erroRequisicao instanceof ApiError &&
+        erroRequisicao.status === HTTP_STATUS_CORPO_INVALIDO
+      ) {
+        setErro('Preencha e-mail e senha para entrar.')
+      } else {
+        setErro('Não foi possível entrar. Tente novamente em instantes.')
+      }
+    } finally {
+      setEnviando(false)
     }
-
-    // Sucesso: `onAuthStateChange` (auth-context) atualiza a sessão e
-    // `PublicOnlyRoute` redireciona ao dashboard — nenhuma navegação manual
-    // é necessária aqui.
   }
 
   return (

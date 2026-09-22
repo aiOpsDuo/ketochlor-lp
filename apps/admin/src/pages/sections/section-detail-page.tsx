@@ -108,7 +108,7 @@ export function SectionDetailPage() {
     }
 
     let cancelado = false
-    apiFetch<SecaoDetalhe>(`/api/admin/sections/${chaveDaRota}`, session.access_token)
+    apiFetch<SecaoDetalhe>(`/api/admin/sections/${chaveDaRota}`, session.accessToken)
       .then((resultado) => {
         if (cancelado) {
           return
@@ -208,7 +208,7 @@ export function SectionDetailPage() {
     try {
       const atualizado = await apiFetch<SecaoDetalhe>(
         `/api/admin/sections/${chaveDaRota}`,
-        session.access_token,
+        session.accessToken,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -259,7 +259,7 @@ export function SectionDetailPage() {
     try {
       const atualizado = await apiFetch<SecaoDetalhe>(
         `/api/admin/sections/${chaveDaRota}/visibility`,
-        session.access_token,
+        session.accessToken,
         { method: 'PATCH' },
       )
       setSecao(atualizado)
@@ -354,7 +354,7 @@ export function SectionDetailPage() {
                   onAtualizarCampo={atualizarCampo}
                   onAtualizarListaDeItens={atualizarListaDeItens}
                   errosPorCaminho={porCampo}
-                  accessToken={session?.access_token ?? ''}
+                  accessToken={session?.accessToken ?? ''}
                 />
               ))}
             </div>
@@ -373,7 +373,7 @@ export function SectionDetailPage() {
             onAtualizarCampo={atualizarCampo}
             onAtualizarListaDeItens={atualizarListaDeItens}
             errosPorCaminho={porCampo}
-            accessToken={session?.access_token ?? ''}
+            accessToken={session?.accessToken ?? ''}
           />
         ))}
 
