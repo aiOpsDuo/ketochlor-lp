@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// Runner leve de migrations SQL para o MySQL do CMS — substitui o fluxo da
-// CLI do Supabase (`supabase/migrations/`) para este propósito (SDD §
+// Runner leve de migrations SQL para o MySQL do CMS (SDD §
 // "Migração de plataforma de dados"; PLAN.md, tarefa `migracao-mysql-schema`).
 //
 // O que faz: lê `apps/api/mysql/migrations/*.sql` em ordem alfabética do

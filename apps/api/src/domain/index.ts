@@ -1,7 +1,6 @@
 // Camada de Domínio da API (SDD § Camadas e padrão arquitetural — Domínio).
-// Sem nenhum import de `@nestjs/*` nem de SDK do Supabase — puro TypeScript,
-// testável isoladamente. Consumida pela Aplicação (ainda inexistente nesta
-// tarefa), nunca o contrário.
+// Sem nenhum import de `@nestjs/*` nem de SDK de terceiro — puro TypeScript,
+// testável isoladamente. Consumida pela Aplicação, nunca o contrário.
 
 export * from './shared/resultado-validacao';
 
@@ -22,9 +21,9 @@ export * from './operators/validar-criacao-operador';
 
 export * from './auth/validar-login';
 
-// Portas implementadas pela Infraestrutura (`api/infra-supabase-adapters`) —
-// interfaces puras, sem import de framework nem de Supabase (a Infraestrutura
-// depende do Domínio implementando-as, nunca o contrário).
+// Portas implementadas pela Infraestrutura (`src/infrastructure/`) —
+// interfaces puras, sem import de framework (a Infraestrutura depende do
+// Domínio implementando-as, nunca o contrário).
 export * from './portas/content-sections.repository';
 export * from './portas/site-metadata.repository';
 export * from './portas/media-assets.repository';

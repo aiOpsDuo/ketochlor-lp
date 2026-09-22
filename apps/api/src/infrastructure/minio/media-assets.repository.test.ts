@@ -10,11 +10,9 @@ import { carregarMysqlTestEnv } from '../test-support/mysql-test-env';
 /**
  * Teste de integração REAL (sem mock) contra o `minio`+`mysql` do
  * `docker-compose.yml` — mesmo critério de "pronto" já usado pelos testes
- * `infrastructure/mysql/*.repository.test.ts` e
- * `infrastructure/supabase/media-assets.repository.test.ts`. O `PUT` do
- * arquivo de teste contra a URL pré-assinada usa `fetch` nativo do Node, sem
- * SDK cliente — simulando exatamente o que o navegador do painel fará na
- * tarefa futura `migracao-mysql-painel-auth-e-upload`.
+ * `infrastructure/mysql/*.repository.test.ts`. O `PUT` do arquivo de teste
+ * contra a URL pré-assinada usa `fetch` nativo do Node, sem SDK cliente —
+ * simulando exatamente o que o navegador do painel faz de verdade.
  */
 describe('MinioMediaAssetsRepository (infra)', () => {
   let client: S3Client;
@@ -64,9 +62,9 @@ describe('MinioMediaAssetsRepository (infra)', () => {
     expect(credencial.storagePath).toBe(`${credencial.mediaAssetId}.png`);
     expect(credencial.signedUrl).toBeTruthy();
     expect(credencial.signedUrl).toContain(bucket);
-    // Diferença deliberada do adaptador Supabase — ver comentário em
-    // `domain/portas/media-assets.repository.ts`: uma URL pré-assinada S3 já
-    // embute a autenticação, não existe token separado a devolver.
+    // Ver comentário em `domain/portas/media-assets.repository.ts`: uma URL
+    // pré-assinada S3 já embute a autenticação, não existe token separado a
+    // devolver.
     expect(credencial.token).toBeNull();
 
     // Confirma que nenhuma linha nasce em media_assets antes do upload (SDD
@@ -85,8 +83,7 @@ describe('MinioMediaAssetsRepository (infra)', () => {
       mimeType: 'image/png',
     });
 
-    // PNG 1x1 válido, mesmos bytes já usados pelo teste equivalente do
-    // adaptador Supabase.
+    // PNG 1x1 válido.
     const bytesDePng = Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
       'base64',

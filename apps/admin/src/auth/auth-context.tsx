@@ -15,8 +15,8 @@ const CHAVE_TOKEN = 'ketochlor.painel.access-token'
  * Sessão local do operador autenticado. Guarda o JWT emitido por `POST
  * /api/auth/login` (`accessToken`) e o `operatorId`/`email` decodificados
  * do próprio token — nunca uma sessão de servidor (SDD § "Migração de
- * plataforma de dados" → Painel: não há Supabase Auth mais nenhum
- * intermediário, o painel gerencia a própria sessão).
+ * plataforma de dados" → Painel: sem nenhum intermediário de terceiro, o
+ * painel gerencia a própria sessão).
  */
 export interface SessaoOperador {
   accessToken: string
@@ -114,8 +114,7 @@ function gravarTokenPersistido(token: string | null): void {
  * chama `POST /api/auth/login` diretamente via `fetch` (sem SDK cliente,
  * mesmo padrão do restante do painel — `lib/api-client.ts`) e guarda o
  * `accessToken` devolvido; `logout` só apaga o token local — não há sessão
- * de servidor para invalidar (mesma limitação que um JWT teria com Supabase
- * Auth, agora documentada aqui em vez de lá).
+ * de servidor para invalidar (limitação inerente a um JWT stateless).
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessaoOperador | null>(null)

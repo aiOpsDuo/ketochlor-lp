@@ -13,7 +13,7 @@ Landing page B2B de captação de leads (médicos-veterinários) para o Ketochlo
 | LP pública (`apps/lp`) | React 18 + Vite 5 + TypeScript 5 + Tailwind 3 |
 | Painel (`apps/admin`) | React 18 + Vite 5 + TypeScript 5 |
 | API do CMS (`apps/api`) | NestJS 11 (Node 20+) + TypeScript 5 |
-| Plataforma de dados | Supabase (Postgres + Storage + Auth) |
+| Plataforma de dados | MySQL 8 + MinIO (S3) + auth própria (JWT) |
 
 Decisões e trade-offs de cada escolha: [agent_context/SDD.md § Decisões técnicas e trade-offs](agent_context/SDD.md).
 
@@ -35,7 +35,7 @@ Para editar com recarga automática, ou depurar um dos três processos isoladame
 - Plano de implementação e status das tarefas: [agent_context/PLAN.md](agent_context/PLAN.md)
 - Empacotamento e execução via Docker Compose: [docs/DOCKER.md](docs/DOCKER.md)
 - Rodar sem Docker (recarga automática, depurar um processo isolado): [docs/RODAR-SEM-DOCKER.md](docs/RODAR-SEM-DOCKER.md)
-- Banco de dados, Storage e Auth locais (Supabase): [docs/BANCO-DE-DADOS.md](docs/BANCO-DE-DADOS.md)
+- Banco de dados (MySQL) e armazenamento de imagens (MinIO): [docs/BANCO-DE-DADOS.md](docs/BANCO-DE-DADOS.md)
 - Conteúdo da LP, esquemas de seção e como adicionar um campo novo: [docs/CONTEUDO-DA-LP.md](docs/CONTEUDO-DA-LP.md)
 - API: configuração, variáveis de ambiente e testes de integração: [docs/API.md](docs/API.md)
 - Painel: configuração, autenticação e fluxo de login: [docs/PAINEL.md](docs/PAINEL.md)

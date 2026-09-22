@@ -17,9 +17,8 @@ import { API_GLOBAL_PREFIX } from '../auth/route-prefixes';
 /**
  * Teste e2e REAL da tarefa `api/modulo-media`: sobe a aplicação Nest
  * completa (`AppModule`) via `@nestjs/testing` + `supertest`, contra o
- * `minio`+`mysql` REAIS do compose (tarefa `ajustes/migracao-mysql-cutover-
- * wiring`, que substitui o Supabase local/`SupabaseMediaAssetsRepository`
- * deste arquivo) — operador e login reais via `POST /api/auth/login`.
+ * `minio`+`mysql` REAIS do compose — operador e login reais via
+ * `POST /api/auth/login`.
  *
  * `POST /api/admin/media/upload-url` é a ÚNICA rota deste módulo (SDD
  * § Contratos de dados/API/interfaces): não cria linha em `media_assets`,
@@ -119,9 +118,9 @@ describe('Media (e2e) — POST /api/admin/media/upload-url', () => {
     expect(resposta.body.mediaAssetId).toBeTruthy();
     expect(resposta.body.storagePath).toBe(`${resposta.body.mediaAssetId}.png`);
     expect(resposta.body.signedUrl).toBeTruthy();
-    // Diferença deliberada do adaptador Supabase — uma URL pré-assinada S3 já
-    // embute a autenticação, não existe token separado a devolver (ver
-    // comentário de decisão em `domain/portas/media-assets.repository.ts`).
+    // Uma URL pré-assinada S3 já embute a autenticação, não existe token
+    // separado a devolver (ver comentário de decisão em
+    // `domain/portas/media-assets.repository.ts`).
     expect(resposta.body.token).toBeNull();
 
     // Nenhuma linha nasce em `media_assets` só por emitir a credencial (SDD

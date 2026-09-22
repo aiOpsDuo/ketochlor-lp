@@ -3,9 +3,8 @@
 -- escopo). Ref.: agent_context/SDD.md § Modelo de dados > media_assets.
 --
 -- `id` é CHAR(36) (não AUTO_INCREMENT): o UUID é gerado na aplicação
--- (`randomUUID()` do Node), mesmo padrão já usado pelo adaptador Supabase
--- de mídia — preservado na migração para não mudar o formato do
--- identificador referenciado pelos documentos de seção.
+-- (`randomUUID()` do Node) — mesmo formato do identificador referenciado
+-- pelos documentos de seção.
 CREATE TABLE IF NOT EXISTS media_assets (
   id CHAR(36) NOT NULL,
   storage_path VARCHAR(1024) NOT NULL,

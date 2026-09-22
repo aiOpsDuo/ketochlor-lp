@@ -9,8 +9,7 @@
 --
 -- Diferente das migrations em `apps/api/mysql/migrations/` (aplicadas uma
 -- vez, em ordem, pelo runner `scripts/migrar-mysql.mjs`), este arquivo é
--- uma carga de dados pontual — mesmo papel que `supabase/seed.sql` tinha
--- para o Postgres/Supabase CLI local. Rode manualmente contra o `mysql` do
+-- uma carga de dados pontual. Rode manualmente contra o `mysql` do
 -- `docker-compose.yml` depois que as migrations já tiverem criado o
 -- schema, por exemplo:
 --
@@ -32,8 +31,7 @@
 -- `0001_create_content_sections.sql` as cria com `data = '{}'`) — por
 -- isso cada seção usa um `UPDATE ... WHERE `key` = ...` simples, não um
 -- `INSERT`. Só a coluna `data` é tocada — `item_visibility` e
--- `is_published` (edições feitas pelo painel) não são sobrescritas, mesmo
--- contrato do gerador Postgres original (`gerar-seed-conteudo-inicial.mjs`).
+-- `is_published` (edições feitas pelo painel) não são sobrescritas.
 -- Rodar este arquivo de novo é seguro (idempotente): cada `UPDATE` grava o
 -- mesmo valor, não duplica nem falha.
 

@@ -1,12 +1,9 @@
 -- Cria a tabela content_sections e semeia as 11 seções fechadas da LP.
 -- Ref.: agent_context/SDD.md § Modelo de dados > content_sections.
 --
--- Equivalente MySQL do jsonb/uuid/timestamptz do Postgres original
--- (supabase/migrations/20260908192455_create_content_sections.sql +
--- .../20260908210000_add_item_visibility_to_content_sections.sql, já
--- consolidadas aqui numa única tabela final — ver SDD § "Migração de
--- plataforma de dados"): jsonb -> JSON nativo, uuid -> CHAR(36) (gerado na
--- aplicação), timestamptz -> DATETIME em UTC (padronizado na aplicação).
+-- Tipos escolhidos (ver SDD § "Migração de plataforma de dados"): JSON
+-- nativo para `data`/`item_visibility`, CHAR(36) para uuid (gerado na
+-- aplicação), DATETIME em UTC para timestamp (padronizado na aplicação).
 --
 -- item_visibility é gravada na MESMA instrução UPDATE que data pelo
 -- repositório de infraestrutura (contrato da porta

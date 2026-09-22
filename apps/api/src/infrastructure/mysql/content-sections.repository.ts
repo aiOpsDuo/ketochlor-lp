@@ -43,7 +43,6 @@ function paraSecaoPersistida(row: ContentSectionRow): SecaoPersistida {
  * Implementa `ContentSectionsRepository` (Domínio) contra a tabela
  * `content_sections` via `mysql2/promise` (SDD § Camadas e padrão
  * arquitetural — Infraestrutura; § "Migração de plataforma de dados").
- * Espelha o contrato exato de `SupabaseContentSectionsRepository`.
  */
 export class MySqlContentSectionsRepository implements ContentSectionsRepository {
   constructor(private readonly pool: Pool) {}

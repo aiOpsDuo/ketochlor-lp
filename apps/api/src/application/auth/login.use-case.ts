@@ -29,9 +29,8 @@ const HASH_FALSO_PARA_TIMING_CONSTANTE =
 /**
  * Caso de uso de `POST /api/auth/login` (SDD § Contratos de dados/API/
  * interfaces — Autenticação; PLAN.md, tarefa
- * `ajustes/migracao-mysql-modulo-auth-proprio`) — a PRIMEIRA vez que esta API
- * emite uma sessão própria; antes desta tarefa, login era inteiramente
- * responsabilidade do Supabase Auth, fora da API.
+ * `ajustes/migracao-mysql-modulo-auth-proprio`) — a API emite e verifica sua
+ * própria sessão, sem depender de nenhum serviço de terceiro.
  *
  * Fluxo: valida o formato do corpo (Domínio, `validarLogin`) → busca o
  * operador pelo e-mail junto do hash de senha (`OperadorCredenciaisRepository`,

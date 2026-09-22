@@ -12,8 +12,8 @@ import type { EmitirCredencialUploadDto } from './emitir-credencial-upload.dto';
  *
  * **Única rota deste módulo, de propósito (SDD § Decisões técnicas e
  * trade-offs — "Upload direto do navegador para o Storage").** O upload dos
- * bytes em si vai direto do navegador ao Supabase Storage usando a
- * credencial devolvida aqui — a API nunca recebe o arquivo. A confirmação do
+ * bytes em si vai direto do navegador ao MinIO usando a credencial devolvida
+ * aqui — a API nunca recebe o arquivo. A confirmação do
  * registro em `media_assets` depois que o upload termina
  * (`MediaAssetsRepository.criar`, SDD § Riscos técnicos — "Upload de imagem
  * interrompido no meio do envio") não tem rota própria nesta tarefa: nenhum

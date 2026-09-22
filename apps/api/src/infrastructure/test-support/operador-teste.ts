@@ -9,15 +9,13 @@ export interface OperadorAutenticadoDeTeste {
 
 /**
  * Cria um operador real (MySQL, via `MySqlOperadoresRepository.criar` —
- * nunca mock, nunca Admin API de terceiro) e autentica contra
- * `POST /api/auth/login` numa aplicação Nest já inicializada (`app.init()`
- * já chamado) — helper comum aos e2e de `content`/`leads`/`media`/
- * `metadata`/`operators`/`auth` (tarefa `ajustes/migracao-mysql-cutover-
- * wiring`), que precisam de um `Authorization: Bearer` real emitido pelo
- * módulo de login próprio no lugar do antigo login via Supabase Auth Admin
- * API (G5/DRY de `references/clean-code.md` — a mesma sequência "criar
- * operador → logar → guardar accessToken" não deveria ser reimplementada em
- * cada arquivo de teste).
+ * nunca mock) e autentica contra `POST /api/auth/login` numa aplicação Nest
+ * já inicializada (`app.init()` já chamado) — helper comum aos e2e de
+ * `content`/`leads`/`media`/`metadata`/`operators`/`auth`, que precisam de um
+ * `Authorization: Bearer` real emitido pelo módulo de login próprio (G5/DRY
+ * de `references/clean-code.md` — a mesma sequência "criar operador → logar
+ * → guardar accessToken" não deveria ser reimplementada em cada arquivo de
+ * teste).
  */
 export async function criarOperadorAutenticadoDeTeste(
   app: INestApplication,

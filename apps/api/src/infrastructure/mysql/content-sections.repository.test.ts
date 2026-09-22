@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool } from 'mysql2/promise';
+import { CONTENT_SECTIONS } from '@ketochlor/content-schema';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { criarMysqlPool } from './mysql-client.factory';
 import { MySqlContentSectionsRepository } from './content-sections.repository';
@@ -7,10 +8,8 @@ import { carregarMysqlTestEnv } from '../test-support/mysql-test-env';
 
 /**
  * Testes de INTEGRAÇÃO reais contra o MySQL do `docker-compose.yml` — nunca
- * mocks do driver `mysql2` (mesmo critério de "pronto" já usado pelos
- * testes Supabase equivalentes, `content-sections.repository.test.ts` em
- * `../supabase`). Pré-requisito: `docker compose up -d mysql` no ar e o
- * schema já aplicado (`npm run migrate:mysql --prefix apps/api`).
+ * mocks do driver `mysql2`. Pré-requisito: `docker compose up -d mysql` no
+ * ar e o schema já aplicado (`npm run migrate:mysql --prefix apps/api`).
  */
 describe('MySqlContentSectionsRepository (infra)', () => {
   let pool: Pool;
@@ -27,6 +26,19 @@ describe('MySqlContentSectionsRepository (infra)', () => {
   });
 
   afterAll(async () => {
+    // Restaura `faq` (mutada pelos testes de `atualizarConteudo` abaixo) ao
+    // conteúdo inicial de @ketochlor/content-schema, publicada, sem
+    // itemVisibility — para não vazar estado entre execuções da suíte.
+    // (Achado da tarefa `ajustes/migracao-mysql-verificacao-ponta-a-ponta`:
+    // antes desta correção, este arquivo nunca restaurava `faq` — rodar esta
+    // suíte contra o MySQL já semeado com conteúdo real apagava
+    // permanentemente o conteúdo real de `faq`.)
+    await repositorio.atualizarConteudo('faq', CONTENT_SECTIONS.faq.initialContent, {}, null);
+    const faqAtual = await repositorio.buscarPorChave('faq');
+    if (faqAtual && !faqAtual.isPublished) {
+      await repositorio.alternarPublicacao('faq', null);
+    }
+
     await pool.end();
   });
 

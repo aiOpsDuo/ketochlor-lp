@@ -14,12 +14,11 @@ import { MediaAdminController } from './media-admin.controller';
  * Liga a porta `MediaAssetsRepository` (Domínio) à implementação concreta
  * `MinioMediaAssetsRepository` (Infraestrutura, protocolo S3 sobre MinIO +
  * MySQL para a tabela `media_assets`) — mesmo padrão de
- * `presentation/metadata/metadata.module.ts` para `SITE_METADATA_REPOSITORY`.
- * Substitui `SupabaseMediaAssetsRepository` (tarefa
- * `ajustes/migracao-mysql-cutover-wiring`, SDD § "Migração de plataforma de
- * dados"). Precisa dos DOIS clientes: o S3 (upload/URL pré-assinada) e o
- * pool MySQL (grava o registro em `media_assets` depois do upload confirmado
- * — ver `MinioMediaAssetsRepository.criar`).
+ * `presentation/metadata/metadata.module.ts` para `SITE_METADATA_REPOSITORY`
+ * (SDD § "Migração de plataforma de dados"). Precisa dos DOIS clientes: o S3
+ * (upload/URL pré-assinada) e o pool MySQL (grava o registro em
+ * `media_assets` depois do upload confirmado — ver
+ * `MinioMediaAssetsRepository.criar`).
  */
 const mediaAssetsRepositoryProvider: Provider = {
   provide: MEDIA_ASSETS_REPOSITORY,

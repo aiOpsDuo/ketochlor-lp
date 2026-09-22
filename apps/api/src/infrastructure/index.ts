@@ -3,10 +3,6 @@
 // MySQL (conteúdo, metadados, leads, operadores) e MinIO (mídia), mais o
 // módulo de autenticação própria (`AppJwt*`); depende do Domínio, nunca o
 // contrário.
-//
-// Substitui o barrel que antes reexportava `./supabase/*`/`./config/
-// supabase-env` (removido na tarefa `ajustes/migracao-mysql-cutover-wiring`,
-// SDD § "Migração de plataforma de dados").
 
 export * from './config/mysql-env';
 export * from './config/minio-env';

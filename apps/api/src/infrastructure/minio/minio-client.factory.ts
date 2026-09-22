@@ -6,8 +6,7 @@ import type { MinioEnv } from '../config/minio-env';
  * (SDD § "Migração de plataforma de dados" → Armazenamento). Único ponto do
  * código que instancia o `S3Client` — todo repositório de Infraestrutura que
  * fala com o MinIO recebe este cliente por injeção, nunca cria o seu
- * próprio (mesmo padrão de `mysql-client.factory.ts`/
- * `supabase-client.factory.ts`).
+ * próprio (mesmo padrão de `mysql-client.factory.ts`).
  *
  * `forcePathStyle: true` é obrigatório para MinIO: o SDK, por padrão, monta
  * URLs no estilo "virtual-hosted" (`https://<bucket>.<endpoint>/<key>`,

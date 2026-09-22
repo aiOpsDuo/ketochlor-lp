@@ -21,13 +21,13 @@ import { carregarAuthJwtEnv } from '../../infrastructure/config/auth-jwt-env';
  * **Fusão deliberada de `auth.e2e.test.ts` neste arquivo** (decisão desta
  * tarefa, registrada também no PR): antes do corte, os dois arquivos
  * cobriam a mesma jornada por caminhos diferentes — `auth.e2e.test.ts` subia
- * `AppModule` inteiro contra um usuário/login reais do Supabase Auth local só
- * para provar que `AuthGuard` aceitava o token dali; este arquivo subia só
- * `AuthLoginModule` para provar que `POST /api/auth/login` emitia um token
- * válido. Com o corte, as duas metades da mesma jornada (emitir token → guard
- * aceitar esse token) são a mesma prova de ponta a ponta e usam a MESMA
- * infraestrutura (`AppModule` completo, MySQL real) — mantê-las em dois
- * arquivos duplicaria o `beforeAll`/`afterAll` de criação de operador sem
+ * `AppModule` inteiro só para provar que `AuthGuard` aceitava um token real;
+ * este arquivo subia só `AuthLoginModule` para provar que
+ * `POST /api/auth/login` emitia um token válido. Com o corte, as duas
+ * metades da mesma jornada (emitir token → guard aceitar esse token) são a
+ * mesma prova de ponta a ponta e usam a MESMA infraestrutura (`AppModule`
+ * completo, MySQL real) — mantê-las em dois arquivos duplicaria o
+ * `beforeAll`/`afterAll` de criação de operador sem
  * nenhum ganho de isolamento real (G5/DRY de `references/clean-code.md`).
  *
  * Operador de teste criado via `MySqlOperadoresRepository.criar` (MySQL real

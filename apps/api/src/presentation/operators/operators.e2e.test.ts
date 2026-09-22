@@ -14,9 +14,8 @@ import { API_GLOBAL_PREFIX } from '../auth/route-prefixes';
 /**
  * Teste e2e REAL da tarefa `ajustes/modulo-operadores`: sobe a aplicação Nest
  * completa (`AppModule`) via `@nestjs/testing` + `supertest`, contra o
- * `mysql` REAL do compose (tarefa `ajustes/migracao-mysql-cutover-wiring`,
- * que substitui o Supabase local/Auth Admin API deste arquivo) — operador e
- * login reais via `POST /api/auth/login`, sem mock.
+ * `mysql` REAL do compose — operador e login reais via
+ * `POST /api/auth/login`, sem mock.
  *
  * **Sobre o ramo `'ultimo-operador'` de `RemoverOperadorUseCase`:** não é
  * exercitado aqui de propósito. Como o comentário da classe explica, ele só é

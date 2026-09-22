@@ -1,15 +1,14 @@
 /**
- * Porta do Domínio para verificação de sessão (SDD § Decisões técnicas e
- * trade-offs — "Autenticação via Supabase Auth..., token verificado na API
- * via JWKS"; § Contratos de dados/API/interfaces — Autenticação). Ver nota de
- * "Porta do Domínio" em `content-sections.repository.ts`.
+ * Porta do Domínio para verificação de sessão (SDD § Contratos de dados/API/
+ * interfaces — Autenticação). Ver nota de "Porta do Domínio" em
+ * `content-sections.repository.ts`.
  *
- * Implementada pela Infraestrutura (`api/infra-supabase-adapters`); consumida
- * pelo guard de autenticação (`api/modulo-auth`, ainda inexistente) para
- * proteger toda rota `/api/admin/*`.
+ * Implementada pela Infraestrutura (`AppJwtTokenVerificador`); consumida
+ * pelo guard de autenticação (`AuthGuard`) para proteger toda rota
+ * `/api/admin/*`.
  */
 export interface ClaimsUsuarioAutenticado {
-  /** Id do usuário autenticado no Supabase Auth — usado como `updatedBy`/`createdBy` nas escritas. */
+  /** Id do operador autenticado — usado como `updatedBy`/`createdBy` nas escritas. */
   sub: string;
   email?: string;
   role?: string;

@@ -4,8 +4,8 @@
  * plataforma de dados" → Armazenamento). Nenhum valor real é hardcoded aqui
  * — tudo vem de `process.env`, documentado em `apps/api/.env.example`.
  *
- * Espelha o mesmo estilo de `mysql-env.ts`/`supabase-env.ts` (leitura +
- * validação descritiva) — troca de adaptador, não de padrão. O cliente S3
+ * Mesmo estilo de `mysql-env.ts` (leitura + validação descritiva, sem valor
+ * hardcoded). O cliente S3
  * sempre autentica com as credenciais `root` do MinIO
  * (`MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD`) — este projeto não distingue uma
  * credencial de aplicação de uma credencial administrativa no MinIO hoje

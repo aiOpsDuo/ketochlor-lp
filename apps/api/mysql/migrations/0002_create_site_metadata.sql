@@ -10,12 +10,8 @@
 -- (VARCHAR(2048), mesma convenção usada pelas outras colunas de URL deste
 -- schema).
 --
--- Já nasce com og_image_url (não og_image_media_id): esta migration reflete
--- o estado final do schema Postgres depois de
--- supabase/migrations/20260910120000_rename_site_metadata_og_image_to_url.sql
--- (ver SDD § Modelo de dados, nota "Correção de og_image_media_id ->
--- og_image_url") — não há motivo para recriar em MySQL uma coluna que já
--- nasceu morta e foi corrigida no Postgres.
+-- Já nasce com og_image_url (não og_image_media_id) — ver SDD § Modelo de
+-- dados, nota "Correção de og_image_media_id -> og_image_url".
 CREATE TABLE IF NOT EXISTS site_metadata (
   id TINYINT(1) NOT NULL DEFAULT 1,
   title TEXT NOT NULL,

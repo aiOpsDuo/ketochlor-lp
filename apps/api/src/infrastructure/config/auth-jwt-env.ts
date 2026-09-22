@@ -2,16 +2,14 @@
  * Leitura das variáveis de ambiente do módulo de autenticação PRÓPRIA da
  * aplicação (SDD § "Migração de plataforma de dados" → Autenticação; PLAN.md,
  * tarefa `ajustes/migracao-mysql-modulo-auth-proprio`) — segredo simétrico
- * PRÓPRIO (`AUTH_JWT_SECRET`), nunca o segredo do Supabase
- * (`SUPABASE_JWT_SECRET`, lido por `supabase-env.ts`/`JwksTokenVerificador`,
- * ainda em uso pelo `AuthGuard` até a tarefa `migracao-mysql-cutover-wiring`).
+ * PRÓPRIO (`AUTH_JWT_SECRET`), nunca um segredo de terceiro.
  *
  * Mesmo estilo de `mysql-env.ts` (leitura + validação descritiva, sem valor
  * hardcoded). `AppJwtTokenVerificador`/`AppJwtEmissorToken`
  * (`infrastructure/auth/`) são os dois únicos consumidores.
  */
 export interface AuthJwtEnv {
-  /** Segredo HS256 da aplicação — nunca o do Supabase. Recomendado ≥32 caracteres (mesma régua de `SUPABASE_JWT_SECRET`). */
+  /** Segredo HS256 da aplicação. Recomendado ≥32 caracteres. */
   secret: string;
   /**
    * Validade do token emitido (formato aceito por `jose` — ex. `"8h"`,
@@ -42,8 +40,7 @@ function lerObrigatoria(env: NodeJS.ProcessEnv, nome: string): string {
 /**
  * @throws {Error} se `AUTH_JWT_SECRET` faltar ou tiver menos de
  * `TAMANHO_MINIMO_SEGREDO` caracteres (HS256 é tão forte quanto o segredo —
- * um segredo curto é adivinhável por força bruta; mesmo mínimo documentado
- * no placeholder de `SUPABASE_JWT_SECRET` em `.env.example`).
+ * um segredo curto é adivinhável por força bruta).
  */
 export function carregarAuthJwtEnv(env: NodeJS.ProcessEnv = process.env): AuthJwtEnv {
   const secret = lerObrigatoria(env, 'AUTH_JWT_SECRET');

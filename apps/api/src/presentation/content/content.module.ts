@@ -19,10 +19,8 @@ import { ContentPublicController } from './content-public.controller';
  * concreta `MySqlContentSectionsRepository` (Infraestrutura, MySQL real,
  * tabela `content_sections`) — mesmo padrão de
  * `presentation/auth/auth.module.ts` para `VERIFICADOR_TOKEN`: este é o único
- * ponto do código que decide QUAL implementação satisfaz a porta. Substitui
- * `SupabaseContentSectionsRepository` (tarefa
- * `ajustes/migracao-mysql-cutover-wiring`, SDD § "Migração de plataforma de
- * dados").
+ * ponto do código que decide QUAL implementação satisfaz a porta (SDD §
+ * "Migração de plataforma de dados").
  */
 const contentSectionsRepositoryProvider: Provider = {
   provide: CONTENT_SECTIONS_REPOSITORY,

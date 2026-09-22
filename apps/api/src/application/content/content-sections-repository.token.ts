@@ -8,7 +8,7 @@
  * Definido na Aplicação (não na Apresentação, como `VERIFICADOR_TOKEN`)
  * porque é a Aplicação — os casos de uso deste módulo — quem declara a
  * dependência da porta via `@Inject`; a Apresentação (`content.module.ts`)
- * só liga a implementação concreta (`SupabaseContentSectionsRepository`,
+ * só liga a implementação concreta (`MySqlContentSectionsRepository`,
  * Infraestrutura) a este token.
  */
 export const CONTENT_SECTIONS_REPOSITORY = Symbol('ContentSectionsRepository');

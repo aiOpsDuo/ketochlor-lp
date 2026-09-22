@@ -21,10 +21,9 @@ export function ehChaveDeSecao(key: string): key is SectionKey {
  * Valida o `data` bruto de uma seção contra o esquema Zod correspondente,
  * reaproveitando o registro exportado por `@ketochlor/content-schema`
  * (SDD § Camadas e padrão arquitetural — Domínio: "Esquemas de seção, regras
- * de validação de conteúdo... Sem nenhum import de framework ou de
- * Supabase"). Não decide o que acontece com o resultado — quem chama
- * (futuramente, o caso de uso de Aplicação `PUT /api/admin/sections/:key`)
- * decide se persiste ou recusa.
+ * de validação de conteúdo... Sem nenhum import de framework"). Não decide o
+ * que acontece com o resultado — quem chama (o caso de uso de Aplicação
+ * `PUT /api/admin/sections/:key`) decide se persiste ou recusa.
  *
  * @throws {ChaveSecaoInvalidaError} se `key` não for uma das 11 seções
  * fechadas — uma seção inexistente não é "dado inválido", é uma requisição

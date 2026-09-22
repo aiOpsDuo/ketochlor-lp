@@ -48,18 +48,13 @@ export interface EmitirCredencialUploadInput {
  * § Riscos técnicos: um upload interrompido não deve deixar nenhuma seção
  * apontando para um arquivo inexistente).
  *
- * `token` é `string | null` desde a tarefa `ajustes/migracao-mysql-adapter-
- * midia-minio` (nasceu `string` na versão Supabase, que usa
- * `createSignedUploadUrl`/`uploadToSignedUrl`, um token opaco separado da
- * URL). Uma URL pré-assinada S3 (`MinioMediaAssetsRepository`) já embute
+ * `token` é `string | null` (tarefa `ajustes/migracao-mysql-adapter-midia-
+ * minio`): uma URL pré-assinada S3 (`MinioMediaAssetsRepository`) já embute
  * toda a autenticação na própria URL — não existe um token equivalente a
  * devolver, e inventar um valor não seria honesto sobre o que o adaptador de
  * fato oferece. `MinioMediaAssetsRepository.emitirCredencialUpload` devolve
- * `token: null`; o consumidor atual (`apps/admin/src/lib/media-upload.ts`,
- * que hoje só fala com o adaptador Supabase) é ajustado para um `PUT` HTTP
- * simples, sem token, na tarefa futura `migracao-mysql-painel-auth-e-upload`
- * — fora do escopo desta tarefa, que só adiciona o adaptador, sem cortar o
- * wiring.
+ * `token: null`; o consumidor (`apps/admin/src/lib/media-upload.ts`) faz um
+ * `PUT` HTTP simples direto à `signedUrl`, sem token.
  */
 export interface CredencialUploadEmitida {
   mediaAssetId: string;
