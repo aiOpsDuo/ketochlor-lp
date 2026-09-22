@@ -9,6 +9,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "gerar-seed": "node scripts/gerar-seed-conteudo-inicial.mjs",
+    "gerar-seed:mysql": "node scripts/gerar-seed-mysql.mjs",
     "migrate:mysql": "node scripts/migrar-mysql.mjs"
   },
   "dependencies": {
