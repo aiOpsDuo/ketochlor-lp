@@ -28,15 +28,16 @@ export function SectionListPage() {
 
   useEffect(() => {
     // `ProtectedRoute` só renderiza esta árvore com sessão presente, mas o
-    // tipo de `useAuth()` continua `Session | null` — guarda explícita em
-    // vez de asserção não-nula, pelo mesmo motivo de precisão de tipo (G26).
+    // tipo de `useAuth()` continua `SessaoOperador | null` — guarda
+    // explícita em vez de asserção não-nula, pelo mesmo motivo de precisão
+    // de tipo (G26).
     if (!session) {
       return
     }
 
     let cancelado = false
 
-    apiFetch<SecaoResumo[]>('/api/admin/sections', session.access_token)
+    apiFetch<SecaoResumo[]>('/api/admin/sections', session.accessToken)
       .then((resultado) => {
         if (!cancelado) {
           setSecoes(resultado)

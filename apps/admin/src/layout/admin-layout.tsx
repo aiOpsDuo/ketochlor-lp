@@ -15,7 +15,6 @@ import {
 import { useEffect, useState, type CSSProperties } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/auth-context'
-import { supabase } from '../lib/supabase-client'
 import { classeDeBotao } from '../shared/classes'
 import { useTheme } from '../theme/theme-context'
 
@@ -68,7 +67,7 @@ function gravarSidebarRecolhida(recolhida: boolean): void {
  * `LINKS_DE_NAVEGACAO`, sem tocar na estrutura daqui.
  */
 export function AdminLayout() {
-  const { session } = useAuth()
+  const { session, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const [recolhida, setRecolhida] = useState(lerSidebarRecolhida)
   const [gavetaAberta, setGavetaAberta] = useState(false)
@@ -88,10 +87,12 @@ export function AdminLayout() {
     })
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    // `onAuthStateChange` (auth-context) limpa a sessão e `ProtectedRoute`
-    // redireciona ao login — nenhuma navegação manual é necessária aqui.
+  function handleLogout() {
+    logout()
+    // Só apaga o token local (auth-context) — não há sessão de servidor
+    // para invalidar (SDD § "Migração de plataforma de dados" → Painel).
+    // `ProtectedRoute` redireciona ao login assim que `session` vira `null`
+    // — nenhuma navegação manual é necessária aqui.
   }
 
   const larguraDaLateral = recolhida ? 'lg:w-[4.75rem]' : 'lg:w-64'
@@ -189,9 +190,9 @@ export function AdminLayout() {
                 <Moon aria-hidden="true" className="h-4 w-4" />
               )}
             </button>
-            {session?.user.email && (
+            {session?.email && (
               <span className="hidden text-sm text-graytxt sm:inline dark:text-slate-400">
-                {session.user.email}
+                {session.email}
               </span>
             )}
             <button

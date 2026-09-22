@@ -21,8 +21,8 @@ interface ImageFieldEditorProps {
 
 /**
  * Campo de imagem (SDD § Critérios de aceitação — "Upload de imagem"):
- * upload REAL do arquivo, direto do navegador ao Supabase Storage, usando a
- * credencial temporária de `POST /api/admin/media/upload-url`
+ * upload REAL do arquivo, direto do navegador ao MinIO, usando a credencial
+ * temporária de `POST /api/admin/media/upload-url`
  * (`../../../lib/media-upload.ts`).
  *
  * **Correção da tarefa `ajustes/tema-escuro-logo-e-campo-de-imagem`:** a

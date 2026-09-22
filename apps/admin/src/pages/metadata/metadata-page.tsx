@@ -31,7 +31,7 @@ function paraFormulario(metadata: SiteMetadata): FormularioMetadata {
  * compartilhamento"): busca o estado atual via `GET /api/admin/metadata` ao
  * montar e salva via `PUT /api/admin/metadata` (`docs/API.md`), mesmo padrão
  * de tela autenticada de `SectionListPage` (`apiFetch` com
- * `session.access_token`, estado de carregamento/erro explícito).
+ * `session.accessToken`, estado de carregamento/erro explícito).
  *
  * **Correção da tarefa `ajustes/corrige-imagem-metadados` (achado de QA):**
  * `ogImageMediaId` (id de `media_assets` que nenhuma rota da API jamais
@@ -66,14 +66,14 @@ export function MetadataPage() {
   useEffect(() => {
     // `ProtectedRoute` só renderiza esta árvore com sessão presente, mesma
     // guarda explícita de `SectionListPage` (tipo de `useAuth()` continua
-    // `Session | null`, G26).
+    // `SessaoOperador | null`, G26).
     if (!session) {
       return
     }
 
     let cancelado = false
 
-    apiFetch<SiteMetadata>('/api/admin/metadata', session.access_token)
+    apiFetch<SiteMetadata>('/api/admin/metadata', session.accessToken)
       .then((resultado) => {
         if (!cancelado) {
           setFormulario(paraFormulario(resultado))
@@ -106,7 +106,7 @@ export function MetadataPage() {
     setSalvoComSucesso(false)
 
     try {
-      const atualizado = await apiFetch<SiteMetadata>('/api/admin/metadata', session.access_token, {
+      const atualizado = await apiFetch<SiteMetadata>('/api/admin/metadata', session.accessToken, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -144,7 +144,7 @@ export function MetadataPage() {
     setEnviandoImagem(true)
     setErroUploadImagem(null)
     try {
-      const url = await enviarImagemParaStorage(arquivo, session.access_token)
+      const url = await enviarImagemParaStorage(arquivo, session.accessToken)
       setFormulario({ ...formulario, ogImageUrl: url })
     } catch (erro) {
       setErroUploadImagem(erro instanceof ApiError ? erro.message : 'Não foi possível enviar a imagem.')
