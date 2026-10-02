@@ -90,7 +90,7 @@ describe('paraLeadPayload', () => {
     aceitaLGPD: true,
   };
 
-  it('mapeia aceitaLGPD para consentimentoAceito e preserva os demais campos', () => {
+  it('mapeia aceitaLGPD para consentimentoAceito, envia o texto do aceite e preserva os demais campos', () => {
     expect(paraLeadPayload(formCompleto)).toEqual({
       nome: 'Dr. João Lima',
       email: 'joao.lima@example.com',
@@ -102,6 +102,7 @@ describe('paraLeadPayload', () => {
       desejaContatoComercial: false,
       origem: 'material_tecnico',
       consentimentoAceito: true,
+      consentimentoTexto: 'Li e aceito a política de privacidade (LGPD)',
     });
   });
 

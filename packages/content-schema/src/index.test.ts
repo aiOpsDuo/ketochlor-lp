@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONTENT_SECTIONS, imageFieldSchema } from './index.js';
+import { CONTENT_SECTIONS, imageFieldSchema, POLITICA_PRIVACIDADE_URL } from './index.js';
 
 const SECTION_KEYS = Object.keys(CONTENT_SECTIONS) as (keyof typeof CONTENT_SECTIONS)[];
 
@@ -127,5 +127,12 @@ describe('validação negativa — schema não é um "any" disfarçado', () => {
     const { schema, initialContent } = CONTENT_SECTIONS.cta_secundario;
     const result = schema.safeParse({ ...initialContent, heading: '' });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('POLITICA_PRIVACIDADE_URL', () => {
+  it('é uma URL https absoluta que cabe em leads.consentimento_politica_url (VARCHAR(500))', () => {
+    expect(new URL(POLITICA_PRIVACIDADE_URL).protocol).toBe('https:');
+    expect(POLITICA_PRIVACIDADE_URL.length).toBeLessThanOrEqual(500);
   });
 });

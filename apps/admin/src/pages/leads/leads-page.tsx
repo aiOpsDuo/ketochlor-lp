@@ -34,6 +34,21 @@ function construirQueryDePeriodo(from: string, to: string): string {
   return query ? `?${query}` : ''
 }
 
+/**
+ * Resumo do aceite LGPD para a célula da tabela — "Sim — dd/mm/aaaa hh:mm"
+ * (mesmo `formatadorDeData` de "Recebido em"). Todo lead nasce com aceite
+ * (a API recusa o envio sem ele), então "Não" só apareceria num dado
+ * inconsistente; mostrado assim mesmo em vez de esconder o problema.
+ */
+function resumoDoConsentimento(lead: LeadResumo): string {
+  if (!lead.consentimentoAceito) {
+    return 'Não'
+  }
+  return lead.consentimentoEm
+    ? `Sim — ${formatadorDeData.format(new Date(lead.consentimentoEm))}`
+    : 'Sim'
+}
+
 function nomeDoArquivoCsv(from: string, to: string): string {
   if (!from && !to) {
     return 'leads.csv'
@@ -246,6 +261,7 @@ export function LeadsPage() {
                   <th className="px-4 py-2.5">Contato comercial</th>
                   <th className="px-4 py-2.5">Origem</th>
                   <th className="px-4 py-2.5">Recebido em</th>
+                  <th className="px-4 py-2.5">Consentimento LGPD</th>
                   <th className="px-4 py-2.5" />
                 </tr>
               </thead>
@@ -285,6 +301,35 @@ export function LeadsPage() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-graytxt dark:text-slate-400">
                       {formatadorDeData.format(new Date(lead.createdAt))}
+                    </td>
+                    <td className="px-4 py-2.5 text-graytxt dark:text-slate-400">
+                      <span className="whitespace-nowrap">{resumoDoConsentimento(lead)}</span>
+                      {/* Texto exibido e URL da política só existem para leads
+                          recebidos a partir de 2026-10-02 — nos anteriores
+                          ficam `null` (desconhecidos), e o detalhe é omitido. */}
+                      {(lead.consentimentoTexto || lead.consentimentoPoliticaUrl) && (
+                        <details className="mt-1 max-w-xs text-xs">
+                          <summary className="cursor-pointer text-blue-institutional dark:text-blue-300">
+                            Ver registro
+                          </summary>
+                          {lead.consentimentoTexto && (
+                            <p className="mt-1">Texto aceito: “{lead.consentimentoTexto}”</p>
+                          )}
+                          {lead.consentimentoPoliticaUrl && (
+                            <p className="mt-1 break-all">
+                              Política:{' '}
+                              <a
+                                href={lead.consentimentoPoliticaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                              >
+                                {lead.consentimentoPoliticaUrl}
+                              </a>
+                            </p>
+                          )}
+                        </details>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       {confirmandoExclusaoId === lead.id ? (

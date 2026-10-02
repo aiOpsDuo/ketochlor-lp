@@ -1,6 +1,9 @@
 import type { LeadPersistido } from '../../domain';
 
-/** Ordem das colunas do CSV — mesmos nomes de campo da resposta JSON (`LeadPersistido`), para quem já conhece a API não precisar aprender um segundo vocabulário de coluna. */
+/**
+ * Ordem das colunas do CSV — mesmos nomes de campo da resposta JSON (`LeadPersistido`), para quem já conhece a API não precisar aprender um segundo vocabulário de coluna.
+ * As 4 colunas de consentimento (2026-10-02) entram no FIM, depois de `createdAt`, para não deslocar as colunas já existentes para quem importa o arquivo.
+ */
 const COLUNAS: Array<keyof LeadPersistido> = [
   'id',
   'nome',
@@ -13,6 +16,10 @@ const COLUNAS: Array<keyof LeadPersistido> = [
   'desejaContatoComercial',
   'origem',
   'createdAt',
+  'consentimentoAceito',
+  'consentimentoEm',
+  'consentimentoTexto',
+  'consentimentoPoliticaUrl',
 ];
 
 /** Quebra de linha padrão de CSV (RFC 4180) — `\r\n`, não só `\n`. */

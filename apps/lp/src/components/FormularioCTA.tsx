@@ -1,7 +1,13 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { POLITICA_PRIVACIDADE_URL } from "@ketochlor/content-schema";
 import { usePublishedContent } from "../content/PublishedContentProvider";
 import { enviarLead, paraLeadPayload } from "../leads/enviar-lead";
+import {
+  TEXTO_CONSENTIMENTO_ANTES_DO_LINK,
+  TEXTO_CONSENTIMENTO_DEPOIS_DO_LINK,
+  TEXTO_CONSENTIMENTO_LINK,
+} from "../leads/texto-consentimento";
 import type { LeadFormData } from "../types";
 
 const INITIAL_STATE: LeadFormData = {
@@ -159,7 +165,23 @@ export default function FormularioCTA() {
                   onChange={(e) => update("aceitaLGPD", e.target.checked)}
                   className="mt-1"
                 />
-                Li e aceito a política de privacidade (LGPD)
+                {/* O link fica dentro do <label>, mas clicar nele não marca o
+                    aceite: um conteúdo interativo descendente do label é o
+                    alvo da ativação do clique (HTML § The label element), não
+                    o checkbox — coberto por teste. */}
+                <span>
+                  {TEXTO_CONSENTIMENTO_ANTES_DO_LINK}
+                  <a
+                    href={POLITICA_PRIVACIDADE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-institutional underline hover:text-navy"
+                  >
+                    {TEXTO_CONSENTIMENTO_LINK}
+                    <span className="sr-only"> (abre em nova aba)</span>
+                  </a>
+                  {TEXTO_CONSENTIMENTO_DEPOIS_DO_LINK}
+                </span>
               </label>
 
               {erro && (

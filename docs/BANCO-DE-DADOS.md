@@ -30,7 +30,7 @@ npm run migrate:mysql --prefix apps/api
 
 `migrate:mysql` (`apps/api/scripts/migrar-mysql.mjs`) lê `apps/api/mysql/migrations/*.sql` em ordem alfabética do nome do arquivo (prefixo numérico `NNNN_`), cria a tabela de controle `schema_migrations` se ainda não existir, e aplica só os arquivos ainda não registrados nela — rodar de novo é seguro, não tenta recriar o que já existe (`Nenhuma migration pendente — schema_migrations já cobre todos os arquivos.`). Roda como `root` do MySQL (nunca com a credencial de aplicação, que não tem privilégio de DDL — ver "Usuário de aplicação" abaixo); precisa de `MYSQL_DATABASE`/`MYSQL_ROOT_PASSWORD` no ambiente (os mesmos valores do `.env` da raiz, ver [`docs/DOCKER.md` § Variáveis de ambiente](./DOCKER.md)) e, por padrão, resolve o host `mysql` — o nome do serviço no compose, então este script foi desenhado para rodar de dentro da rede do compose (`docker compose run`) ou de um processo que já tenha `MYSQL_HOST` apontando para onde o MySQL está de fato alcançável (ex. `127.0.0.1`, com a porta publicada manualmente num `docker-compose.override.yml` local).
 
-Arquivos de migration hoje (`apps/api/mysql/migrations/`), uma tabela por arquivo, na ordem em que criam as tabelas:
+Arquivos de migration hoje (`apps/api/mysql/migrations/`), na ordem em que são aplicados (0001–0005 criam uma tabela cada; 0006 altera `leads`):
 
 | Arquivo | Tabela |
 |---|---|
@@ -39,6 +39,7 @@ Arquivos de migration hoje (`apps/api/mysql/migrations/`), uma tabela por arquiv
 | `0003_create_media_assets.sql` | `media_assets` |
 | `0004_create_leads.sql` | `leads` |
 | `0005_create_operators.sql` | `operators` |
+| `0006_add_consentimento_to_leads.sql` | `leads` — adiciona o registro do consentimento LGPD (ver nota abaixo) |
 
 ## Modelo de dados
 
@@ -49,7 +50,7 @@ Cinco tabelas em MySQL 8. Detalhe completo de cada coluna em [`agent_context/SDD
 | `content_sections` | Uma linha por seção da LP (as 11 seções fechadas do PRD), com o conteúdo em `data JSON`, a visibilidade de item de lista em `item_visibility JSON` (ver nota abaixo) e uma flag `is_published` de visibilidade da seção inteira. |
 | `site_metadata` | Registro único (`id TINYINT(1) PRIMARY KEY DEFAULT 1 CHECK (id = 1)`) com título, descrição e a URL pública (`og_image_url`) da imagem de Open Graph do site. |
 | `media_assets` | Um registro por imagem enviada ao MinIO e confirmada por `MinioMediaAssetsRepository.criar` — ver [`docs/API.md` § Mídia](./API.md) para o fluxo completo e a lacuna conhecida (o painel ainda não chama essa confirmação). |
-| `leads` | Um registro por envio do formulário de Material Técnico da LP pública. |
+| `leads` | Um registro por envio do formulário de Material Técnico da LP pública, com o registro do consentimento LGPD (desde 2026-10-02, ver abaixo). |
 | `operators` | Um registro por operador com acesso ao painel — tabela nova desde a migração (antes o operador era integralmente um usuário do Supabase Auth, sem tabela própria). |
 
 ### `content_sections.item_visibility`
@@ -59,6 +60,10 @@ Coluna paralela a `data`, guarda o `ItemVisibilityMap` do Domínio (`apps/api/sr
 ### `site_metadata.og_image_url`
 
 Guarda a URL pública da imagem de Open Graph diretamente (`VARCHAR(2048)`, nulável), validada em `PUT /api/admin/metadata` (`docs/API.md` § Metadados) — o mesmo padrão já usado pelas imagens de seção (`{ url, alt }` em `content_sections.data`). Sem indireção por `media_assets.id`: nenhuma rota da API grava esse campo como referência a um registro de mídia.
+
+### `leads.consentimento_*` (2026-10-02)
+
+Até 2026-10-02 o aceite da política de privacidade era só condição de envio (a API recusa `422` sem ele) e **não era persistido** — decisão original do SDD. A pedido do cliente (o Marketing precisa do registro para gerir a base e excluir leads em caso de revogação), `0006_add_consentimento_to_leads.sql` adiciona `consentimento_aceito BOOLEAN NOT NULL DEFAULT FALSE`, `consentimento_em DATETIME NULL` (UTC, relógio do servidor — o mesmo instante de `created_at`), `consentimento_texto VARCHAR(500) NULL` (texto do aceite que o visitante viu) e `consentimento_politica_url VARCHAR(500) NULL` (URL da política em vigor, `POLITICA_PRIVACIDADE_URL` de `@ketochlor/content-schema`, gravada pela API, nunca vinda do cliente). Sem IP/user-agent. Backfill na própria migration: todo lead já existente recebe `consentimento_aceito = TRUE` e `consentimento_em = created_at` (nenhum lead jamais nasceu sem aceite); texto/URL ficam `NULL` (desconhecidos). O MySQL 8 não tem `ADD COLUMN IF NOT EXISTS`, então o `ALTER TABLE` é montado condicionalmente via `information_schema` + `PREPARE` — reexecutar o arquivo fora do runner é no-op (verificado); estado parcial (coluna criada à mão) falha alto em vez de seguir em silêncio.
 
 ### Usuário de aplicação (sem Row Level Security)
 

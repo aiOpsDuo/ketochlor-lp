@@ -1,4 +1,5 @@
 import type { LeadFormData } from '../types';
+import { TEXTO_CONSENTIMENTO_LGPD } from './texto-consentimento';
 
 /** Identifica, em `origem`, que o envio veio do formulário de Material Técnico. */
 const ORIGEM_MATERIAL_TECNICO = 'material_tecnico';
@@ -20,6 +21,8 @@ export interface LeadPayload {
   desejaContatoComercial?: boolean;
   origem?: string;
   consentimentoAceito: boolean;
+  /** Texto puro do aceite exibido ao visitante — a API o grava como registro do consentimento. */
+  consentimentoTexto?: string;
 }
 
 /** Converte o estado do formulário (`LeadFormData`) no corpo esperado por `POST /api/leads`. */
@@ -35,6 +38,7 @@ export function paraLeadPayload(form: LeadFormData): LeadPayload {
     desejaContatoComercial: form.desejaContatoComercial,
     origem: ORIGEM_MATERIAL_TECNICO,
     consentimentoAceito: form.aceitaLGPD,
+    consentimentoTexto: TEXTO_CONSENTIMENTO_LGPD,
   };
 }
 

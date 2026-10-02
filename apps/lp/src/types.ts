@@ -16,6 +16,12 @@ export interface NavItem {
   targetId: SectionId
 }
 
+/** Item do rodapé institucional. Sem `href`, o item é só texto (não é uma página). */
+export interface FooterLink {
+  label: string
+  href?: string
+}
+
 export interface LeadFormData {
   nome: string
   email: string

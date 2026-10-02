@@ -165,8 +165,14 @@ Não há coluna `kind`: diferente do precedente que inspirou esta estrutura, est
 | `ja_cliente_virbac`, `deseja_contato_comercial` | `BOOLEAN` (`TINYINT(1)`) | |
 | `origem` | `VARCHAR(255)` | Reservado para identificar a origem do envio (ex.: campanha), se necessário na implementação |
 | `created_at` | `DATETIME` (UTC) | |
+| `consentimento_aceito` | `BOOLEAN` (`TINYINT(1)`), `NOT NULL DEFAULT FALSE` | Desde 2026-10-02 (nota abaixo). Sempre `TRUE` em lead gravado pela API |
+| `consentimento_em` | `DATETIME` (UTC), nulável | Relógio do servidor, mesmo instante de `created_at` — nunca vindo do cliente |
+| `consentimento_texto` | `VARCHAR(500)`, nulável | Texto do aceite que o visitante viu; `NULL` em lead legado |
+| `consentimento_politica_url` | `VARCHAR(500)`, nulável | `POLITICA_PRIVACIDADE_URL` (`@ketochlor/content-schema`) no momento do aceite; `NULL` em lead legado |
 
-**Por que não existe coluna `aceite_lgpd`.** O aceite da política de privacidade é **condição de envio**: o formulário já marca o campo como obrigatório no front-end, e a API recusa (`422`) qualquer envio sem ele — nenhum registro nasce sem consentimento. Guardar uma coluna significaria gravar a constante `true` em toda linha, informação zero. A prova de consentimento é a própria existência do registro somado a `created_at`.
+**(Substituída em 2026-10-02 — ver nota logo abaixo) Por que não existe coluna `aceite_lgpd`.** O aceite da política de privacidade é **condição de envio**: o formulário já marca o campo como obrigatório no front-end, e a API recusa (`422`) qualquer envio sem ele — nenhum registro nasce sem consentimento. Guardar uma coluna significaria gravar a constante `true` em toda linha, informação zero. A prova de consentimento é a própria existência do registro somado a `created_at`.
+
+**Nota 2026-10-02 — o consentimento passa a ser persistido (pedido do cliente).** O Marketing precisa do registro do aceite no banco para gerir a base e remover leads em caso de revogação, então "informação zero" deixou de valer: além do aceite, guardam-se o instante (servidor), o texto exibido e a URL da política vigente — os dois últimos variam ao longo do tempo e são o que de fato prova *a que* o visitante consentiu. Sem IP/user-agent (decisão com o cliente). Migration `0006_add_consentimento_to_leads.sql`, com backfill dos leads anteriores (`consentimento_aceito = TRUE`, `consentimento_em = created_at`, texto/URL `NULL`). A regra de envio não muda: sem aceite, `422` e nenhum registro. Ver `CHANGELOG.md`, 2026-10-02.
 
 **`operators`** — um registro por operador do painel (tabela nova; antes o operador era integralmente um usuário do Supabase Auth, sem tabela própria — ver "Migração de plataforma de dados" acima).
 
@@ -263,7 +269,7 @@ Prefixo de rota único: `/api`. Formato de erro uniforme: `{ "message": string, 
 - `POST /api/admin/media/upload-url` → emite credencial temporária (URL pré-assinada MinIO) de upload direto ao Storage e devolve o `id` reservado do `media_assets` a referenciar no documento de seção.
 
 **Leads:**
-- `POST /api/leads` (público) → cria um registro em `leads`; `422` se `nome`/`email` ausentes ou se o consentimento não foi marcado no corpo da requisição (o consentimento em si não é persistido, ver modelo de dados).
+- `POST /api/leads` (público) → cria um registro em `leads`; `422` se `nome`/`email` ausentes, se o consentimento não foi marcado no corpo da requisição, ou se `consentimentoTexto` (opcional) não for string de até 500 caracteres. Desde 2026-10-02 o consentimento é persistido (aceite, instante do servidor, texto, URL da política — ver modelo de dados); antes, não era.
 - `GET /api/admin/leads?from=&to=` (autenticado) → lista paginada, mais recente primeiro, com filtro por período.
 - `GET /api/admin/leads/export.csv?from=&to=` (autenticado) → exportação da mesma listagem em CSV.
 - `DELETE /api/admin/leads/:id` (autenticado) → exclusão a pedido do titular.
@@ -290,7 +296,7 @@ Prefixo de rota único: `/api`. Formato de erro uniforme: `{ "message": string, 
 - **Controle de visibilidade:** marcar uma seção ou item de lista como não publicado remove-o do `GET /api/content` (e da LP) sem apagar o registro — reativar a visibilidade traz o conteúdo de volta inalterado.
 - **Metadados de busca e compartilhamento:** o HTML retornado pela primeira resposta do servidor contém `<title>`, `<meta name="description">` e `<meta property="og:image">` com os valores salvos em `site_metadata`, verificável com uma requisição HTTP simples (sem executar JavaScript).
 - **Consumo pelo front-end:** nenhuma seção da LP lê mais de `src/data/content.ts` — todo o conteúdo hoje hardcoded ali foi migrado para `content_sections` como estado inicial.
-- **Registro de lead:** um `POST /api/leads` válido cria exatamente um registro em `leads`; um envio sem consentimento marcado é recusado com `422` e não cria registro.
+- **Registro de lead:** um `POST /api/leads` válido cria exatamente um registro em `leads`; um envio sem consentimento marcado é recusado com `422` e não cria registro. (2026-10-02) O registro criado carrega `consentimento_aceito = TRUE`, `consentimento_em` do servidor, o texto enviado e a URL da política vigente.
 - **Consulta e exportação de leads:** a tela de leads lista da mais recente para a mais antiga; aplicar um filtro de período reduz a listagem e a exportação ao intervalo escolhido; excluir um lead o remove permanentemente da listagem e da tabela.
 
 ## Dependências externas

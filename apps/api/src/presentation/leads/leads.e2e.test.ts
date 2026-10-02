@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { POLITICA_PRIVACIDADE_URL } from '@ketochlor/content-schema';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { Pool } from 'mysql2/promise';
@@ -40,6 +41,8 @@ describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () =>
 
   const authHeader = () => `Bearer ${accessToken}`;
 
+  const TEXTO_CONSENTIMENTO = 'Li e aceito a política de privacidade (LGPD)';
+
   function corpoLeadValido(overrides: Record<string, unknown> = {}) {
     return {
       nome: 'Dra. Maria Teste',
@@ -52,6 +55,7 @@ describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () =>
       desejaContatoComercial: false,
       origem: 'teste-e2e-leads',
       consentimentoAceito: true,
+      consentimentoTexto: TEXTO_CONSENTIMENTO,
       ...overrides,
     };
   }
@@ -93,7 +97,8 @@ describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () =>
   }, 20_000);
 
   describe('POST /api/leads (pública)', () => {
-    it('cria um lead com 201 SEM nenhum header de autenticação, e a resposta nunca tem consentimentoAceito', async () => {
+    it('cria um lead com 201 SEM nenhum header de autenticação, com o registro do consentimento na resposta e no banco', async () => {
+      const antesDoEnvio = Date.now();
       const resposta = await request(app.getHttpServer())
         .post('/api/leads')
         .send(corpoLeadValido());
@@ -101,18 +106,72 @@ describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () =>
       expect(resposta.status).toBe(201);
       expect(resposta.body.id).toBeTruthy();
       expect(resposta.body.nome).toBe('Dra. Maria Teste');
-      expect(resposta.body.consentimentoAceito).toBeUndefined();
+      expect(resposta.body.consentimentoAceito).toBe(true);
       idsParaLimpar.push(resposta.body.id);
 
-      // Confirma que o registro persistido também não carrega o campo — não
-      // é só a resposta HTTP que o omite, ele nunca existiu no banco (PRD §
-      // Compliance/LGPD).
+      // Confirma no registro persistido (via listagem administrativa), não só
+      // na resposta do POST: aceite + instante de servidor (= created_at) +
+      // texto exibido + URL da política (pedido do cliente de 2026-10-02).
       const listagem = await request(app.getHttpServer())
         .get('/api/admin/leads')
         .set('Authorization', authHeader());
       const persistido = listagem.body.find((l: { id: string }) => l.id === resposta.body.id);
-      expect(persistido).toBeTruthy();
-      expect(persistido.consentimentoAceito).toBeUndefined();
+      expect(persistido).toMatchObject({
+        consentimentoAceito: true,
+        consentimentoTexto: TEXTO_CONSENTIMENTO,
+        consentimentoPoliticaUrl: POLITICA_PRIVACIDADE_URL,
+      });
+      expect(persistido.consentimentoEm).toBe(persistido.createdAt);
+      // DATETIME tem resolução de segundo — tolerância de 1s para trás.
+      expect(Date.parse(persistido.consentimentoEm)).toBeGreaterThanOrEqual(antesDoEnvio - 1000);
+    });
+
+    it('ignora instante e URL da política enviados pelo cliente — os dois são sempre do servidor', async () => {
+      const resposta = await request(app.getHttpServer())
+        .post('/api/leads')
+        .send(
+          corpoLeadValido({
+            consentimentoEm: '2000-01-01T00:00:00.000Z',
+            consentimentoPoliticaUrl: 'https://malicioso.example.com/politica',
+          }),
+        );
+
+      expect(resposta.status).toBe(201);
+      idsParaLimpar.push(resposta.body.id);
+      expect(resposta.body.consentimentoPoliticaUrl).toBe(POLITICA_PRIVACIDADE_URL);
+      expect(resposta.body.consentimentoEm).toBe(resposta.body.createdAt);
+      expect(resposta.body.consentimentoEm.startsWith('2000-')).toBe(false);
+    });
+
+    it('aceita um corpo sem consentimentoTexto e grava o texto como null', async () => {
+      const { consentimentoTexto: _texto, ...semTexto } = corpoLeadValido();
+      const resposta = await request(app.getHttpServer()).post('/api/leads').send(semTexto);
+
+      expect(resposta.status).toBe(201);
+      idsParaLimpar.push(resposta.body.id);
+      expect(resposta.body.consentimentoAceito).toBe(true);
+      expect(resposta.body.consentimentoTexto).toBeNull();
+      expect(resposta.body.consentimentoPoliticaUrl).toBe(POLITICA_PRIVACIDADE_URL);
+    });
+
+    it.each([
+      ['não é string', 123],
+      ['passa de 500 caracteres', 'a'.repeat(501)],
+    ])('recusa 422 um consentimentoTexto que %s e não cria nenhum registro', async (_caso, valor) => {
+      const emailUnico = `texto.invalido.e2e.${randomUUID()}@example.com`;
+      const resposta = await request(app.getHttpServer())
+        .post('/api/leads')
+        .send(corpoLeadValido({ email: emailUnico, consentimentoTexto: valor }));
+
+      expect(resposta.status).toBe(422);
+      expect(
+        resposta.body.erros.some((erro: { campo: string }) => erro.campo === 'consentimentoTexto'),
+      ).toBe(true);
+
+      const listagem = await request(app.getHttpServer())
+        .get('/api/admin/leads')
+        .set('Authorization', authHeader());
+      expect(listagem.body.some((l: { email: string }) => l.email === emailUnico)).toBe(false);
     });
 
     it('recusa 422 um corpo sem consentimentoAceito e não cria nenhum registro', async () => {
@@ -217,7 +276,7 @@ describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () =>
 
       const linhas = (resposta.text as string).trim().split('\r\n');
       expect(linhas[0]).toBe(
-        'id,nome,email,telefone,crmv,estadoCidade,especialidade,jaClienteVirbac,desejaContatoComercial,origem,createdAt',
+        'id,nome,email,telefone,crmv,estadoCidade,especialidade,jaClienteVirbac,desejaContatoComercial,origem,createdAt,consentimentoAceito,consentimentoEm,consentimentoTexto,consentimentoPoliticaUrl',
       );
 
       const listagemJson = await request(app.getHttpServer())
@@ -225,7 +284,13 @@ describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () =>
         .set('Authorization', authHeader());
       // Cabeçalho + uma linha por lead da mesma listagem (sem filtro).
       expect(linhas.length).toBe(listagemJson.body.length + 1);
-      expect(linhas.some((linha: string) => linha.startsWith(lead.id))).toBe(true);
+      const linhaDoLead = linhas.find((linha: string) => linha.startsWith(lead.id));
+      expect(linhaDoLead).toBeTruthy();
+      expect(
+        linhaDoLead?.endsWith(
+          `,true,${lead.createdAt},${TEXTO_CONSENTIMENTO},${POLITICA_PRIVACIDADE_URL}`,
+        ),
+      ).toBe(true);
     });
   });
 

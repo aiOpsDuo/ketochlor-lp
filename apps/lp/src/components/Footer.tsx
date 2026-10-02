@@ -23,10 +23,20 @@ export default function Footer() {
             <p className="text-gold text-xs font-bold tracking-wide mb-4">INSTITUCIONAL</p>
             <ul className="space-y-3">
               {FOOTER_LINKS.map((link) => (
-                <li key={link}>
-                  <a href="#" className="text-[#D2D8E4] text-sm hover:text-white transition">
-                    {link}
-                  </a>
+                <li key={link.label}>
+                  {link.href ? (
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#D2D8E4] text-sm hover:text-white transition"
+                    >
+                      {link.label}
+                      <span className="sr-only"> (abre em nova aba)</span>
+                    </a>
+                  ) : (
+                    <span className="text-[#D2D8E4] text-sm">{link.label}</span>
+                  )}
                 </li>
               ))}
             </ul>

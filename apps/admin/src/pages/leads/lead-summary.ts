@@ -17,4 +17,9 @@ export interface LeadResumo {
   desejaContatoComercial: boolean
   origem: string | null
   createdAt: string
+  /** Registro do aceite LGPD (desde 2026-10-02). Leads anteriores: aceite `true`, `consentimentoEm` = `createdAt`, texto/URL `null` (desconhecidos). */
+  consentimentoAceito: boolean
+  consentimentoEm: string | null
+  consentimentoTexto: string | null
+  consentimentoPoliticaUrl: string | null
 }

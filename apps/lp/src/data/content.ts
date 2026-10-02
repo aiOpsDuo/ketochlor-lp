@@ -1,4 +1,5 @@
-import type { NavItem } from "../types";
+import { POLITICA_PRIVACIDADE_URL } from "@ketochlor/content-schema";
+import type { FooterLink, NavItem } from "../types";
 
 /**
  * Header e Footer permanecem fixos em código (PRD § Fora de escopo —
@@ -26,10 +27,17 @@ export const REFERENCIAS = [
   "6. Ferreira TC, Cunha MGMC, Nunes-Pinheiro DCS. Ciência Rural. 2023;53(8).",
 ];
 
-export const FOOTER_LINKS = [
-  "Sobre a Virbac",
-  "Política de Privacidade e LGPD",
-  "Termos e Condições",
-  "Contato",
-  "Uso Veterinário · Cães",
+/**
+ * Links institucionais do rodapé — todos externos (site da Virbac Brasil),
+ * abertos em nova aba por `Footer`. "Termos e Condições" aponta para a mesma
+ * página de aviso legal da política de privacidade: o site da Virbac não tem
+ * uma página separada de termos. "Uso Veterinário · Cães" é uma indicação de
+ * uso do produto, não uma página — por isso sem `href` (vira texto simples).
+ */
+export const FOOTER_LINKS: FooterLink[] = [
+  { label: "Sobre a Virbac", href: "https://br.virbac.com/home/sobre-nos.html" },
+  { label: "Política de Privacidade e LGPD", href: POLITICA_PRIVACIDADE_URL },
+  { label: "Termos e Condições", href: "https://br.virbac.com/home/legal-notice.html" },
+  { label: "Contato", href: "https://br.virbac.com/contato" },
+  { label: "Uso Veterinário · Cães" },
 ];

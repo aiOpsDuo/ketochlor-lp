@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { POLITICA_PRIVACIDADE_URL } from '@ketochlor/content-schema';
 import type { ErroValidacaoCampo, LeadPersistido, LeadsRepository } from '../../domain';
 import { validarLead } from '../../domain';
 import { LEADS_REPOSITORY } from './leads-repository.token';
@@ -21,8 +22,10 @@ export interface RegistrarLeadInput {
   jaClienteVirbac?: boolean;
   desejaContatoComercial?: boolean;
   origem?: string;
-  /** Condição de envio — nunca persistido (`validarLead` o consome e o remove). */
+  /** Condição de envio (precisa ser `true`) e, desde 2026-10-02, registrado em `leads.consentimento_aceito`. */
   consentimentoAceito: boolean;
+  /** Texto do aceite exibido ao visitante — opcional, ver `LeadPayloadBruto`. */
+  consentimentoTexto?: string;
 }
 
 export type ResultadoRegistroLead =
@@ -38,10 +41,12 @@ export type ResultadoRegistroLead =
  * repositório diretamente, mesmo padrão de
  * `AtualizarMetadataUseCase`/`EmitirCredencialUploadUseCase`.
  *
- * `consentimentoAceito` só existe até aqui: `validarLead` o consome para
- * decidir se o envio é aceito e o remove do dado validado antes deste caso de
- * uso repassar ao repositório — nenhum caminho deste código grava esse campo
- * (PRD § Compliance/LGPD: "o consentimento nunca é persistido").
+ * Registro do consentimento (pedido do cliente de 2026-10-02, ver
+ * `agent_context/CHANGELOG.md`): o aceite validado segue para o repositório
+ * junto com `POLITICA_PRIVACIDADE_URL` — anexada AQUI, do lado do servidor,
+ * depois do dado validado, para nenhum valor vindo do corpo da requisição
+ * sobrescrevê-la. O instante do aceite é o relógio da Infraestrutura (o mesmo
+ * de `created_at`), nunca um horário enviado pelo cliente.
  */
 @Injectable()
 export class RegistrarLeadUseCase {
@@ -53,8 +58,9 @@ export class RegistrarLeadUseCase {
   /**
    * @returns `{ sucesso: false, erros }` se `nome`/`email` estiverem vazios,
    * `email` não tiver formato válido, ou `consentimentoAceito` não for
-   * estritamente `true` (a Apresentação traduz para `422`); caso contrário, o
-   * lead criado (sem `consentimentoAceito`).
+   * estritamente `true`, ou `consentimentoTexto` for inválido (a
+   * Apresentação traduz para `422`); caso contrário, o lead criado, já com o
+   * registro do consentimento.
    */
   async executar(input: RegistrarLeadInput): Promise<ResultadoRegistroLead> {
     const validacao = validarLead(input);
@@ -62,7 +68,10 @@ export class RegistrarLeadUseCase {
       return { sucesso: false, erros: validacao.erros };
     }
 
-    const lead = await this.repositorio.criar(validacao.dado);
+    const lead = await this.repositorio.criar({
+      ...validacao.dado,
+      consentimentoPoliticaUrl: POLITICA_PRIVACIDADE_URL,
+    });
     return { sucesso: true, lead };
   }
 }

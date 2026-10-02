@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { CONTENT_SECTIONS } from '@ketochlor/content-schema';
+import { CONTENT_SECTIONS, POLITICA_PRIVACIDADE_URL } from '@ketochlor/content-schema';
 import FormularioCTA from './FormularioCTA';
 import { PublishedContentProvider } from '../content/PublishedContentProvider';
 import type { PublishedContent } from '../content/published-content';
@@ -115,6 +115,7 @@ describe('FormularioCTA — envio para POST /api/leads', () => {
       email: 'ana.souza@example.com',
       crmv: 'SP-12345',
       consentimentoAceito: true,
+      consentimentoTexto: 'Li e aceito a política de privacidade (LGPD)',
       origem: 'material_tecnico',
     });
   });
@@ -215,5 +216,60 @@ describe('FormularioCTA — envio para POST /api/leads', () => {
     });
 
     await waitFor(() => expect(screen.getByText('Cadastro recebido.')).toBeTruthy());
+  });
+});
+
+describe('FormularioCTA — link da política de privacidade no aceite LGPD', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('o trecho "política de privacidade" do aceite é um link para POLITICA_PRIVACIDADE_URL, aberto em nova aba', async () => {
+    mockarFetch({ ok: true });
+    await renderizarFormulario();
+
+    const link = screen.getByRole('link', { name: /política de privacidade/ }) as HTMLAnchorElement;
+
+    expect(link.getAttribute('href')).toBe(POLITICA_PRIVACIDADE_URL);
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    // Aviso de nova aba para leitor de tela, sem poluir o texto visível.
+    expect(link.querySelector('.sr-only')?.textContent).toBe(' (abre em nova aba)');
+  });
+
+  it('clicar no link da política (dentro do <label>) não marca o aceite', async () => {
+    mockarFetch({ ok: true });
+    await renderizarFormulario();
+    const checkbox = screen.getByLabelText(/Li e aceito a política de privacidade/) as HTMLInputElement;
+
+    fireEvent.click(screen.getByRole('link', { name: /política de privacidade/ }));
+
+    expect(checkbox.checked).toBe(false);
+
+    // Controle: clicar no texto do rótulo FORA do link continua marcando o
+    // aceite — prova que o teste acima não passa só porque o jsdom ignora
+    // cliques dentro do <label>.
+    const link = screen.getByRole('link', { name: /política de privacidade/ });
+    fireEvent.click(link.parentElement as HTMLElement);
+    expect(checkbox.checked).toBe(true);
+  });
+
+  it('o consentimentoTexto enviado é exatamente o texto visível do aceite (sem o aviso só para leitor de tela)', async () => {
+    const fetchMock = mockarFetch({ ok: true });
+    await renderizarFormulario();
+    await preencherCamposObrigatorios();
+    const checkbox = screen.getByLabelText(/Li e aceito a política de privacidade/) as HTMLInputElement;
+    const rotulo = checkbox.closest('label') as HTMLLabelElement;
+    const avisoNovaAba = rotulo.querySelector('.sr-only')?.textContent ?? '';
+    const textoVisivel = (rotulo.textContent ?? '').replace(avisoNovaAba, '');
+
+    fireEvent.click(checkbox);
+    fireEvent.click(screen.getByRole('button', { name: /QUERO ACESSAR/ }));
+    await waitFor(() => expect(screen.getByText('Cadastro recebido.')).toBeTruthy());
+
+    const chamadaDeLeads = fetchMock.mock.calls.find(([url]) => url === '/api/leads');
+    const corpoEnviado = JSON.parse((chamadaDeLeads?.[1] as RequestInit).body as string);
+    expect(corpoEnviado.consentimentoTexto).toBe(textoVisivel);
   });
 });

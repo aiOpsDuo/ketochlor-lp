@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import type { LeadValidado } from '../../domain/leads/validar-lead';
 import type {
   FiltroPeriodoLeads,
+  LeadParaRegistro,
   LeadPersistido,
   LeadsRepository,
 } from '../../domain/portas/leads.repository';
@@ -22,6 +22,10 @@ interface LeadRow extends RowDataPacket {
   deseja_contato_comercial: number;
   origem: string | null;
   created_at: string;
+  consentimento_aceito: number;
+  consentimento_em: string | null;
+  consentimento_texto: string | null;
+  consentimento_politica_url: string | null;
 }
 
 function paraLeadPersistido(row: LeadRow): LeadPersistido {
@@ -37,6 +41,10 @@ function paraLeadPersistido(row: LeadRow): LeadPersistido {
     desejaContatoComercial: Boolean(row.deseja_contato_comercial),
     origem: row.origem,
     createdAt: paraIsoUtc(row.created_at),
+    consentimentoAceito: Boolean(row.consentimento_aceito),
+    consentimentoEm: row.consentimento_em ? paraIsoUtc(row.consentimento_em) : null,
+    consentimentoTexto: row.consentimento_texto,
+    consentimentoPoliticaUrl: row.consentimento_politica_url,
   };
 }
 
@@ -44,12 +52,17 @@ function paraLeadPersistido(row: LeadRow): LeadPersistido {
 export class MySqlLeadsRepository implements LeadsRepository {
   constructor(private readonly pool: Pool) {}
 
-  async criar(lead: LeadValidado): Promise<LeadPersistido> {
+  async criar(lead: LeadParaRegistro): Promise<LeadPersistido> {
     const id = randomUUID();
+    // Um único instante de servidor para `created_at` e `consentimento_em`:
+    // o aceite acontece no mesmo envio que cria o lead, e nunca se usa um
+    // horário vindo do cliente.
+    const agora = agoraMysqlUtc();
     await this.pool.execute(
       `INSERT INTO ${TABELA}
-        (id, nome, email, telefone, crmv, estado_cidade, especialidade, ja_cliente_virbac, deseja_contato_comercial, origem, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, nome, email, telefone, crmv, estado_cidade, especialidade, ja_cliente_virbac, deseja_contato_comercial, origem, created_at,
+         consentimento_aceito, consentimento_em, consentimento_texto, consentimento_politica_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         lead.nome,
@@ -61,7 +74,11 @@ export class MySqlLeadsRepository implements LeadsRepository {
         lead.jaClienteVirbac ?? false,
         lead.desejaContatoComercial ?? false,
         lead.origem ?? null,
-        agoraMysqlUtc(),
+        agora,
+        lead.consentimentoAceito,
+        agora,
+        lead.consentimentoTexto,
+        lead.consentimentoPoliticaUrl,
       ],
     );
     const [rows] = await this.pool.execute<LeadRow[]>(`SELECT * FROM ${TABELA} WHERE id = ?`, [id]);

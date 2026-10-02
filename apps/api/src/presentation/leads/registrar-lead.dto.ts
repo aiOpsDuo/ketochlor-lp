@@ -17,6 +17,8 @@ export interface RegistrarLeadDto {
   jaClienteVirbac?: boolean;
   desejaContatoComercial?: boolean;
   origem?: string;
-  /** A API recusa (`422`) qualquer corpo sem isto estritamente `true`; nunca persistido (PRD § Compliance/LGPD). */
+  /** A API recusa (`422`) qualquer corpo sem isto estritamente `true`; registrado em `leads.consentimento_aceito`. */
   consentimentoAceito: boolean;
+  /** Texto do aceite exibido ao visitante (texto puro, até 500 caracteres) — opcional. */
+  consentimentoTexto?: string;
 }

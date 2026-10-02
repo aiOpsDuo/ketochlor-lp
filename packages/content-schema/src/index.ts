@@ -7,6 +7,7 @@
 // Para adicionar um campo novo a uma seção existente, ver README.md § Manutenção.
 
 export * from './shared.js';
+export * from './lgpd.js';
 
 export * from './sections/hero.js';
 export * from './sections/problema.js';

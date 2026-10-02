@@ -17,7 +17,25 @@ export interface LeadPersistido {
   desejaContatoComercial: boolean;
   origem: string | null;
   createdAt: string;
+  /** Sempre `true` para leads novos; `true` também nos legados (backfill de `0006_add_consentimento_to_leads.sql`). */
+  consentimentoAceito: boolean;
+  /** ISO 8601 UTC, relógio do servidor. Nos leads legados, igual a `createdAt` (backfill). */
+  consentimentoEm: string | null;
+  /** Texto do aceite que o visitante viu; `null` se não enviado ou lead legado (desconhecido). */
+  consentimentoTexto: string | null;
+  /** URL da política em vigor no aceite; `null` em lead legado (desconhecida). */
+  consentimentoPoliticaUrl: string | null;
 }
+
+/**
+ * O que `LeadsRepository.criar` recebe: o lead validado pelo Domínio mais a
+ * URL da política de privacidade em vigor, anexada pela Aplicação
+ * (`RegistrarLeadUseCase`, a partir de `POLITICA_PRIVACIDADE_URL`) — nunca
+ * vinda do corpo da requisição. O instante do aceite (`consentimento_em`) não
+ * entra aqui: a Infraestrutura grava o mesmo relógio de servidor de
+ * `created_at`.
+ */
+export type LeadParaRegistro = LeadValidado & { consentimentoPoliticaUrl: string };
 
 /** Filtro de período usado tanto pela listagem quanto pela exportação (mesma query, ver SDD). */
 export interface FiltroPeriodoLeads {
@@ -28,8 +46,8 @@ export interface FiltroPeriodoLeads {
 }
 
 export interface LeadsRepository {
-  /** Cria um lead a partir do payload já validado pelo Domínio (`validarLead`) — `consentimentoAceito` nunca chega aqui. */
-  criar(lead: LeadValidado): Promise<LeadPersistido>;
+  /** Cria um lead a partir do payload já validado pelo Domínio (`validarLead`), com o registro do consentimento. */
+  criar(lead: LeadParaRegistro): Promise<LeadPersistido>;
 
   /**
    * Lista leads, mais recente primeiro, com filtro de período opcional.

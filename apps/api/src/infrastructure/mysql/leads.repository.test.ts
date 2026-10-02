@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import type { Pool } from 'mysql2/promise';
+import type { Pool, RowDataPacket } from 'mysql2/promise';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { criarMysqlPool } from './mysql-client.factory';
 import { MySqlLeadsRepository } from './leads.repository';
 import { carregarMysqlTestEnv } from '../test-support/mysql-test-env';
-import type { LeadValidado } from '../../domain/leads/validar-lead';
+import type { LeadParaRegistro } from '../../domain/portas/leads.repository';
 
 describe('MySqlLeadsRepository (infra)', () => {
   let pool: Pool;
@@ -23,7 +23,7 @@ describe('MySqlLeadsRepository (infra)', () => {
     await pool.end();
   });
 
-  function leadDeTeste(overrides: Partial<LeadValidado> = {}): LeadValidado {
+  function leadDeTeste(overrides: Partial<LeadParaRegistro> = {}): LeadParaRegistro {
     return {
       nome: 'Dra. Maria Teste',
       email: `maria.teste.${Date.now()}.${Math.random().toString(36).slice(2)}@example.com`,
@@ -34,6 +34,9 @@ describe('MySqlLeadsRepository (infra)', () => {
       jaClienteVirbac: true,
       desejaContatoComercial: false,
       origem: 'teste-integracao-mysql',
+      consentimentoAceito: true,
+      consentimentoTexto: 'Li e aceito a política de privacidade (LGPD)',
+      consentimentoPoliticaUrl: 'https://br.virbac.com/home/legal-notice.html',
       ...overrides,
     };
   }
@@ -45,6 +48,37 @@ describe('MySqlLeadsRepository (infra)', () => {
     expect(lead.nome).toBe('Dra. Maria Teste');
     expect(lead.jaClienteVirbac).toBe(true);
     expect(lead.desejaContatoComercial).toBe(false);
+
+    await repositorio.excluir(lead.id);
+  });
+
+  it('grava o registro do consentimento com consentimentoEm = createdAt (relógio do servidor)', async () => {
+    const lead = await repositorio.criar(leadDeTeste());
+
+    expect(lead.consentimentoAceito).toBe(true);
+    expect(lead.consentimentoEm).toBe(lead.createdAt);
+    expect(lead.consentimentoTexto).toBe('Li e aceito a política de privacidade (LGPD)');
+    expect(lead.consentimentoPoliticaUrl).toBe('https://br.virbac.com/home/legal-notice.html');
+
+    // Confirma no próprio banco, não só no objeto devolvido.
+    const [linhas] = await pool.execute<RowDataPacket[]>(
+      'SELECT consentimento_aceito, consentimento_em, created_at, consentimento_texto, consentimento_politica_url FROM leads WHERE id = ?',
+      [lead.id],
+    );
+    expect(linhas[0]).toMatchObject({
+      consentimento_aceito: 1,
+      consentimento_texto: 'Li e aceito a política de privacidade (LGPD)',
+      consentimento_politica_url: 'https://br.virbac.com/home/legal-notice.html',
+    });
+    expect(linhas[0].consentimento_em).toBe(linhas[0].created_at);
+
+    await repositorio.excluir(lead.id);
+  });
+
+  it('grava consentimento_texto NULL quando o texto não foi enviado', async () => {
+    const lead = await repositorio.criar(leadDeTeste({ consentimentoTexto: null }));
+
+    expect(lead.consentimentoTexto).toBeNull();
 
     await repositorio.excluir(lead.id);
   });
