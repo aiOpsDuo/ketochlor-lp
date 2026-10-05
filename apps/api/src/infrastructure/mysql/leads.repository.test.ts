@@ -98,12 +98,12 @@ describe('MySqlLeadsRepository (infra)', () => {
     await pool.execute('UPDATE leads SET created_at = ? WHERE id = ?', [umDiaAtras, antigo.id]);
     await pool.execute('UPDATE leads SET created_at = ? WHERE id = ?', [agora, recente.id]);
 
-    const todos = await repositorio.listarPorPeriodo();
+    const todos = await repositorio.listar();
     const indiceAntigo = todos.findIndex((l) => l.id === antigo.id);
     const indiceRecente = todos.findIndex((l) => l.id === recente.id);
     expect(indiceRecente).toBeLessThan(indiceAntigo);
 
-    const soRecentes = await repositorio.listarPorPeriodo({
+    const soRecentes = await repositorio.listar({
       from: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
     });
     expect(soRecentes.some((l) => l.id === recente.id)).toBe(true);
@@ -113,11 +113,92 @@ describe('MySqlLeadsRepository (infra)', () => {
     await repositorio.excluir(recente.id);
   });
 
+  describe('filtro por e-mail', () => {
+    // Um marcador único por execução em todo e-mail criado aqui: a tabela
+    // `leads` é compartilhada (inclusive com `leads.e2e.test.ts`, que o
+    // vitest pode rodar em paralelo), então cada busca só pode depender de
+    // leads deste bloco.
+    const marcador = randomUUID().slice(0, 8);
+    const ids: string[] = [];
+
+    async function criarComEmail(email: string) {
+      const lead = await repositorio.criar(leadDeTeste({ email }));
+      ids.push(lead.id);
+      return lead;
+    }
+
+    afterAll(async () => {
+      for (const id of ids) {
+        await repositorio.excluir(id);
+      }
+    });
+
+    it('casa um trecho do e-mail, sem diferenciar maiúsculas de minúsculas', async () => {
+      const maiusculo = await criarComEmail(`Maria.Silva.${marcador}@Example.COM`);
+      const outro = await criarComEmail(`joao.${marcador}@example.com`);
+
+      const resultado = await repositorio.listar({ email: `maria.silva.${marcador}@example` });
+      expect(resultado.map((l) => l.id)).toEqual([maiusculo.id]);
+      // O e-mail volta como foi gravado — a busca não altera o dado.
+      expect(resultado[0].email).toBe(`Maria.Silva.${marcador}@Example.COM`);
+
+      const porDominio = await repositorio.listar({ email: `.${marcador}@EXAMPLE.com` });
+      expect(porDominio.map((l) => l.id).sort()).toEqual([maiusculo.id, outro.id].sort());
+    });
+
+    it('trata % e _ digitados como texto literal, não como curinga', async () => {
+      const comSublinhado = await criarComEmail(`ana_lima.${marcador}@example.com`);
+      const semSublinhado = await criarComEmail(`anaxlima.${marcador}@example.com`);
+      const comPercentual = await criarComEmail(`cem%off.${marcador}@example.com`);
+
+      const porSublinhado = await repositorio.listar({ email: `ana_lima.${marcador}` });
+      expect(porSublinhado.map((l) => l.id)).toEqual([comSublinhado.id]);
+      expect(porSublinhado.some((l) => l.id === semSublinhado.id)).toBe(false);
+
+      const porPercentual = await repositorio.listar({ email: `%off.${marcador}` });
+      expect(porPercentual.map((l) => l.id)).toEqual([comPercentual.id]);
+
+      // Um `%` sozinho só casa quem de fato tem `%` no e-mail.
+      const soPercentual = await repositorio.listar({ email: '%' });
+      expect(soPercentual.some((l) => l.id === comPercentual.id)).toBe(true);
+      expect(soPercentual.some((l) => l.id === comSublinhado.id)).toBe(false);
+    });
+
+    it('trata \\ digitada como texto literal', async () => {
+      // `\` é o caractere de escape declarado no LIKE — sem escapá-la, a
+      // busca `barra\x` viraria "barra seguido de x" e não casaria.
+      const comBarra = await criarComEmail(`barra\\x.${marcador}@example.com`);
+
+      const resultado = await repositorio.listar({ email: `barra\\x.${marcador}` });
+      expect(resultado.map((l) => l.id)).toEqual([comBarra.id]);
+    });
+
+    it('combina e-mail com período (AND)', async () => {
+      const antigo = await criarComEmail(`combinado.antigo.${marcador}@example.com`);
+      const recente = await criarComEmail(`combinado.recente.${marcador}@example.com`);
+      const umDiaAtras = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+      await pool.execute('UPDATE leads SET created_at = ? WHERE id = ?', [umDiaAtras, antigo.id]);
+
+      const resultado = await repositorio.listar({
+        email: `.${marcador}@`,
+        from: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      });
+      expect(resultado.some((l) => l.id === recente.id)).toBe(true);
+      expect(resultado.some((l) => l.id === antigo.id)).toBe(false);
+
+      const soAntigo = await repositorio.listar({
+        email: `combinado.antigo.${marcador}`,
+        from: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      });
+      expect(soAntigo).toEqual([]);
+    });
+  });
+
   it('exclui um lead permanentemente', async () => {
     const lead = await repositorio.criar(leadDeTeste());
     await repositorio.excluir(lead.id);
 
-    const todos = await repositorio.listarPorPeriodo();
+    const todos = await repositorio.listar();
     expect(todos.some((l) => l.id === lead.id)).toBe(false);
   });
 

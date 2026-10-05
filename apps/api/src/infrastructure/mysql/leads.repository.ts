@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import type {
-  FiltroPeriodoLeads,
+  FiltroLeads,
   LeadParaRegistro,
   LeadPersistido,
   LeadsRepository,
 } from '../../domain/portas/leads.repository';
 import { agoraMysqlUtc, paraIsoUtc, paraMysqlDatetime } from './mysql-datas';
+import { CLAUSULA_ESCAPE_LIKE, padraoLikeContem } from './mysql-like';
 
 const TABELA = 'leads';
 
@@ -88,7 +89,7 @@ export class MySqlLeadsRepository implements LeadsRepository {
     return paraLeadPersistido(rows[0]);
   }
 
-  async listarPorPeriodo(filtro: FiltroPeriodoLeads = {}): Promise<LeadPersistido[]> {
+  async listar(filtro: FiltroLeads = {}): Promise<LeadPersistido[]> {
     const condicoes: string[] = [];
     const parametros: string[] = [];
     if (filtro.from) {
@@ -98,6 +99,15 @@ export class MySqlLeadsRepository implements LeadsRepository {
     if (filtro.to) {
       condicoes.push('created_at <= ?');
       parametros.push(paraMysqlDatetime(filtro.to));
+    }
+    if (filtro.email) {
+      // `LOWER` dos dois lados: "contém, sem diferenciar maiúsculas" é
+      // contrato da porta, não um efeito colateral da collation da coluna
+      // (que hoje já é case-insensitive, mas poderia mudar). Sem índice útil
+      // de qualquer forma — o `%` inicial do "contém" já obriga a varrer a
+      // tabela, aceitável no volume de leads do PRD.
+      condicoes.push(`LOWER(email) LIKE LOWER(?) ${CLAUSULA_ESCAPE_LIKE}`);
+      parametros.push(padraoLikeContem(filtro.email));
     }
     const whereClause = condicoes.length > 0 ? `WHERE ${condicoes.join(' AND ')}` : '';
 

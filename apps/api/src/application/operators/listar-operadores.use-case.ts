@@ -5,7 +5,7 @@ import { OPERADORES_REPOSITORY } from './operadores-repository.token';
 /**
  * Caso de uso de `GET /api/admin/operators` (autenticado). Reordena por
  * `criadoEm` decrescente (mais recente primeiro) — mesmo critério de
- * exibição de `ListarLeadsUseCase`/`LeadsRepository.listarPorPeriodo` (`ORDER
+ * exibição de `ListarLeadsUseCase`/`LeadsRepository.listar` (`ORDER
  * BY created_at DESC`) — como garantia na própria Aplicação, independente da
  * ordem que a Infraestrutura devolva.
  */

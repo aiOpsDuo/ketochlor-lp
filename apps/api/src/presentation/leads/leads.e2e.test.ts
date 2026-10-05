@@ -263,6 +263,129 @@ describe('Leads (e2e) — POST /api/leads + GET/DELETE /api/admin/leads*', () =>
     });
   });
 
+  describe('GET /api/admin/leads?email= — busca por e-mail', () => {
+    // Marcador único por execução em todo e-mail deste bloco — a tabela
+    // `leads` é compartilhada com outros testes (e execuções), então cada
+    // busca só pode depender de leads criados aqui.
+    const marcador = randomUUID().slice(0, 8);
+
+    function listarComQuery(query: Record<string, string>) {
+      return request(app.getHttpServer())
+        .get('/api/admin/leads')
+        .query(query)
+        .set('Authorization', authHeader());
+    }
+
+    const ids = (corpo: { id: string }[]) => corpo.map((l) => l.id).sort();
+
+    it('casa trecho parcial sem diferenciar maiúsculas, com espaços nas pontas ignorados', async () => {
+      const maiusculo = await criarLeadDireto({ email: `Carla.Souza.${marcador}@Example.COM` });
+      const outro = await criarLeadDireto({ email: `pedro.${marcador}@example.com` });
+
+      const porNome = await listarComQuery({ email: `  carla.souza.${marcador}@  ` });
+      expect(porNome.status).toBe(200);
+      expect(ids(porNome.body)).toEqual([maiusculo.id]);
+      expect(porNome.body[0].email).toBe(`Carla.Souza.${marcador}@Example.COM`);
+
+      const porDominio = await listarComQuery({ email: `.${marcador}@EXAMPLE.COM` });
+      expect(ids(porDominio.body)).toEqual([maiusculo.id, outro.id].sort());
+    });
+
+    it('trata %, _ e \\ como texto literal', async () => {
+      const comSublinhado = await criarLeadDireto({ email: `bia_r.${marcador}@example.com` });
+      const semSublinhado = await criarLeadDireto({ email: `biaxr.${marcador}@example.com` });
+      const comPercentual = await criarLeadDireto({ email: `cem%off.${marcador}@example.com` });
+      const comBarra = await criarLeadDireto({ email: `barra\\y.${marcador}@example.com` });
+
+      const porSublinhado = await listarComQuery({ email: `bia_r.${marcador}` });
+      expect(ids(porSublinhado.body)).toEqual([comSublinhado.id]);
+      expect(porSublinhado.body.some((l: { id: string }) => l.id === semSublinhado.id)).toBe(false);
+
+      const porPercentual = await listarComQuery({ email: `%off.${marcador}` });
+      expect(ids(porPercentual.body)).toEqual([comPercentual.id]);
+
+      const porBarra = await listarComQuery({ email: `barra\\y.${marcador}` });
+      expect(ids(porBarra.body)).toEqual([comBarra.id]);
+    });
+
+    it('combina e-mail com from/to (AND)', async () => {
+      const antigo = await criarLeadDireto({ email: `periodo.antigo.${marcador}@example.com` });
+      const recente = await criarLeadDireto({ email: `periodo.recente.${marcador}@example.com` });
+      const umDiaAtras = paraMysqlDatetime(new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      await pool.execute('UPDATE leads SET created_at = ? WHERE id = ?', [umDiaAtras, antigo.id]);
+
+      const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const recentes = await listarComQuery({ email: `.${marcador}@`, from: umaHoraAtras });
+      expect(recentes.body.some((l: { id: string }) => l.id === recente.id)).toBe(true);
+      expect(recentes.body.some((l: { id: string }) => l.id === antigo.id)).toBe(false);
+
+      const antigos = await listarComQuery({
+        email: `periodo.antigo.${marcador}`,
+        to: umaHoraAtras,
+      });
+      expect(ids(antigos.body)).toEqual([antigo.id]);
+    });
+
+    it('e-mail vazio ou só com espaços não filtra nada (mesma listagem de sem o parâmetro)', async () => {
+      const semParametro = await request(app.getHttpServer())
+        .get('/api/admin/leads')
+        .set('Authorization', authHeader());
+      const soEspacos = await listarComQuery({ email: '   ' });
+
+      expect(soEspacos.status).toBe(200);
+      expect(ids(soEspacos.body)).toEqual(ids(semParametro.body));
+    });
+
+    it('devolve lista vazia (200) quando nenhum e-mail contém o trecho', async () => {
+      const resposta = await listarComQuery({ email: `inexistente.${randomUUID()}` });
+      expect(resposta.status).toBe(200);
+      expect(resposta.body).toEqual([]);
+    });
+
+    it.each([
+      ['/api/admin/leads'],
+      ['/api/admin/leads/export.csv'],
+    ])('recusa 400 em %s um e-mail com mais de 255 caracteres', async (rota) => {
+      const resposta = await request(app.getHttpServer())
+        .get(rota)
+        .query({ email: 'a'.repeat(256) })
+        .set('Authorization', authHeader());
+      expect(resposta.status).toBe(400);
+      expect(resposta.body.message).toContain('email');
+    });
+
+    it('aceita exatamente 255 caracteres (após trim)', async () => {
+      const resposta = await listarComQuery({ email: ` ${'a'.repeat(255)} ` });
+      expect(resposta.status).toBe(200);
+      expect(resposta.body).toEqual([]);
+    });
+
+    it('recusa 400 o parâmetro email repetido', async () => {
+      const resposta = await request(app.getHttpServer())
+        .get(`/api/admin/leads?email=a&email=b`)
+        .set('Authorization', authHeader());
+      expect(resposta.status).toBe(400);
+    });
+
+    it('a exportação CSV aplica o mesmo filtro de e-mail', async () => {
+      const alvo = await criarLeadDireto({ email: `Csv.Alvo.${marcador}@example.com` });
+      const fora = await criarLeadDireto({ email: `csv.fora.${marcador}@example.com` });
+
+      const resposta = await request(app.getHttpServer())
+        .get('/api/admin/leads/export.csv')
+        .query({ email: `csv.ALVO.${marcador}` })
+        .set('Authorization', authHeader());
+
+      expect(resposta.status).toBe(200);
+      expect(resposta.headers['content-type']).toContain('text/csv');
+      const linhas = (resposta.text as string).trim().split('\r\n');
+      // Cabeçalho + só a linha do lead buscado.
+      expect(linhas).toHaveLength(2);
+      expect(linhas[1].startsWith(`${alvo.id},`)).toBe(true);
+      expect(resposta.text).not.toContain(fora.id);
+    });
+  });
+
   describe('GET /api/admin/leads/export.csv', () => {
     it('devolve Content-Type text/csv com cabeçalho e uma linha por lead', async () => {
       const lead = await criarLeadDireto({ nome: 'Lead Export CSV E2E' });

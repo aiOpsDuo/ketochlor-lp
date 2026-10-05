@@ -1,5 +1,5 @@
-import { Download, Trash2 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { Download, Search, Trash2, X } from 'lucide-react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../../auth/auth-context'
 import { ApiError, apiFetch, apiFetchTexto } from '../../lib/api-client'
 import { Card } from '../../shared/Card'
@@ -14,6 +14,13 @@ const formatadorDeData = new Intl.DateTimeFormat('pt-BR', {
 })
 
 /**
+ * Mesmo limite da API (`TAMANHO_MAXIMO_BUSCA_EMAIL`, `leads-admin.controller.ts`
+ * — o `VARCHAR(255)` de `leads.email`): aplicado também no `maxLength` do
+ * campo, para o operador nunca chegar a ver o `400` da API por isso.
+ */
+const TAMANHO_MAXIMO_BUSCA_EMAIL = 255
+
+/**
  * `from`/`to` (`<input type="date">`) chegam como `"AAAA-MM-DD"`. A API
  * (`docs/API.md`) aceita qualquer data ISO 8601 válida para `from`/`to`
  * (`Date.parse`), mas interpreta os dois como limites de `created_at`
@@ -21,14 +28,21 @@ const formatadorDeData = new Intl.DateTimeFormat('pt-BR', {
  * criados depois da meia-noite UTC daquele dia. Por isso o limite inferior
  * vira início do dia e o superior, fim do dia, em UTC — o filtro cobre o
  * dia inteiro escolhido no seletor, dos dois lados.
+ *
+ * `email` é o trecho de busca já aplicado (sem espaços nas pontas); vazio
+ * não entra na query. "Contém, sem diferenciar maiúsculas" e o tratamento de
+ * `%`/`_` como texto literal são decididos pela API, não aqui.
  */
-function construirQueryDePeriodo(from: string, to: string): string {
+function construirQueryDeFiltros(from: string, to: string, email: string): string {
   const parametros = new URLSearchParams()
   if (from) {
     parametros.set('from', `${from}T00:00:00.000Z`)
   }
   if (to) {
     parametros.set('to', `${to}T23:59:59.999Z`)
+  }
+  if (email) {
+    parametros.set('email', email)
   }
   const query = parametros.toString()
   return query ? `?${query}` : ''
@@ -49,11 +63,31 @@ function resumoDoConsentimento(lead: LeadResumo): string {
     : 'Sim'
 }
 
-function nomeDoArquivoCsv(from: string, to: string): string {
+/**
+ * Uma exportação filtrada por e-mail ganha o sufixo `-busca-por-email`, para
+ * não ser confundida depois com a base completa do período — o trecho
+ * buscado em si (dado pessoal) fica fora do nome do arquivo de propósito.
+ */
+function nomeDoArquivoCsv(from: string, to: string, filtradoPorEmail: boolean): string {
+  const sufixo = filtradoPorEmail ? '-busca-por-email' : ''
   if (!from && !to) {
-    return 'leads.csv'
+    return `leads${sufixo}.csv`
   }
-  return `leads-${from || 'inicio'}-a-${to || 'hoje'}.csv`
+  return `leads-${from || 'inicio'}-a-${to || 'hoje'}${sufixo}.csv`
+}
+
+/**
+ * Mensagem do resultado vazio — distinta quando há busca por e-mail, porque
+ * é o caso do pedido de exclusão (LGPD): "não achei esta pessoa" precisa ser
+ * inequívoco, não confundido com "não chegou lead nenhum no período".
+ */
+function mensagemSemResultado(emailAplicado: string, temPeriodo: boolean): string {
+  if (!emailAplicado) {
+    return 'Nenhum lead encontrado para o período selecionado.'
+  }
+  return temPeriodo
+    ? 'Nenhum lead encontrado para este e-mail no período selecionado.'
+    : 'Nenhum lead encontrado para este e-mail.'
 }
 
 /**
@@ -81,9 +115,16 @@ function baixarCsv(conteudoCsv: string, nomeDoArquivo: string): void {
 /**
  * Tela de consulta de leads (`/leads`, URL real `/admin/leads` — SDD §
  * Critérios de aceitação por capacidade, "Consulta e exportação de leads").
- * Lista `GET /api/admin/leads?from=&to=`, já devolvida mais recente primeiro
- * pela própria API (`LeadsRepository.listarPorPeriodo`, `ORDER BY created_at
+ * Lista `GET /api/admin/leads?from=&to=&email=`, já devolvida mais recente
+ * primeiro pela própria API (`LeadsRepository.listar`, `ORDER BY created_at
  * DESC`) — esta tela não reordena no cliente.
+ *
+ * Período e busca por e-mail aplicam de formas diferentes: as datas refazem
+ * a busca assim que mudam (comportamento original da tela), mas o e-mail só
+ * na submissão do formulário — Enter no campo ou "Filtrar" — porque buscar a
+ * cada tecla dispararia uma requisição por caractere digitado. Por isso o
+ * texto do campo (`emailDigitado`) e o filtro em vigor (`emailAplicado`) são
+ * estados separados.
  *
  * A exclusão de um lead (ação irreversível) exige dois cliques deliberados na
  * própria célula da linha — "Excluir" e depois "Confirmar" — em vez de um
@@ -98,6 +139,8 @@ export function LeadsPage() {
   const [erro, setErro] = useState<string | null>(null)
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const [emailDigitado, setEmailDigitado] = useState('')
+  const [emailAplicado, setEmailAplicado] = useState('')
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
   const [exportando, setExportando] = useState(false)
   /**
@@ -113,7 +156,7 @@ export function LeadsPage() {
     }
     try {
       const resultado = await apiFetch<LeadResumo[]>(
-        `/api/admin/leads${construirQueryDePeriodo(from, to)}`,
+        `/api/admin/leads${construirQueryDeFiltros(from, to, emailAplicado)}`,
         session.accessToken,
       )
       setLeads(resultado)
@@ -125,11 +168,11 @@ export function LeadsPage() {
           : 'Não foi possível carregar os leads.'
       setErro(mensagem)
     }
-  }, [session, from, to])
+  }, [session, from, to, emailAplicado])
 
   useEffect(() => {
     let cancelado = false
-    // A lista está sendo recarregada (troca de período): uma confirmação de
+    // A lista está sendo recarregada (troca de filtro): uma confirmação de
     // exclusão pendente aponta para uma linha que pode nem existir no
     // resultado novo, então ela é descartada junto.
     setConfirmandoExclusaoId(null)
@@ -142,6 +185,32 @@ export function LeadsPage() {
       cancelado = true
     }
   }, [buscarLeads])
+
+  function handleFiltrar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    setEmailAplicado(emailDigitado.trim())
+  }
+
+  /**
+   * Apagar o campo inteiro (inclusive pelo "x" nativo do `type="search"` ou
+   * pela tecla Esc, que o navegador trata como edição do valor) já remove a
+   * busca em vigor — sem exigir um "Filtrar" só para desfazer o filtro.
+   */
+  function handleMudarEmail(valor: string) {
+    setEmailDigitado(valor)
+    if (valor.trim() === '') {
+      setEmailAplicado('')
+    }
+  }
+
+  function handleLimparFiltros() {
+    setFrom('')
+    setTo('')
+    setEmailDigitado('')
+    setEmailAplicado('')
+  }
+
+  const temFiltro = Boolean(from || to || emailDigitado || emailAplicado)
 
   async function handleExcluir(lead: LeadResumo) {
     if (!session) {
@@ -171,10 +240,10 @@ export function LeadsPage() {
     setExportando(true)
     try {
       const conteudoCsv = await apiFetchTexto(
-        `/api/admin/leads/export.csv${construirQueryDePeriodo(from, to)}`,
+        `/api/admin/leads/export.csv${construirQueryDeFiltros(from, to, emailAplicado)}`,
         session.accessToken,
       )
-      baixarCsv(conteudoCsv, nomeDoArquivoCsv(from, to))
+      baixarCsv(conteudoCsv, nomeDoArquivoCsv(from, to, Boolean(emailAplicado)))
       setErro(null)
     } catch (erroRequisicao: unknown) {
       const mensagem =
@@ -197,7 +266,15 @@ export function LeadsPage() {
       </header>
 
       <Card>
-        <div className="flex flex-wrap items-end gap-3">
+        {/* `<form role="search">`: Enter em qualquer campo submete (aplica a
+            busca por e-mail), e o leitor de tela anuncia a região como busca. */}
+        <form
+          role="search"
+          aria-label="Filtrar leads"
+          onSubmit={handleFiltrar}
+          className="flex flex-wrap items-end gap-3"
+          noValidate
+        >
           <div className="flex flex-col gap-1.5">
             <label htmlFor="leads-de" className={CLASSE_ROTULO}>
               De
@@ -222,6 +299,35 @@ export function LeadsPage() {
               className={classeDeCampo(false, 'w-auto')}
             />
           </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="leads-email" className={CLASSE_ROTULO}>
+              Buscar por e-mail
+            </label>
+            <input
+              {...atributosDeCampo('leads-email')}
+              type="search"
+              value={emailDigitado}
+              onChange={(evento) => handleMudarEmail(evento.target.value)}
+              maxLength={TAMANHO_MAXIMO_BUSCA_EMAIL}
+              placeholder="ex.: maria@ ou @gmail"
+              autoComplete="off"
+              spellCheck={false}
+              className={classeDeCampo(false, 'w-64')}
+            />
+          </div>
+          <button type="submit" className={classeDeBotao('primario')}>
+            <Search aria-hidden="true" className="h-4 w-4" />
+            Filtrar
+          </button>
+          <button
+            type="button"
+            onClick={handleLimparFiltros}
+            disabled={!temFiltro}
+            className={classeDeBotao('secundario')}
+          >
+            <X aria-hidden="true" className="h-4 w-4" />
+            Limpar
+          </button>
           <button
             type="button"
             onClick={handleExportarCsv}
@@ -231,8 +337,21 @@ export function LeadsPage() {
             <Download aria-hidden="true" className="h-4 w-4" />
             {exportando ? 'Exportando…' : 'Exportar CSV'}
           </button>
-        </div>
+        </form>
       </Card>
+
+      {/* Região viva sempre montada (só o texto muda): anuncia o resultado
+          de cada busca/filtro a quem usa leitor de tela, que não perceberia a
+          tabela trocando. Uma região criada junto com o próprio texto
+          costuma não ser anunciada, por isso ela não fica dentro do estado
+          vazio abaixo. */}
+      <p aria-live="polite" className="sr-only">
+        {leads === null
+          ? ''
+          : leads.length === 0
+            ? mensagemSemResultado(emailAplicado, Boolean(from || to))
+            : `${leads.length} ${leads.length === 1 ? 'lead encontrado' : 'leads encontrados'}.`}
+      </p>
 
       {erro && <Notice tipo="erro">{erro}</Notice>}
 
@@ -241,7 +360,7 @@ export function LeadsPage() {
       ) : leads.length === 0 ? (
         <Card>
           <p className="text-sm text-graytxt dark:text-slate-400">
-            Nenhum lead encontrado para o período selecionado.
+            {mensagemSemResultado(emailAplicado, Boolean(from || to))}
           </p>
         </Card>
       ) : (

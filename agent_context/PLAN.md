@@ -609,6 +609,16 @@ Fase de cauda, sempre aberta — correções e pedidos do usuário descobertos n
 - Toca documentação: sim — `docs/API.md`, `docs/BANCO-DE-DADOS.md`, `docs/PAINEL.md`, `apps/api/src/domain/README.md`, PRD/SDD (notas datadas)
 - Status: implementada localmente na branch `ajustes/lgpd-links-e-registro-consentimento`, ainda sem commit/PR. Verificado contra o compose local (MySQL/MinIO reais, depois `down -v`): migrations 0001–0005 + 2 leads legados, 0006 aplicada (backfill `consentimento_em = created_at`, texto/URL `NULL`), 2ª execução do runner e reexecução manual do arquivo sem efeito; `curl` via proxy confirmou `422` sem aceite, `422` com texto não-string, `201` com as 4 colunas corretas (instante/URL forjados pelo cliente ignorados), listagem e CSV com os campos, `DELETE` `204`/`404`. Suíte completa: api 158/158, lp 72/72, content-schema 24/24; builds de lp/admin/api ok.
 
+#### busca-leads-por-email — Filtro por e-mail na tela de leads (pedidos de exclusão LGPD)
+- Origem: pedido do cliente (2026-10-05)
+- Descrição: `email` opcional em `GET /api/admin/leads` e `GET /api/admin/leads/export.csv` ("contém", sem diferenciar maiúsculas, `%`/`_`/`\` literais, AND com `from`/`to`, `400` acima de 255 caracteres); porta `FiltroLeads`/`LeadsRepository.listar` (antes `FiltroPeriodoLeads`/`listarPorPeriodo`). Painel: campo "Buscar por e-mail" aplicado com Enter/"Filtrar", "Limpar", estado vazio próprio, CSV com o mesmo filtro.
+- Rastreável a: SDD § Contratos de dados/API/interfaces — Leads (nota de 2026-10-05); `CHANGELOG.md`, 2026-10-05
+- Critério de "pronto": testes/builds passam; contra MySQL real, busca parcial/case-insensitive, `%`/`_` literais, combinação com período, CSV filtrado e `400` por tamanho verificados via `curl`.
+- Dependências: lgpd-links-e-registro-consentimento
+- Execução: sequencial
+- Toca documentação: sim — `docs/API.md`, `docs/PAINEL.md`, SDD (contrato)
+- Status: implementada localmente em `main`, ainda sem commit/PR. Verificado contra o compose local (MySQL/MinIO reais, depois `down -v`) via `curl` pelo proxy; suíte de `apps/api` 179/179 (21 testes novos), `apps/lp` 72/72; builds de content-schema/admin/api ok.
+
 ## Ordem de execução
 
 ```

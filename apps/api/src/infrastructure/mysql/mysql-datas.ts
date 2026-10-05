@@ -20,7 +20,7 @@ export function paraIsoUtc(valorMysql: string): string {
   return `${valorMysql.replace(' ', 'T')}.000Z`;
 }
 
-/** Uma data ISO 8601 (ex. filtro de período, `FiltroPeriodoLeads`) convertida para `DATETIME` do MySQL. */
+/** Uma data ISO 8601 (ex. filtro de período, `FiltroLeads`) convertida para `DATETIME` do MySQL. */
 export function paraMysqlDatetime(valorIso: string): string {
   return new Date(valorIso).toISOString().slice(0, 19).replace('T', ' ');
 }

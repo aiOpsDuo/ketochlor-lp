@@ -270,8 +270,8 @@ Prefixo de rota único: `/api`. Formato de erro uniforme: `{ "message": string, 
 
 **Leads:**
 - `POST /api/leads` (público) → cria um registro em `leads`; `422` se `nome`/`email` ausentes, se o consentimento não foi marcado no corpo da requisição, ou se `consentimentoTexto` (opcional) não for string de até 500 caracteres. Desde 2026-10-02 o consentimento é persistido (aceite, instante do servidor, texto, URL da política — ver modelo de dados); antes, não era.
-- `GET /api/admin/leads?from=&to=` (autenticado) → lista paginada, mais recente primeiro, com filtro por período.
-- `GET /api/admin/leads/export.csv?from=&to=` (autenticado) → exportação da mesma listagem em CSV.
+- `GET /api/admin/leads?from=&to=&email=` (autenticado) → lista paginada, mais recente primeiro, com filtro por período e, desde 2026-10-05, por trecho do e-mail (contém, sem diferenciar maiúsculas — localizar o titular num pedido de exclusão LGPD; ver `docs/API.md` § Leads).
+- `GET /api/admin/leads/export.csv?from=&to=&email=` (autenticado) → exportação da mesma listagem em CSV.
 - `DELETE /api/admin/leads/:id` (autenticado) → exclusão a pedido do titular.
 
 **Operadores (autenticado):** gestão de quem pode logar no painel — tabela própria `operators` no MySQL (antes da migração de 2026-09-21, cada operador era integralmente um usuário do Supabase Auth; ver "Migração de plataforma de dados" acima).

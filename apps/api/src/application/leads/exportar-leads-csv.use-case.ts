@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { FiltroPeriodoLeads } from '../../domain';
+import type { FiltroLeads } from '../../domain';
 import { formatarLeadsParaCsv } from './formatar-leads-csv';
 import { ListarLeadsUseCase } from './listar-leads.use-case';
 
 /**
- * Caso de uso de `GET /api/admin/leads/export.csv?from=&to=` (autenticado):
+ * Caso de uso de `GET /api/admin/leads/export.csv?from=&to=&email=` (autenticado):
  * mesma listagem/filtro de `ListarLeadsUseCase` — reaproveitada aqui via
  * injeção, em vez de repetir a chamada ao repositório, para a consulta ter
  * uma única fonte de verdade (G5/DRY, `references/clean-code.md`) — só o
@@ -18,7 +18,7 @@ export class ExportarLeadsCsvUseCase {
     private readonly listarLeads: ListarLeadsUseCase,
   ) {}
 
-  async executar(filtro?: FiltroPeriodoLeads): Promise<string> {
+  async executar(filtro?: FiltroLeads): Promise<string> {
     const leads = await this.listarLeads.executar(filtro);
     return formatarLeadsParaCsv(leads);
   }

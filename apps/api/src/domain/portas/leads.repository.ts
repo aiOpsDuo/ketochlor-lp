@@ -37,12 +37,23 @@ export interface LeadPersistido {
  */
 export type LeadParaRegistro = LeadValidado & { consentimentoPoliticaUrl: string };
 
-/** Filtro de período usado tanto pela listagem quanto pela exportação (mesma query, ver SDD). */
-export interface FiltroPeriodoLeads {
+/**
+ * Filtro usado tanto pela listagem quanto pela exportação (mesma query, ver
+ * SDD). Todos os critérios presentes se combinam (AND).
+ */
+export interface FiltroLeads {
   /** ISO 8601 — inclusive. */
   from?: string;
   /** ISO 8601 — inclusive. */
   to?: string;
+  /**
+   * Trecho do e-mail (já sem espaços nas pontas, nunca vazio — a
+   * Apresentação omite o campo quando não há busca): casa qualquer lead cujo
+   * `email` CONTENHA este texto, sem diferenciar maiúsculas de minúsculas.
+   * Texto literal — `%`/`_` não são curingas. Pedido do cliente de
+   * 2026-10-05: localizar o lead de um titular que pede a exclusão (LGPD).
+   */
+  email?: string;
 }
 
 export interface LeadsRepository {
@@ -50,11 +61,12 @@ export interface LeadsRepository {
   criar(lead: LeadParaRegistro): Promise<LeadPersistido>;
 
   /**
-   * Lista leads, mais recente primeiro, com filtro de período opcional.
-   * Reaproveitada pela exportação CSV (`api/modulo-leads`) — a formatação em
-   * si fica para aquela tarefa, esta porta só devolve os registros.
+   * Lista leads, mais recente primeiro, com filtro opcional de período e/ou
+   * de e-mail. Reaproveitada pela exportação CSV (`api/modulo-leads`) — a
+   * formatação em si fica para aquela tarefa, esta porta só devolve os
+   * registros.
    */
-  listarPorPeriodo(filtro?: FiltroPeriodoLeads): Promise<LeadPersistido[]>;
+  listar(filtro?: FiltroLeads): Promise<LeadPersistido[]>;
 
   /**
    * Exclui um lead permanentemente (SDD — exclusão a pedido do titular).

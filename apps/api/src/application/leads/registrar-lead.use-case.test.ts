@@ -33,7 +33,7 @@ class LeadsRepositoryFalso implements LeadsRepository {
     };
   }
 
-  async listarPorPeriodo(): Promise<LeadPersistido[]> {
+  async listar(): Promise<LeadPersistido[]> {
     return [];
   }
 
