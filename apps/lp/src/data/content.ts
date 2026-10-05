@@ -41,3 +41,18 @@ export const FOOTER_LINKS: FooterLink[] = [
   { label: "Contato", href: "https://br.virbac.com/contato" },
   { label: "Uso Veterinário · Cães" },
 ];
+
+/**
+ * Material técnico entregue após o cadastro no formulário de Material Técnico:
+ * o PDF é estático (`apps/lp/public/materiais/`, servido pelo mesmo nginx da
+ * LP) e o link de download aparece na tela de confirmação de `FormularioCTA`
+ * assim que `POST /api/leads` responde 201. A API não envia e-mail — o acesso
+ * é imediato, na própria página. Para trocar o material, substitua o arquivo
+ * (mantendo o nome) ou atualize `url`/`tamanho` aqui.
+ */
+export const MATERIAL_TECNICO_DOWNLOAD = {
+  url: "/materiais/ketochlor-folheto-tecnico.pdf",
+  nomeArquivo: "Ketochlor-Folheto-Tecnico.pdf",
+  rotulo: "BAIXAR O FOLHETO TÉCNICO",
+  tamanho: "PDF, 2,4 MB",
+};

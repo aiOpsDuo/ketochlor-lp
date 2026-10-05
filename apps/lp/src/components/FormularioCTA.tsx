@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { POLITICA_PRIVACIDADE_URL } from "@ketochlor/content-schema";
 import { usePublishedContent } from "../content/PublishedContentProvider";
+import { MATERIAL_TECNICO_DOWNLOAD } from "../data/content";
 import { enviarLead, paraLeadPayload } from "../leads/enviar-lead";
 import {
   TEXTO_CONSENTIMENTO_ANTES_DO_LINK,
@@ -88,9 +89,17 @@ export default function FormularioCTA() {
               <p className="font-heading font-bold text-navy text-lg mb-2">
                 Cadastro recebido.
               </p>
-              <p className="text-graytxt text-sm">
-                O material técnico será enviado para o e-mail informado.
+              <p className="text-graytxt text-sm mb-6">
+                Seu material técnico está pronto para download.
               </p>
+              <a
+                href={MATERIAL_TECNICO_DOWNLOAD.url}
+                download={MATERIAL_TECNICO_DOWNLOAD.nomeArquivo}
+                className="inline-block bg-gold text-navy font-bold text-sm px-7 py-4 rounded-sm hover:brightness-95 transition"
+              >
+                {MATERIAL_TECNICO_DOWNLOAD.rotulo}
+              </a>
+              <p className="text-[#A0A5AF] text-xs mt-3">{MATERIAL_TECNICO_DOWNLOAD.tamanho}</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">

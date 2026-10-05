@@ -107,6 +107,10 @@ describe('FormularioCTA — envio para POST /api/leads', () => {
 
     await waitFor(() => expect(screen.getByText('Cadastro recebido.')).toBeTruthy());
 
+    const linkDoMaterial = screen.getByRole('link', { name: /BAIXAR O FOLHETO TÉCNICO/ });
+    expect(linkDoMaterial.getAttribute('href')).toBe('/materiais/ketochlor-folheto-tecnico.pdf');
+    expect(linkDoMaterial.hasAttribute('download')).toBe(true);
+
     const chamadaDeLeads = fetchMock.mock.calls.find(([url]) => url === '/api/leads');
     expect(chamadaDeLeads).toBeTruthy();
     const corpoEnviado = JSON.parse((chamadaDeLeads?.[1] as RequestInit).body as string);
@@ -133,6 +137,7 @@ describe('FormularioCTA — envio para POST /api/leads', () => {
 
     expect(fetchMock.mock.calls.some(([url]) => url === '/api/leads')).toBe(false);
     expect(screen.queryByText('Cadastro recebido.')).toBeNull();
+    expect(screen.queryByRole('link', { name: /BAIXAR O FOLHETO TÉCNICO/ })).toBeNull();
   });
 
   it('mostra um erro visível e não navega para a tela de sucesso quando a API rejeita o envio (422)', async () => {
@@ -154,6 +159,7 @@ describe('FormularioCTA — envio para POST /api/leads', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
     expect(screen.queryByText('Cadastro recebido.')).toBeNull();
+    expect(screen.queryByRole('link', { name: /BAIXAR O FOLHETO TÉCNICO/ })).toBeNull();
   });
 
   it('mostra um erro visível quando o envio falha por erro de rede', async () => {
