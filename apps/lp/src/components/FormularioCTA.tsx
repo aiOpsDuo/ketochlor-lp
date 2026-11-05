@@ -45,6 +45,10 @@ export default function FormularioCTA() {
     try {
       await enviarLead(paraLeadPayload(form));
       setSubmitted(true);
+      // Evento de conversão lido pelo Google Tag Manager (GTM-5RJV9SDX).
+      const w = window as Window & { dataLayer?: Record<string, unknown>[] };
+      w.dataLayer = w.dataLayer ?? [];
+      w.dataLayer.push({ event: "ketochlor-form-submit", form_id: "material_tecnico" });
     } catch (falhaDeEnvio) {
       setErro(
         'Não foi possível enviar seu cadastro agora. Verifique os dados e tente novamente em instantes.',
