@@ -59,7 +59,7 @@ RUN npm run build --workspace=packages/content-schema \
  && npm run build --prefix apps/admin
 
 # ---- web: serve os estáticos + proxy reverso via nginx ----
-FROM nginx:1.27-alpine AS web
+FROM nginx:1.30.1-alpine AS web
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 # apps/admin builda com `base: '/admin/'` (apps/admin/vite.config.ts) — por
 # isso o dist do painel vai para o subdiretório /admin dentro da raiz servida
